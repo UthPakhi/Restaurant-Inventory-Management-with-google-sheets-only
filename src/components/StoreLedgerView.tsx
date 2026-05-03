@@ -17,10 +17,6 @@ export const StoreLedgerView: React.FC = () => {
     
     const { items: allItems } = useAppLookup();
 
-    useEffect(() => {
-        fetchData();
-    }, []);
-
     const fetchData = async () => {
         setLoading(true);
         try {
@@ -36,6 +32,10 @@ export const StoreLedgerView: React.FC = () => {
             setLoading(false);
         }
     };
+
+    useEffect(() => {
+        fetchData();
+    }, []);
 
     const ledgerData = useMemo(() => {
         if (!batches.length && !issues.length) return { initialBalance: 0, closingBalance: 0, ledgerDays: [] };

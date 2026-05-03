@@ -56,6 +56,7 @@ export class SheetsService {
         "Recipes": [["Menu_Item_Name", "Raw_Item_ID", "Qty_Per_Portion"]],
         "MenuSales": [["Date", "Menu_Item_Name", "Qty_Sold", "Amount"]],
         "AuditLogs": [["Timestamp", "UserEmail", "Action", "Sheet", "Details"]],
+        "AppSettings": [["Key", "Value"], ["RestaurantName", "RestoManage"], ["LogoUrl", ""]]
       };
       this.saveDemoData();
     }
@@ -104,12 +105,12 @@ export class SheetsService {
       "Masters_Items", "Masters_Depts", "Masters_Suppliers", 
       "Purchases", "Issues", "Batches", "DailyConsumption", 
       "Sales", "Cashflow", "MonthlySummary", "Recipes", "MenuSales",
-      "AuditLogs"
+      "AuditLogs", "AppSettings"
     ];
 
     for (const title of titles) {
       try {
-        await fetch("/api/sheets/batchUpdate", {
+        const res = await fetch("/api/sheets/batchUpdate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ 
@@ -118,8 +119,13 @@ export class SheetsService {
             requests: [{ addSheet: { properties: { title } } }]
           }),
         });
+        const data = await res.json();
+        if (data.error && !data.error.includes("already exists")) {
+            console.warn(`Failed to create sheet ${title}:`, data.error);
+        }
       } catch (e) {
-        // Sheet likely already exists
+        // Network error or other
+        console.error(`Network error creating sheet ${title}:`, e);
       }
     }
 
@@ -143,6 +149,7 @@ export class SheetsService {
           { range: "Recipes!A1:C1", values: [["Menu_Item_Name", "Raw_Item_ID", "Qty_Per_Portion"]] },
           { range: "MenuSales!A1:D1", values: [["Date", "Menu_Item_Name", "Qty_Sold", "Amount"]] },
           { range: "AuditLogs!A1:E1", values: [["Timestamp", "UserEmail", "Action", "Sheet", "Details"]] },
+          { range: "AppSettings!A1:B3", values: [["Key", "Value"], ["RestaurantName", "RestoManage"], ["LogoUrl", ""]] },
       ];
 
       for (const h of headers) {
@@ -176,18 +183,24 @@ export class SheetsService {
           return data;
       }
 
-      const res = await fetch("/api/sheets/read", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-              tokens: this.tokens,
-              spreadsheetId: this.spreadsheetId,
-              range
-          })
-      });
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
-      return data.values || [];
+    const res = await fetch("/api/sheets/read", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            tokens: this.tokens,
+            spreadsheetId: this.spreadsheetId,
+            range
+        })
+    });
+    
+    if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Read failed (${res.status}): ${text.substring(0, 100)}`);
+    }
+
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    return data.values || [];
   }
 
   // ====== Data Abstraction Methods ======
@@ -240,6 +253,12 @@ export class SheetsService {
         values
       })
     });
+
+    if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Append failed (${res.status}): ${text.substring(0, 100)}`);
+    }
+
     const data = await res.json();
     if (data.error) throw new Error(data.error);
     return data;
@@ -283,6 +302,12 @@ export class SheetsService {
         values
       })
     });
+
+    if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Update failed (${res.status}): ${text.substring(0, 100)}${text.length > 100 ? '...' : ''}`);
+    }
+
     const data = await res.json();
     if (data.error) throw new Error(data.error);
     return data;
@@ -361,7 +386,7 @@ export class SheetsService {
   }
 
   async reverseIssue(issue: any): Promise<any> {
-    const { id, itemId, qty, rate, deptId, date, itemName, deptName } = issue;
+    const { id, itemId, qty, rate, deptId, date } = issue;
     if (qty <= 0) throw new Error("Cannot reverse a reversal or zero quantity.");
 
     const ts = Date.now();
@@ -374,11 +399,10 @@ export class SheetsService {
     // 2. Append a negative issue to cancel out the consumption
     const negativeIssue = [revIssueId, date, deptId, itemId, -qty, rate, this.currentUserEmail];
 
-    await this.append('Batches!A1', [newBatch]);
-    await this.append('Issues!A1', [negativeIssue]);
+    await this.append('Batches!A:G', [newBatch]);
+    await this.append('Issues!A:G', [negativeIssue]);
 
-    const displayItem = itemName || itemId;
-    await this.logAudit(this.currentUserEmail, 'REVERSE_ISSUE', 'Issues', `Reversed issue ${id} for item ${displayItem}, restored ${qty} to stock.`);
+    await this.logAudit(this.currentUserEmail, 'REVERSE_ISSUE', 'Issues', `Reversed issue ${id} for item ${itemId}, restored ${qty} to stock at rate ${rate}.`);
     
     return { success: true };
   }

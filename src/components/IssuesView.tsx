@@ -245,6 +245,10 @@ export const IssuesView: React.FC = () => {
     };
 
     const handleReverseIssue = async (issue: Issue) => {
+        if (issue.qty <= 0) {
+            toast.error("This transaction is already a reversal.");
+            return;
+        }
         if (!confirm('Are you sure you want to reverse this issue? This will restore stock to inventory.')) return;
         setLoading(true);
         try {
@@ -343,12 +347,17 @@ export const IssuesView: React.FC = () => {
             header: 'Actions',
             align: 'right',
             cell: (row) => (
-                <button 
-                  onClick={() => handleReverseIssue(row)}
-                  className="px-2 py-1 bg-rose-50 text-rose-600 rounded text-[10px] font-bold uppercase hover:bg-rose-100 transition-colors"
-                >
-                  Reverse
-                </button>
+                <div className="flex justify-end">
+                    {row.qty > 0 && (
+                        <button 
+                            id={`reverse-issue-${row.id}`}
+                            onClick={() => handleReverseIssue(row)}
+                            className="px-2 py-1 bg-rose-50 text-rose-600 rounded text-[10px] font-bold uppercase hover:bg-rose-100 transition-colors"
+                        >
+                            Reverse
+                        </button>
+                    )}
+                </div>
             )
         }
     ];

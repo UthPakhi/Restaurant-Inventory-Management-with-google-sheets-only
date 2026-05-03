@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Edit2, Search, X, Loader2, Package, Hash, User, ShieldCheck } from 'lucide-react';
+import { Plus, Trash2, Edit2, Search, X, Loader2, Package, Hash, User, ShieldCheck, Save, Store, Image as ImageIcon, Camera } from 'lucide-react';
 import { format } from 'date-fns';
 import { sheetsService } from '../services/sheetsService';
 import { mapRowToItem, mapRowToDepartment, mapRowToSupplier, mapItemToRow } from '../services/dataMappers';
@@ -11,7 +11,7 @@ import { useAppLookup } from '../context/AppContext';
 import { toast } from 'sonner';
 export const MastersView: React.FC = () => {
     const { refreshStaticData } = useAppLookup();
-    const [tab, setTab] = useState<'items' | 'depts' | 'suppliers'>('items');
+    const [tab, setTab] = useState<'items' | 'depts' | 'suppliers' | 'settings'>('items');
     const [items, setItems] = useState<Item[]>([]);
     const [departments, setDepartments] = useState<Department[]>([]);
     const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -29,6 +29,9 @@ export const MastersView: React.FC = () => {
     const [editingDept, setEditingDept] = useState<Department | null>(null);
     const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
 
+    const [restaurantName, setRestaurantName] = useState('RestoManage');
+    const [logoUrl, setLogoUrl] = useState('');
+
     const fetchData = async () => {
         setLoading(true);
         try {
@@ -38,9 +41,21 @@ export const MastersView: React.FC = () => {
             } else if (tab === 'depts') {
                 const rows = await sheetsService.read('Masters_Depts!A2:B');
                 setDepartments((rows || []).map((row, i) => ({...mapRowToDepartment(row), rowIndex: i + 2})));
-            } else {
+            } else if (tab === 'suppliers') {
                 const rows = await sheetsService.read('Masters_Suppliers!A2:C');
                 setSuppliers((rows || []).map((row, i) => ({...mapRowToSupplier(row), rowIndex: i + 2})));
+            } else if (tab === 'settings') {
+                try {
+                    const rows = await sheetsService.read('AppSettings!A:B');
+                    if (rows) {
+                        rows.forEach((r: any) => {
+                            if (r[0] === 'RestaurantName') setRestaurantName(r[1] || 'RestoManage');
+                            if (r[0] === 'LogoUrl') setLogoUrl(r[1] || '');
+                        });
+                    }
+                } catch (e) {
+                    console.warn('AppSettings sheet may not exist yet:', e);
+                }
             }
         } catch (e) {
             console.error(e);
@@ -425,6 +440,98 @@ export const MastersView: React.FC = () => {
         }
     };
 
+    const handleSaveSettings = async () => {
+        setLoading(true);
+        try {
+            try {
+                await sheetsService.update('AppSettings!A2:B3', [
+                    ['RestaurantName', restaurantName],
+                    ['LogoUrl', logoUrl]
+                ]);
+            } catch (innerE: any) {
+                if (innerE.message.includes('Unable to parse range') || innerE.message.includes('not found')) {
+                    // Try to initialize sheet structure and retry
+                    await sheetsService.initializeSheetStructure();
+                    await sheetsService.update('AppSettings!A2:B3', [
+                        ['RestaurantName', restaurantName],
+                        ['LogoUrl', logoUrl]
+                    ]);
+                } else {
+                    throw innerE;
+                }
+            }
+            
+            const spreadsheetId = localStorage.getItem('resto_manage_data') ? JSON.parse(localStorage.getItem('resto_manage_data')!).spreadsheetId : null;
+            if (spreadsheetId) {
+                localStorage.setItem(`resto_branding_${spreadsheetId}`, JSON.stringify({
+                  restaurantName,
+                  logoUrl
+                }));
+            }
+            window.dispatchEvent(new Event('branding-changed'));
+            toast.success('App Settings updated.');
+        } catch(e: any) {
+            toast.error('Failed to update app settings: ' + e.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            // Check file size first (bonus)
+            if (file.size > 2 * 1024 * 1024) {
+                toast.error("File is too large. Please pick an image under 2MB.");
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                const img = new Image();
+                img.onload = () => {
+                    // Create a canvas to resize the image
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+
+                    // Aim for small dimensions for the logo to keep Base64 string < 50k chars
+                    const MAX_SIZE = 200; 
+                    if (width > height) {
+                        if (width > MAX_SIZE) {
+                            height *= MAX_SIZE / width;
+                            width = MAX_SIZE;
+                        }
+                    } else {
+                        if (height > MAX_SIZE) {
+                            width *= MAX_SIZE / height;
+                            height = MAX_SIZE;
+                        }
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    if (ctx) {
+                        ctx.drawImage(img, 0, 0, width, height);
+                        // Using quality 0.7 to further reduce size
+                        const compressedBase64 = canvas.toDataURL('image/png');
+                        
+                        if (compressedBase64.length > 48000) {
+                            // If still too large, try jpeg with lower quality
+                            const fallbackBase64 = canvas.toDataURL('image/jpeg', 0.6);
+                            setLogoUrl(fallbackBase64);
+                        } else {
+                            setLogoUrl(compressedBase64);
+                        }
+                    }
+                };
+                img.src = reader.result as string;
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+    
     const handleUpdateEntity = async () => {
         setLoading(true);
         try {
@@ -492,6 +599,7 @@ export const MastersView: React.FC = () => {
                         { id: 'items', label: 'Items' },
                         { id: 'depts', label: 'Sections' },
                         { id: 'suppliers', label: 'Suppliers' },
+                        { id: 'settings', label: 'App Settings' }
                     ].map((t) => (
                         <button
                             key={t.id}
@@ -506,7 +614,78 @@ export const MastersView: React.FC = () => {
                     ))}
                 </div>
             </div>
+            
+            {tab === 'settings' && (
+                <div className="p-6 md:p-8 space-y-8 bg-white border border-slate-200 shadow-sm rounded-xl">
+                  <div className="space-y-5">
+                    <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                      <Store size={20} className="text-emerald-500" />
+                      Restaurant Branding
+                    </h3>
+                    
+                    <div className="flex flex-col md:flex-row gap-8 items-start">
+                      {/* Logo Upload */}
+                      <div className="flex flex-col gap-3">
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Restaurant Logo</label>
+                        <div className="relative group w-32 h-32 rounded-2xl border-2 border-dashed border-slate-300 flex items-center justify-center bg-slate-50 overflow-hidden hover:border-emerald-500 transition-colors cursor-pointer">
+                          {logoUrl ? (
+                            <img src={logoUrl} alt="Logo" className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="flex flex-col items-center text-slate-400">
+                              <ImageIcon size={32} className="mb-2 opacity-50" />
+                              <span className="text-[10px] font-bold uppercase">Upload Logo</span>
+                            </div>
+                          )}
+                          <input 
+                            type="file" 
+                            accept="image/*" 
+                            onChange={handleImageUpload}
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
+                          />
+                          <div className="absolute inset-0 bg-black/50 hidden group-hover:flex items-center justify-center pointer-events-none transition-all">
+                              <Camera size={24} className="text-white" />
+                          </div>
+                        </div>
+                        {logoUrl && (
+                          <button 
+                            onClick={() => setLogoUrl('')}
+                            className="text-[10px] font-bold text-rose-500 hover:text-rose-600 uppercase tracking-wider text-center"
+                          >
+                            Remove Logo
+                          </button>
+                        )}
+                      </div>
 
+                      {/* General Settings */}
+                      <div className="flex-1 w-full space-y-4">
+                        <div className="flex flex-col gap-2">
+                          <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Restaurant Name</label>
+                          <input 
+                            type="text" 
+                            value={restaurantName}
+                            onChange={(e) => setRestaurantName(e.target.value)}
+                            placeholder="E.g., The Grand Palace"
+                            className="w-full p-4 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent font-medium"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-6 border-t border-slate-100 flex justify-end">
+                    <button 
+                      onClick={handleSaveSettings}
+                      disabled={loading}
+                      className="px-8 py-4 bg-emerald-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-500/20 active:scale-[0.98]"
+                    >
+                      {loading ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+                      {loading ? 'Saving...' : 'Save Settings'}
+                    </button>
+                  </div>
+                </div>
+            )}
+
+            {tab !== 'settings' && (
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
                 <div className="p-4 border-b border-slate-100 flex items-center justify-between gap-4 bg-slate-50/50">
                     <div className="relative flex-1 max-w-sm">
@@ -631,6 +810,7 @@ export const MastersView: React.FC = () => {
                     )}
                 </div>
             </div>
+            )}
 
             <AnimatePresence>
                 {isBulkImport && (

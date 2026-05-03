@@ -23,7 +23,6 @@ import { PurchasesView } from './components/PurchasesView';
 import { IssuesView } from './components/IssuesView';
 import { MastersView } from './components/MastersView';
 import { SummaryView } from './components/SummaryView';
-import { SettingsView } from './components/SettingsView';
 import { AuditLogsView } from './components/AuditLogsView';
 import { StoreLedgerView } from './components/StoreLedgerView';
 import { sheetsService, GoogleTokens } from './services/sheetsService';
@@ -45,44 +44,39 @@ export default function App() {
   const { refreshStaticData } = useAppLookup();
 
   // Initialize from LocalStorage
-  useEffect(() => {
-    const saved = localStorage.getItem('resto_manage_data');
-    if (saved) {
+  const loadBrandingData = async (spreadsheetId: string) => {
+    const bSaved = localStorage.getItem(`resto_branding_${spreadsheetId}`);
+    if (bSaved) {
       try {
-        const parsed = JSON.parse(saved);
-        setAppData(parsed);
+        const bParsed = JSON.parse(bSaved);
+        setBranding({
+          name: bParsed.restaurantName || 'RestoManage',
+          logoUrl: bParsed.logoUrl || ''
+        });
+      } catch (e) {}
+    }
 
-        const loadBranding = () => {
-          const bSaved = localStorage.getItem(`resto_branding_${parsed.spreadsheetId}`);
-          if (bSaved) {
-            try {
-              const bParsed = JSON.parse(bSaved);
-              setBranding({
-                name: bParsed.restaurantName || 'RestoManage',
-                logoUrl: bParsed.logoUrl || ''
+    if (spreadsheetId !== 'demo-mode') {
+      try {
+          const rows = await sheetsService.read('AppSettings!A:B');
+          if (rows && rows.length > 0) {
+              let rName = branding.name;
+              let lUrl = branding.logoUrl;
+              rows.forEach((r: any) => {
+                  if (r[0] === 'RestaurantName' && r[1]) rName = r[1];
+                  if (r[0] === 'LogoUrl' && r[1]) lUrl = r[1];
               });
-            } catch (e) {}
+              setBranding({ name: rName, logoUrl: lUrl });
+              localStorage.setItem(`resto_branding_${spreadsheetId}`, JSON.stringify({
+                  restaurantName: rName,
+                  logoUrl: lUrl
+              }));
           }
-        };
-        loadBranding();
-        window.addEventListener('branding-changed', loadBranding);
-
-        if (parsed.spreadsheetId === 'demo-mode') {
-          sheetsService.setDemoMode(true);
-          setUser({ email: 'demo@example.com', name: 'Demo User' });
-          sheetsService.setCurrentUser('demo@example.com');
-        } else {
-          sheetsService.setTokens(parsed.tokens);
-          sheetsService.setSpreadsheetId(parsed.spreadsheetId);
-          fetchUserProfile(parsed.tokens);
-        }
-        setIsInitialized(true);
-        refreshStaticData();
-      } catch (e) {
-        console.error("Failed to parse saved data", e);
+      } catch (e) { 
+          console.warn('Cound not load branding settings from Google Sheets. Using defaults/cached values.', e); 
       }
     }
-  }, []);
+  };
 
   const fetchUserProfile = async (tokens: GoogleTokens) => {
     if (!tokens.access_token) return;
@@ -102,6 +96,46 @@ export default function App() {
     }
   };
 
+  useEffect(() => {
+    const saved = localStorage.getItem('resto_manage_data');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setAppData(parsed);
+
+        const reloadLocalBranding = () => {
+            const bSaved = localStorage.getItem(`resto_branding_${parsed.spreadsheetId}`);
+            if (bSaved) {
+              try {
+                const bParsed = JSON.parse(bSaved);
+                setBranding({
+                  name: bParsed.restaurantName || 'RestoManage',
+                  logoUrl: bParsed.logoUrl || ''
+                });
+              } catch (e) {}
+            }
+        };
+        window.addEventListener('branding-changed', reloadLocalBranding);
+
+        if (parsed.spreadsheetId === 'demo-mode') {
+          sheetsService.setDemoMode(true);
+          setUser({ email: 'demo@example.com', name: 'Demo User' });
+          sheetsService.setCurrentUser('demo@example.com');
+          loadBrandingData('demo-mode');
+        } else {
+          sheetsService.setTokens(parsed.tokens);
+          sheetsService.setSpreadsheetId(parsed.spreadsheetId);
+          fetchUserProfile(parsed.tokens);
+          loadBrandingData(parsed.spreadsheetId);
+        }
+        setIsInitialized(true);
+        refreshStaticData();
+      } catch (e) {
+        console.error("Failed to parse saved data", e);
+      }
+    }
+  }, []);
+
   const handleSetupComplete = (data: { tokens: GoogleTokens; spreadsheetId: string }) => {
     setAppData(data);
     localStorage.setItem('resto_manage_data', JSON.stringify(data));
@@ -109,8 +143,10 @@ export default function App() {
     if (data.spreadsheetId === 'demo-mode') {
       setUser({ email: 'demo@example.com', name: 'Demo User' });
       sheetsService.setCurrentUser('demo@example.com');
+      loadBrandingData('demo-mode');
     } else {
       fetchUserProfile(data.tokens);
+      loadBrandingData(data.spreadsheetId);
     }
     refreshStaticData();
   };
@@ -122,8 +158,7 @@ export default function App() {
     { id: 'issues', label: 'Issues', icon: ArrowRightLeft },
     { id: 'ledger', label: 'Store Ledger', icon: BookOpen },
     { id: 'masters', label: 'Setup Masters', icon: Settings },
-    { id: 'audit', label: 'Audit Logs', icon: History },
-    { id: 'settings', label: 'App Settings', icon: Settings },
+    { id: 'audit', label: 'Audit Logs', icon: History }
   ];
 
   if (!isInitialized) {
@@ -215,7 +250,7 @@ export default function App() {
               </div>
             )}
             <button 
-                onClick={() => { localStorage.clear(); window.location.reload(); }}
+                onClick={() => { localStorage.removeItem('resto_manage_data'); window.location.reload(); }}
                 className="text-slate-500 hover:text-red-400 transition-colors ml-auto"
             >
               <LogOut size={14} />
@@ -272,7 +307,6 @@ export default function App() {
                 {activeView === 'ledger' && <StoreLedgerView />}
                 {activeView === 'masters' && <MastersView />}
                 {activeView === 'audit' && <AuditLogsView />}
-                {activeView === 'settings' && <SettingsView />}
               </motion.div>
             </AnimatePresence>
           </div>

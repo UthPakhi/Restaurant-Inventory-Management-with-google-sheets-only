@@ -55,22 +55,18 @@ export const SummaryView: React.FC = () => {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const [dRows, iRows, itemRows, dailyRows, bRows, salesRows, expRows] = await Promise.all([
+            const [dRows, iRows, itemRows, dailyRows, bRows] = await Promise.all([
                 sheetsService.read('Masters_Depts!A2:B'),
                 sheetsService.read('Issues!A2:G'),
                 sheetsService.read('Masters_Items!A2:H'),
                 sheetsService.read('DailyConsumption!A2:L'),
-                sheetsService.read('Batches!A2:H'),
-                sheetsService.read('Sales!A2:D'),
-                sheetsService.read('Cashflow!A2:E')
+                sheetsService.read('Batches!A2:H')
             ]);
             setDepts(Array.isArray(dRows) ? dRows : []);
             setIssues(Array.isArray(iRows) ? iRows : []);
             setItems(Array.isArray(itemRows) ? itemRows : []);
             setDailyLogs(Array.isArray(dailyRows) ? dailyRows : []);
             setBatches(Array.isArray(bRows) ? bRows : []);
-            setSales(Array.isArray(salesRows) ? salesRows : []);
-            setExpenses(Array.isArray(expRows) ? expRows : []);
         } catch (e) {
             console.error(e);
         } finally {
@@ -159,39 +155,6 @@ export const SummaryView: React.FC = () => {
             freshPurchase: dailyTotal,
             totalCost: totalStoreIssues + dailyTotal
         };
-    };
-
-    const getSalesAndExpensesStats = () => {
-        const monthSales = sales.filter(s => s[1] && s[1].startsWith(selectedMonth));
-        const totalSales = monthSales.reduce((sum, s) => sum + parseNum(s[2]), 0);
-
-        const monthExpenses = expenses.filter(e => e[1] && e[1].startsWith(selectedMonth) && e[2]?.toLowerCase() === 'expense');
-        const totalExpenses = monthExpenses.reduce((sum, e) => sum + parseNum(e[3]), 0);
-
-        return {
-            totalSales,
-            totalExpenses,
-            netProfit: totalSales - totalExpenses
-        };
-    };
-
-    // Monthly Sales vs Expenses
-    const getMonthlySalesVsExpensesData = () => {
-        const months = eachMonthOfInterval({
-            start: subMonths(new Date(), 5),
-            end: new Date()
-        }).map(d => format(d, 'yyyy-MM'));
-
-        return months.map(m => {
-            const monthlySales = sales.filter(s => s[1] && s[1].startsWith(m)).reduce((sum, s) => sum + parseNum(s[2]), 0);
-            const monthlyExpenses = expenses.filter(e => e[1] && e[1].startsWith(m) && e[2]?.toLowerCase() === 'expense')
-                                            .reduce((sum, e) => sum + parseNum(e[3]), 0);
-            return { 
-                month: format(new Date(m + '-01'), 'MMM yy'), 
-                sales: monthlySales,
-                expenses: monthlyExpenses
-            };
-        });
     };
 
     const getInventoryValue = () => {
@@ -377,10 +340,6 @@ export const SummaryView: React.FC = () => {
     const sectionData = getSectionComparison();
     const costStats = getFoodCostStats();
     const inventoryValue = getInventoryValue();
-    const salesStats = getSalesAndExpensesStats();
-    const salesVsExpensesData = getMonthlySalesVsExpensesData();
-
-    const actualFoodCostPercent = salesStats.totalSales > 0 ? (costStats.totalCost / salesStats.totalSales) * 100 : 0;
 
     return (
         <div className="space-y-6 pb-20">
@@ -433,12 +392,9 @@ export const SummaryView: React.FC = () => {
             </div>
 
             {/* Top KPIs */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-4">
                 {[
-                    { label: 'Total Sales', value: `Rs. ${salesStats.totalSales.toLocaleString()}`, icon: TrendingUp, color: 'text-emerald-600', sub: 'Revenue this month' },
                     { label: 'Total Food Cost', value: `Rs. ${costStats.totalCost.toLocaleString()}`, icon: Activity, color: 'text-rose-600', sub: 'Store + Fresh' },
-                    { label: 'Food Cost %', value: `${actualFoodCostPercent.toFixed(1)}%`, icon: PieChart, color: actualFoodCostPercent > 35 ? 'text-rose-600' : 'text-blue-600', sub: 'Target: < 35%' },
-                    { label: 'Net Operations (Approx)', value: `Rs. ${salesStats.netProfit.toLocaleString()}`, icon: BarChart3, color: 'text-indigo-600', sub: 'Sales - All Expenses' },
                     { label: 'Total Inventory Value', value: `Rs. ${inventoryValue.toLocaleString()}`, icon: Package, color: 'text-emerald-600', sub: 'Locked stock capital' },
                     { label: 'Fresh vs Store', value: `${costStats.storeIssues ? ((costStats.freshPurchase / costStats.storeIssues) * 100).toFixed(0) : 0}%`, icon: Layers, color: 'text-amber-600', sub: 'Fresh daily ratio' },
                 ].map((kpi, i) => (
@@ -584,55 +540,6 @@ export const SummaryView: React.FC = () => {
                                 </div>
                             );
                         })}
-                    </div>
-                </div>
-
-                {/* Monthly Trend Sales vs Expenses */}
-                <div className="col-span-12 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm h-[350px]">
-                    <div className="flex items-center gap-2 mb-6">
-                        <Activity size={18} className="text-indigo-500" />
-                        <h3 className="font-bold text-slate-900 tracking-tight">Sales vs Expenses Trend (Last 6 Months)</h3>
-                    </div>
-                    <div className="w-full h-full pb-10">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={salesVsExpensesData}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                <XAxis 
-                                    dataKey="month" 
-                                    axisLine={false} 
-                                    tickLine={false} 
-                                    tick={{ fontSize: 10, fontWeight: 600, fill: '#94a3b8' }} 
-                                />
-                                <YAxis 
-                                    axisLine={false} 
-                                    tickLine={false} 
-                                    tick={{ fontSize: 10, fontWeight: 600, fill: '#94a3b8' }}
-                                    tickFormatter={(v) => `Rs. ${v/1000}k`}
-                                />
-                                <Tooltip 
-                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSize: '12px' }}
-                                />
-                                <Legend wrapperStyle={{ fontSize: '12px', fontWeight: 600, paddingTop: '20px' }} />
-                                <Line 
-                                    type="monotone" 
-                                    dataKey="sales" 
-                                    name="Sales"
-                                    stroke="#10b981" 
-                                    strokeWidth={3} 
-                                    dot={{ r: 4, fill: '#10b981', strokeWidth: 2, stroke: '#fff' }}
-                                    activeDot={{ r: 6 }}
-                                />
-                                <Line 
-                                    type="monotone" 
-                                    dataKey="expenses"
-                                    name="Expenses" 
-                                    stroke="#ef4444" 
-                                    strokeWidth={3} 
-                                    dot={{ r: 4, fill: '#ef4444', strokeWidth: 2, stroke: '#fff' }}
-                                    activeDot={{ r: 6 }}
-                                />
-                            </LineChart>
-                        </ResponsiveContainer>
                     </div>
                 </div>
 

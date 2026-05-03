@@ -24,14 +24,12 @@ import { IssuesView } from './components/IssuesView';
 import { MastersView } from './components/MastersView';
 import { SummaryView } from './components/SummaryView';
 import { SettingsView } from './components/SettingsView';
-import { RecipesView } from './components/RecipesView';
-import { VarianceReportView } from './components/VarianceReportView';
 import { AuditLogsView } from './components/AuditLogsView';
-import { VendorLedgerView } from './components/VendorLedgerView';
+import { StoreLedgerView } from './components/StoreLedgerView';
 import { sheetsService, GoogleTokens } from './services/sheetsService';
 
 // Types
-type View = 'summary' | 'variance' | 'inventory' | 'purchases' | 'issues' | 'cashflow' | 'sales' | 'recipes' | 'masters' | 'settings' | 'audit' | 'ledger';
+type View = 'summary' | 'inventory' | 'purchases' | 'issues' | 'cashflow' | 'sales' | 'masters' | 'settings' | 'audit' | 'ledger';
 
 export default function App() {
   const [activeView, setActiveView] = useState<View>('summary');
@@ -113,12 +111,10 @@ export default function App() {
 
   const navItems = [
     { id: 'summary', label: 'Summary / Analytics', icon: BarChart3 },
-    { id: 'variance', label: 'Variance Report', icon: BarChart3 },
     { id: 'inventory', label: 'Stock Status', icon: Package },
     { id: 'purchases', label: 'Purchases', icon: ShoppingCart },
     { id: 'issues', label: 'Issues', icon: ArrowRightLeft },
-    { id: 'recipes', label: 'Recipe BOM', icon: Activity },
-    { id: 'ledger', label: 'Vendor Ledger', icon: BookOpen },
+    { id: 'ledger', label: 'Store Ledger', icon: BookOpen },
     { id: 'masters', label: 'Setup Masters', icon: Settings },
     { id: 'audit', label: 'Audit Logs', icon: History },
     { id: 'settings', label: 'App Settings', icon: Settings },
@@ -244,13 +240,9 @@ export default function App() {
           <div className="flex items-center gap-3 text-slate-900">
              <button
                onClick={() => setIsDarkMode(!isDarkMode)}
-               className="p-2 rounded-lg bg-slate-50 border border-slate-100 hover:bg-slate-100 transition-all font-bold"
+               className="p-2 rounded-lg bg-slate-50 border border-slate-100 hover:bg-slate-100 transition-all font-bold text-lg"
              >
                {isDarkMode ? "☀️" : "🌙"}
-             </button>
-             <button className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-lg shadow-emerald-500/20 hover:bg-emerald-700 transition-all flex items-center gap-2">
-               <Plus size={16} />
-               Record Entry
              </button>
           </div>
         </header>
@@ -267,12 +259,10 @@ export default function App() {
                 className="h-full"
               >
                 {activeView === 'summary' && <SummaryView />}
-                {activeView === 'variance' && <VarianceReportView />}
                 {activeView === 'inventory' && <InventoryView />}
                 {activeView === 'purchases' && <PurchasesView />}
                 {activeView === 'issues' && <IssuesView />}
-                {activeView === 'recipes' && <RecipesView />}
-                {activeView === 'ledger' && <VendorLedgerView />}
+                {activeView === 'ledger' && <StoreLedgerView />}
                 {activeView === 'masters' && <MastersView />}
                 {activeView === 'audit' && <AuditLogsView />}
                 {activeView === 'settings' && <SettingsView />}

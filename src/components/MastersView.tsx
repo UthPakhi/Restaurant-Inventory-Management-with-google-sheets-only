@@ -12,6 +12,7 @@ export const MastersView: React.FC = () => {
     const [isAdding, setIsAdding] = useState(false);
     const [isBulkImport, setIsBulkImport] = useState(false);
     const [bulkText, setBulkText] = useState('');
+    const [openingStockDate, setOpeningStockDate] = useState('2026-05-01');
 
     const [newItem, setNewItem] = useState({ name: '', deptIds: '', unit: 'kg', buyPrice: '0', sellPrice: '0', category: 'Raw', openingStock: '0', minParLevel: '0', reorderQty: '0' });
     const [newDept, setNewDept] = useState({ name: '' });
@@ -41,7 +42,7 @@ export const MastersView: React.FC = () => {
             const lines = bulkText.trim().split('\n');
             const items: any[][] = [];
             const batches: any[][] = [];
-            const dateStr = format(new Date(), 'yyyy-MM-dd');
+            const dateStr = openingStockDate;
             
             lines.forEach(line => {
                 const parts = line.split('\t');
@@ -330,7 +331,7 @@ export const MastersView: React.FC = () => {
             await sheetsService.append('Masters_Items', rawData);
 
             // Seed Initial Batches for stock-carrying items
-            const dateStr = format(new Date(), 'yyyy-MM-dd');
+            const dateStr = openingStockDate;
             const demoBatches = rawData
                 .filter(itm => Number(itm[7]) > 0)
                 .map(itm => ([`B_OPEN_${itm[0]}_${Date.now()}`, itm[0], dateStr, itm[7], itm[7], itm[4] || '0', 'Opening']));
@@ -360,7 +361,7 @@ export const MastersView: React.FC = () => {
                 
                 const qty = parseFloat(newItem.openingStock);
                 if (qty > 0) {
-                    const dateStr = format(new Date(), 'yyyy-MM-dd');
+                    const dateStr = openingStockDate;
                     await sheetsService.append('Batches', [[`B_OPEN_${Date.now()}`, id, dateStr, qty, qty, newItem.buyPrice, 'Opening']]);
                 }
                 
@@ -539,7 +540,11 @@ export const MastersView: React.FC = () => {
                             <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
                                 <div>
                                     <h3 className="font-bold text-slate-900">Bulk Import Items</h3>
-                                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Paste from Excel or Sheets (Tab Separated)</p>
+                                    <div className="flex items-center gap-2 mt-1">
+                                        <label className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Opening Stock Date:</label>
+                                        <input type="date" className="px-2 py-1 border border-slate-200 rounded text-[10px] bg-white font-mono" value={openingStockDate} onChange={(e) => setOpeningStockDate(e.target.value)} />
+                                    </div>
+                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-1">Paste from Excel or Sheets (Tab Separated)</p>
                                 </div>
                                 <button onClick={() => setIsBulkImport(false)} className="text-slate-400 hover:text-slate-600 p-1"><X size={20} /></button>
                             </div>
@@ -635,6 +640,16 @@ export const MastersView: React.FC = () => {
                                                 />
                                             </div>
                                         </div>
+                                        {Number(newItem.openingStock) > 0 && (
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div className="space-y-1.5 col-span-2">
+                                                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Opening Stock Date</label>
+                                                    <input type="date" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all" 
+                                                       value={openingStockDate} onChange={(e) => setOpeningStockDate(e.target.value)}
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="space-y-1.5">
                                                 <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Min Par Level</label>

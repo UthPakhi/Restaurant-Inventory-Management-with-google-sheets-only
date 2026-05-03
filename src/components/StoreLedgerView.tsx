@@ -4,14 +4,18 @@ import { mapRowToBatch, mapRowToIssue } from '../services/dataMappers';
 import { Batch, Issue } from '../types';
 import { motion } from 'motion/react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isBefore, isSameDay, parseISO, startOfDay, getYear, getMonth, set } from 'date-fns';
-import { Loader2, Calendar, FileText, Download } from 'lucide-react';
+import { Loader2, Calendar, FileText, Download, Package } from 'lucide-react';
 import { cn, parseFinancialNumber } from '../lib/utils';
+import { useAppLookup } from '../context/AppContext';
 
 export const StoreLedgerView: React.FC = () => {
     const [batches, setBatches] = useState<Batch[]>([]);
     const [issues, setIssues] = useState<Issue[]>([]);
     const [loading, setLoading] = useState(false);
     const [selectedMonth, setSelectedMonth] = useState<string>(format(new Date(), 'yyyy-MM'));
+    const [selectedItem, setSelectedItem] = useState<string>('all');
+    
+    const { items: allItems } = useAppLookup();
 
     useEffect(() => {
         fetchData();
@@ -44,16 +48,18 @@ export const StoreLedgerView: React.FC = () => {
 
         // Calculate initial balance (all transactions before monthStart)
         batches.forEach(b => {
+             if (selectedItem !== 'all' && b.itemId !== selectedItem) return;
              const bDate = b.date ? new Date(b.date) : new Date(0);
              if (isBefore(bDate, monthStart)) {
-                 initialBalance += Number(b.originalQty) * Number(b.rate);
+                 initialBalance += selectedItem !== 'all' ? Number(b.originalQty) : Number(b.originalQty) * Number(b.rate);
              }
         });
 
         issues.forEach(i => {
+             if (selectedItem !== 'all' && i.itemId !== selectedItem) return;
              const iDate = i.date ? new Date(i.date) : new Date(0);
              if (isBefore(iDate, monthStart)) {
-                 initialBalance -= Number(i.qty) * Number(i.rate || 0); // Assuming rate might be missing in older issues
+                 initialBalance -= selectedItem !== 'all' ? Number(i.qty) : Number(i.qty) * Number(i.rate || 0); // Assuming rate might be missing in older issues
              }
         });
 
@@ -66,16 +72,18 @@ export const StoreLedgerView: React.FC = () => {
             let dailyUsed = 0;
 
             batches.forEach(b => {
+                if (selectedItem !== 'all' && b.itemId !== selectedItem) return;
                 const bDate = b.date ? startOfDay(new Date(b.date)) : new Date(0);
                 if (isSameDay(bDate, day)) {
-                    dailyPurchased += Number(b.originalQty) * Number(b.rate);
+                    dailyPurchased += selectedItem !== 'all' ? Number(b.originalQty) : Number(b.originalQty) * Number(b.rate);
                 }
             });
 
             issues.forEach(i => {
+                if (selectedItem !== 'all' && i.itemId !== selectedItem) return;
                 const iDate = i.date ? startOfDay(new Date(i.date)) : new Date(0);
                 if (isSameDay(iDate, day)) {
-                    dailyUsed += Number(i.qty) * Number(i.rate || 0);
+                    dailyUsed += selectedItem !== 'all' ? Number(i.qty) : Number(i.qty) * Number(i.rate || 0);
                 }
             });
 
@@ -125,7 +133,7 @@ export const StoreLedgerView: React.FC = () => {
             ledgerDays
         };
 
-    }, [batches, issues, selectedMonth]);
+    }, [batches, issues, selectedMonth, selectedItem]);
 
     const getMonthsOptions = () => {
         const options = [];
@@ -144,6 +152,16 @@ export const StoreLedgerView: React.FC = () => {
                   <p className="text-sm text-slate-500">Track daily store value, opening balances, and consumption.</p>
                 </div>
                 <div className="flex items-center gap-3">
+                  <select 
+                      className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-bold text-slate-700 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all shadow-sm cursor-pointer"
+                      value={selectedItem}
+                      onChange={(e) => setSelectedItem(e.target.value)}
+                  >
+                      <option value="all">All Items (Value in Rs)</option>
+                      {allItems.sort((a,b) => a.name.localeCompare(b.name)).map(item => (
+                          <option key={item.id} value={item.id}>{item.name}</option>
+                      ))}
+                  </select>
                   <select 
                       className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-bold text-slate-700 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all shadow-sm cursor-pointer"
                       value={selectedMonth}
@@ -172,12 +190,12 @@ export const StoreLedgerView: React.FC = () => {
                 >
                     <div className="p-6 bg-slate-50/50 border-b border-slate-200 grid grid-cols-1 md:grid-cols-2 gap-6">
                          <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
-                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Opening Store Value</p>
-                             <h3 className="text-2xl font-black text-slate-800 font-mono tracking-tighter">Rs {(ledgerData.initialBalance || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits:2})}</h3>
+                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Opening {selectedItem === 'all' ? 'Store Value' : 'Stock Quantity'}</p>
+                             <h3 className="text-2xl font-black text-slate-800 font-mono tracking-tighter">{selectedItem === 'all' ? 'Rs ' : ''}{(ledgerData.initialBalance || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits:2})}</h3>
                          </div>
                          <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
-                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Closing Store Value</p>
-                             <h3 className="text-2xl font-black text-emerald-600 font-mono tracking-tighter">Rs {(ledgerData.closingBalance || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits:2})}</h3>
+                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Closing {selectedItem === 'all' ? 'Store Value' : 'Stock Quantity'}</p>
+                             <h3 className="text-2xl font-black text-emerald-600 font-mono tracking-tighter">{selectedItem === 'all' ? 'Rs ' : ''}{(ledgerData.closingBalance || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits:2})}</h3>
                          </div>
                     </div>
                     <div className="overflow-x-auto min-h-[400px]">

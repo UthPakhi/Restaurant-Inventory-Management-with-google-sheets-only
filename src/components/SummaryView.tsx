@@ -35,17 +35,18 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import { sheetsService } from '../services/sheetsService';
+import { mapRowToIssue, mapRowToDailyConsumption, mapRowToBatch } from '../services/dataMappers';
+import { Issue, DailyConsumption, Batch } from '../types';
 import { cn } from '../lib/utils';
+import { useAppLookup } from '../context/AppContext';
 
+import { toast } from 'sonner';
 export const SummaryView: React.FC = () => {
+    const { items, departments: depts, loadingStaticData } = useAppLookup();
     const [loading, setLoading] = useState(true);
-    const [depts, setDepts] = useState<any[]>([]);
-    const [issues, setIssues] = useState<any[]>([]);
-    const [items, setItems] = useState<any[]>([]);
-    const [dailyLogs, setDailyLogs] = useState<any[]>([]);
-    const [batches, setBatches] = useState<any[]>([]);
-    const [sales, setSales] = useState<any[]>([]);
-    const [expenses, setExpenses] = useState<any[]>([]);
+    const [issues, setIssues] = useState<Issue[]>([]);
+    const [dailyLogs, setDailyLogs] = useState<DailyConsumption[]>([]);
+    const [batches, setBatches] = useState<Batch[]>([]);
     
     // Filters
     const [selectedDept, setSelectedDept] = useState('all');
@@ -53,20 +54,17 @@ export const SummaryView: React.FC = () => {
     const [topN, setTopN] = useState(10);
 
     const fetchData = async () => {
+        if (loadingStaticData) return;
         setLoading(true);
         try {
-            const [dRows, iRows, itemRows, dailyRows, bRows] = await Promise.all([
-                sheetsService.read('Masters_Depts!A2:B'),
-                sheetsService.read('Issues!A2:G'),
-                sheetsService.read('Masters_Items!A2:H'),
+            const [iRows, dailyRows, bRows] = await Promise.all([
+                sheetsService.getAllIssues(),
                 sheetsService.read('DailyConsumption!A2:L'),
-                sheetsService.read('Batches!A2:H')
+                sheetsService.getAllBatches()
             ]);
-            setDepts(Array.isArray(dRows) ? dRows : []);
-            setIssues(Array.isArray(iRows) ? iRows : []);
-            setItems(Array.isArray(itemRows) ? itemRows : []);
-            setDailyLogs(Array.isArray(dailyRows) ? dailyRows : []);
-            setBatches(Array.isArray(bRows) ? bRows : []);
+            setIssues((Array.isArray(iRows) ? iRows : []).map(mapRowToIssue));
+            setDailyLogs((Array.isArray(dailyRows) ? dailyRows : []).map(mapRowToDailyConsumption));
+            setBatches((Array.isArray(bRows) ? bRows : []).map(mapRowToBatch));
         } catch (e) {
             console.error(e);
         } finally {
@@ -75,8 +73,10 @@ export const SummaryView: React.FC = () => {
     };
 
     useEffect(() => {
-        fetchData();
-    }, []);
+        if (!loadingStaticData) {
+            fetchData();
+        }
+    }, [loadingStaticData]);
 
     const parseNum = (val: any) => {
         if (val === undefined || val === null) return 0;
@@ -89,15 +89,15 @@ export const SummaryView: React.FC = () => {
     const getDeptConsumptionData = () => {
         const filtered = selectedDept === 'all' 
             ? issues 
-            : issues.filter(i => i[2] === selectedDept);
+            : issues.filter(i => i.deptId === selectedDept);
             
-        const monthFiltered = filtered.filter(i => i[1] && i[1].startsWith(selectedMonth));
+        const monthFiltered = filtered.filter(i => i.date && i.date.startsWith(selectedMonth));
         
-        const aggregated = monthFiltered.reduce((acc: any, curr: any) => {
-            const itemId = String(curr[3]).trim();
-            const itemName = items.find(it => String(it[0]).trim() === itemId)?.[1] || itemId;
-            const qty = parseNum(curr[4]);
-            const rate = parseNum(curr[5]);
+        const aggregated = monthFiltered.reduce((acc: any, curr: Issue) => {
+            const itemId = String(curr.itemId).trim();
+            const itemName = items.find(it => String(it.id).trim() === itemId)?.name || itemId;
+            const qty = Number(curr.qty) || 0;
+            const rate = Number(curr.rate || 0) || 0;
             const val = qty * rate;
             
             if (!acc[itemName]) acc[itemName] = { value: 0, qty: 0 };
@@ -121,17 +121,17 @@ export const SummaryView: React.FC = () => {
         }).map(d => format(d, 'yyyy-MM'));
 
         return months.map(m => {
-            const monthlyIssues = issues.filter(iss => iss[1] && iss[1].startsWith(m));
-            const total = monthlyIssues.reduce((sum, curr) => sum + (parseNum(curr[4]) * parseNum(curr[5])), 0);
+            const monthlyIssues = issues.filter(iss => iss.date && iss.date.startsWith(m));
+            const total = monthlyIssues.reduce((sum, curr) => sum + ((Number(curr.qty) || 0) * (Number(curr.rate) || 0)), 0);
             return { month: format(new Date(m + '-01'), 'MMM yy'), total };
         });
     };
 
     // 3. Section Comparison
     const getSectionComparison = () => {
-        const aggregated = issues.filter(i => i[1] && i[1].startsWith(selectedMonth)).reduce((acc: any, curr: any) => {
-            const deptName = depts.find(d => d[0] === curr[2])?.[1] || curr[2];
-            const val = parseNum(curr[4]) * parseNum(curr[5]);
+        const aggregated = issues.filter(i => i.date && i.date.startsWith(selectedMonth)).reduce((acc: any, curr: Issue) => {
+            const deptName = depts.find(d => d.id === curr.deptId)?.name || curr.deptId;
+            const val = (Number(curr.qty) || 0) * (Number(curr.rate) || 0);
             acc[deptName] = (acc[deptName] || 0) + val;
             return acc;
         }, {});
@@ -143,12 +143,12 @@ export const SummaryView: React.FC = () => {
 
     // 4. Food Cost Analysis (Simplified based on daily logs)
     const getFoodCostStats = () => {
-        const monthLogs = dailyLogs.filter(l => l[0] && l[0].includes(format(new Date(selectedMonth + '-01'), 'MMM')));
+        const monthLogs = dailyLogs.filter(l => l.date && l.date.includes(format(new Date(selectedMonth + '-01'), 'MMM')));
         const totalStoreIssues = issues
-            .filter(i => i[1] && i[1].startsWith(selectedMonth))
-            .reduce((sum, i) => sum + (parseNum(i[4]) * parseNum(i[5])), 0);
+            .filter(i => i.date && i.date.startsWith(selectedMonth))
+            .reduce((sum, i) => sum + ((Number(i.qty) || 0) * (Number(i.rate) || 0)), 0);
             
-        const dailyTotal = monthLogs.reduce((sum, l) => sum + (parseNum(l[11])), 0);
+        const dailyTotal = monthLogs.reduce((sum, l) => sum + (Number(l.totalCost) || 0), 0);
         
         return {
             storeIssues: totalStoreIssues,
@@ -159,8 +159,8 @@ export const SummaryView: React.FC = () => {
 
     const getInventoryValue = () => {
         return batches.reduce((sum, b) => {
-            const rem = parseNum(b[4]);
-            const cost = parseNum(b[5]);
+            const rem = Number(b.remainingQty) || 0;
+            const cost = Number(b.rate) || 0;
             return sum + (rem * cost);
         }, 0);
     };
@@ -168,24 +168,24 @@ export const SummaryView: React.FC = () => {
     const getRestockAlerts = () => {
         const stockMap = new Map<string, number>();
         batches.forEach(b => {
-             const itemId = b[1];
-             const rem = parseNum(b[4]);
+             const itemId = String(b.itemId);
+             const rem = Number(b.remainingQty) || 0;
              stockMap.set(itemId, (stockMap.get(itemId) || 0) + rem);
         });
         
         const alerts: any[] = [];
         items.forEach(itm => {
-            const minPar = parseNum(itm[8]); 
+            const minPar = Number(itm.minParLevel) || 0; 
             if (minPar > 0) {
-               const currentStock = stockMap.get(itm[0]) || 0;
+               const currentStock = stockMap.get(itm.id) || 0;
                if (currentStock <= minPar) {
                    alerts.push({
-                       id: itm[0],
-                       name: itm[1],
+                       id: itm.id,
+                       name: itm.name,
                        current: currentStock,
                        min: minPar,
-                       reorder: parseNum(itm[9]),
-                       unit: itm[3]
+                       reorder: Number(itm.reorderQty) || 0,
+                       unit: itm.unit
                    });
                }
             }
@@ -196,7 +196,7 @@ export const SummaryView: React.FC = () => {
     const handleGeneratePO = () => {
         const alerts = getRestockAlerts();
         if (alerts.length === 0) {
-            alert("No items below minimum par level.");
+            toast.info("No items below minimum par level.");
             return;
         }
 
@@ -240,20 +240,6 @@ export const SummaryView: React.FC = () => {
             headStyles: { fillColor: [5, 150, 105] },
         });
 
-        doc.text("Sales & Expenses", 14, (doc as any).lastAutoTable.finalY + 15);
-        autoTable(doc, {
-            startY: (doc as any).lastAutoTable.finalY + 20,
-            head: [['Metric', 'Amount (Rs.)']],
-            body: [
-                ['Total Sales', getSalesAndExpensesStats().totalSales.toLocaleString()],
-                ['Total Expenses', getSalesAndExpensesStats().totalExpenses.toLocaleString()],
-                ['Net Profit', getSalesAndExpensesStats().netProfit.toLocaleString()],
-                ['Food Cost Percentage', getSalesAndExpensesStats().totalSales ? ((getFoodCostStats().totalCost / getSalesAndExpensesStats().totalSales) * 100).toFixed(2) + '%' : 'N/A'],
-            ],
-            theme: 'striped',
-            headStyles: { fillColor: [15, 23, 42] },
-        });
-
         doc.text("Top Items Consumed", 14, (doc as any).lastAutoTable.finalY + 15);
         autoTable(doc, {
             startY: (doc as any).lastAutoTable.finalY + 20,
@@ -271,8 +257,6 @@ export const SummaryView: React.FC = () => {
         // Summary sheet
         const summaryData = [
             ['Metric', 'Value (Rs.)'],
-            ['Total Sales', getSalesAndExpensesStats().totalSales],
-            ['Total Expenses', getSalesAndExpensesStats().totalExpenses],
             ['Total Food Cost', getFoodCostStats().totalCost],
             ['Store Consumption', getFoodCostStats().storeIssues],
             ['Fresh Purchases', getFoodCostStats().freshPurchase],
@@ -385,7 +369,7 @@ export const SummaryView: React.FC = () => {
                             onChange={(e) => setSelectedDept(e.target.value)}
                         >
                             <option value="all">All Sections</option>
-                            {depts.map(d => <option key={d[0]} value={d[0]}>{d[1]}</option>)}
+                            {depts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                         </select>
                     </div>
                 </div>

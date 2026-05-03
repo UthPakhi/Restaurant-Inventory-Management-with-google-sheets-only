@@ -27,6 +27,9 @@ import { SettingsView } from './components/SettingsView';
 import { AuditLogsView } from './components/AuditLogsView';
 import { StoreLedgerView } from './components/StoreLedgerView';
 import { sheetsService, GoogleTokens } from './services/sheetsService';
+import { useAppLookup } from './context/AppContext';
+
+import { Toaster } from 'sonner';
 
 // Types
 type View = 'summary' | 'inventory' | 'purchases' | 'issues' | 'cashflow' | 'sales' | 'masters' | 'settings' | 'audit' | 'ledger';
@@ -39,6 +42,7 @@ export default function App() {
   const [isInitialized, setIsInitialized] = useState(false);
   const [appData, setAppData] = useState<{ tokens: GoogleTokens; spreadsheetId: string } | null>(null);
   const [branding, setBranding] = useState<{ name: string; logoUrl: string }>({ name: 'RestoManage', logoUrl: '' });
+  const { refreshStaticData } = useAppLookup();
 
   // Initialize from LocalStorage
   useEffect(() => {
@@ -73,6 +77,7 @@ export default function App() {
           fetchUserProfile(parsed.tokens);
         }
         setIsInitialized(true);
+        refreshStaticData();
       } catch (e) {
         console.error("Failed to parse saved data", e);
       }
@@ -107,6 +112,7 @@ export default function App() {
     } else {
       fetchUserProfile(data.tokens);
     }
+    refreshStaticData();
   };
 
   const navItems = [
@@ -129,6 +135,7 @@ export default function App() {
       "flex h-screen w-full bg-slate-50 text-slate-900 overflow-hidden font-sans transition-colors duration-300",
       isDarkMode && "bg-slate-950 text-slate-100 dark"
     )}>
+      <Toaster position="top-right" richColors />
       {isSidebarOpen && (
         <div 
            className="fixed inset-0 bg-slate-900/50 z-40 lg:hidden"

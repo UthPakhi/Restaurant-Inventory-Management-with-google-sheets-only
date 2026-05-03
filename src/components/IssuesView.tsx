@@ -1,15 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Search, Filter, Download, ArrowRightLeft, Utensils, Calendar, Package, Loader2, X, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { sheetsService } from '../services/sheetsService';
+import { mapRowToItem, mapRowToDepartment, mapRowToIssue, mapRowToBatch } from '../services/dataMappers';
+import { Item, Department, Issue, Batch } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { format } from 'date-fns';
-import { cn } from '../lib/utils';
+import { cn, parseFinancialNumber } from '../lib/utils';
+import { useAppLookup } from '../context/AppContext';
+import { DataTable, Column } from './DataTable';
 
+import { toast } from 'sonner';
 export const IssuesView: React.FC = () => {
-    const [issues, setIssues] = useState<any[]>([]);
-    const [items, setItems] = useState<any[]>([]);
-    const [depts, setDepts] = useState<any[]>([]);
-    const [loading, setLoading] = useState(false);
+    const [issues, setIssues] = useState<Issue[]>([]);
+    const { items, departments: depts, loadingStaticData } = useAppLookup();
+    const [loading, setLoading] = useState(true);
     const [isAdding, setIsAdding] = useState(false);
     const [activeTab, setActiveTab] = useState<'form' | 'bulk'>('form');
     const [bulkText, setBulkText] = useState('');
@@ -26,27 +30,25 @@ export const IssuesView: React.FC = () => {
 
     const [stockLevels, setStockLevels] = useState<{ [key: string]: number }>({});
 
-    const [batches, setBatches] = useState<any[]>([]);
+    const [batches, setBatches] = useState<Batch[]>([]);
 
     const fetchData = async () => {
+        if (loadingStaticData) return;
         setLoading(true);
         try {
-            const [iRows, itemRows, dRows, bRows] = await Promise.all([
-                sheetsService.read('Issues!A2:H'),
-                sheetsService.read('Masters_Items!A2:J'),
-                sheetsService.read('Masters_Depts!A2:B'),
-                sheetsService.read('Batches!A2:H')
+            const [iRows, bRows] = await Promise.all([
+                sheetsService.getAllIssues(),
+                sheetsService.getAllBatches()
             ]);
-            setIssues(iRows);
-            setItems(itemRows);
-            setDepts(dRows);
-            setBatches(bRows);
+            setIssues((iRows || []).map(mapRowToIssue));
+            const mappedBatches = (bRows || []).map(mapRowToBatch);
+            setBatches(mappedBatches);
             
             // Calculate stock for all items
             const stocks: { [key: string]: number } = {};
-            bRows.forEach((b: any) => {
-                const id = String(b[1]).trim();
-                const qty = parseFloat(String(b[4]).replace(/,/g, '')) || 0;
+            mappedBatches.forEach(b => {
+                const id = String(b.itemId).trim();
+                const qty = Number(b.remainingQty) || 0;
                 stocks[id] = (stocks[id] || 0) + qty;
             });
             setStockLevels(stocks);
@@ -58,18 +60,20 @@ export const IssuesView: React.FC = () => {
     };
 
     useEffect(() => {
-        fetchData();
-    }, []);
+        if (!loadingStaticData) {
+            fetchData();
+        }
+    }, [loadingStaticData]);
 
     const getItemName = (id: string) => {
         const strId = String(id).trim();
-        const found = items.find(i => String(i[0]).trim() === strId)?.[1];
+        const found = items.find(i => String(i.id).trim() === strId)?.name;
         if (found) return found;
         return strId.startsWith('ITM_') ? 'Deleted Item' : strId;
     };
     const getDeptName = (id: string) => {
         const strId = String(id).trim();
-        const found = depts.find(d => String(d[0]).trim() === strId)?.[1];
+        const found = depts.find(d => String(d.id).trim() === strId)?.name;
         if (found) return found;
         return strId.startsWith('DPT_') ? 'Deleted Dept' : strId;
     };
@@ -79,15 +83,15 @@ export const IssuesView: React.FC = () => {
         if (qtyToIssue <= 0 || !itemId) return 0;
         
         const itemBatches = batches
-            .filter(b => b[1] === itemId && parseFloat(String(b[4]).replace(/,/g, '')) > 0)
-            .sort((a,b) => new Date(a[2]).getTime() - new Date(b[2]).getTime());
+            .filter(b => b.itemId === itemId && Number(b.remainingQty) > 0)
+            .sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
             
         let remQty = qtyToIssue;
         let total = 0;
         for (const b of itemBatches) {
             if (remQty <= 0) break;
-            const bRQty = parseFloat(String(b[4]).replace(/,/g, '')) || 0;
-            const bRate = parseFloat(String(b[5]).replace(/,/g, '')) || 0;
+            const bRQty = Number(b.remainingQty) || 0;
+            const bRate = Number(b.rate) || 0;
             const issueFromThis = Math.min(remQty, bRQty);
             total += issueFromThis * bRate;
             remQty -= issueFromThis;
@@ -97,7 +101,7 @@ export const IssuesView: React.FC = () => {
 
     const filteredItems = items.filter(i => {
         if (!form.deptId) return true;
-        const itemDeptIds = String(i[2] || '').split(',').map(s => s.trim()).filter(Boolean);
+        const itemDeptIds = String(i.deptIds || '').split(',').map(s => s.trim()).filter(Boolean);
         return itemDeptIds.length === 0 || itemDeptIds.includes(form.deptId) || itemDeptIds.includes('all');
     });
 
@@ -143,7 +147,7 @@ export const IssuesView: React.FC = () => {
             fetchData();
         } catch (e: any) {
             console.error(e);
-            alert(e.message || "Failed to record issue. Check stock availability.");
+            toast.error(e.message || "Failed to record issue. Check stock availability.");
         } finally {
             setLoading(false);
         }
@@ -162,13 +166,13 @@ export const IssuesView: React.FC = () => {
             }
             const [dateStr, deptNameStr, itemNameStr, qtyStr] = row;
             
-            const foundDept = depts.find(d => String(d[1]).trim().toLowerCase() === String(deptNameStr).trim().toLowerCase());
+            const foundDept = depts.find(d => String(d.name).trim().toLowerCase() === String(deptNameStr).trim().toLowerCase());
             if (!foundDept) {
                 errors.push(`Row ${i + 1}: Unknown Section "${deptNameStr}"`);
                 continue;
             }
 
-            const foundItem = items.find(itm => String(itm[1]).trim().toLowerCase() === String(itemNameStr).trim().toLowerCase());
+            const foundItem = items.find(itm => String(itm.name).trim().toLowerCase() === String(itemNameStr).trim().toLowerCase());
             if (!foundItem) {
                 errors.push(`Row ${i + 1}: Unknown Item "${itemNameStr}"`);
                 continue;
@@ -191,17 +195,17 @@ export const IssuesView: React.FC = () => {
             validLines.push({
                 id: `line_${Date.now()}_${i}`,
                 date: formattedDate,
-                deptId: foundDept[0],
-                itemId: foundItem[0],
+                deptId: foundDept.id,
+                itemId: foundItem.id,
                 qty,
-                deptName: foundDept[1],
-                itemName: foundItem[1],
-                stock: stockLevels[foundItem[0]] || 0
+                deptName: foundDept.name,
+                itemName: foundItem.name,
+                stock: stockLevels[foundItem.id] || 0
             });
         }
 
         if (errors.length > 0) {
-            alert(`Found ${errors.length} errors. Please fix them:\n` + errors.slice(0, 15).join('\n') + (errors.length > 15 ? '\n...' : ''));
+            toast.error(`Found ${errors.length} errors. Please fix them.`);
         }
         
         if (validLines.length > 0) {
@@ -240,10 +244,25 @@ export const IssuesView: React.FC = () => {
         fetchData();
     };
 
-    const displayedIssues = [...issues].sort((a,b) => new Date(b[1]).getTime() - new Date(a[1]).getTime()).filter(row => {
-        const date = row[1];
-        const deptId = row[2];
-        const itemName = getItemName(row[3]).toLowerCase();
+    const handleReverseIssue = async (issue: Issue) => {
+        if (!confirm('Are you sure you want to reverse this issue? This will restore stock to inventory.')) return;
+        setLoading(true);
+        try {
+            await sheetsService.reverseIssue(issue);
+            toast.success('Issue successfully reversed.');
+            fetchData();
+        } catch (e: any) {
+            console.error(e);
+            toast.error(e.message || "Failed to reverse issue.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const displayedIssues = [...issues].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).filter(row => {
+        const date = row.date;
+        const deptId = row.deptId;
+        const itemName = getItemName(row.itemId).toLowerCase();
         
         if (filters.dateFrom && new Date(date) < new Date(filters.dateFrom)) return false;
         if (filters.dateTo && new Date(date) > new Date(filters.dateTo)) return false;
@@ -257,10 +276,10 @@ export const IssuesView: React.FC = () => {
         const cols = new Set<string>();
         
         displayedIssues.forEach(issue => {
-            const date = issue[1];
-            const deptName = getDeptName(issue[2]);
-            const qty = Number(String(issue[4]).replace(/,/g, '')) || 0;
-            const rate = Number(String(issue[5] || '0').replace(/,/g, '')) || 0;
+            const date = issue.date;
+            const deptName = getDeptName(issue.deptId);
+            const qty = Number(issue.qty) || 0;
+            const rate = Number(issue.rate || 0) || 0;
             const amount = qty * rate;
             
             if (!rows[date]) rows[date] = {};
@@ -273,7 +292,100 @@ export const IssuesView: React.FC = () => {
             cols: Array.from(cols).sort(),
             data: rows
         };
-    }, [displayedIssues, getDeptName]);
+    }, [displayedIssues]);
+
+    const listColumns: Column<Issue>[] = [
+        {
+            key: 'date',
+            header: 'Date',
+            cell: (row) => (
+                <div className="flex items-center gap-2 text-slate-500 font-medium">
+                   <Calendar size={14} />
+                   {row.date}
+                </div>
+            ),
+            sortable: true
+        },
+        {
+            key: 'deptId',
+            header: 'Department',
+            cell: (row) => (
+                <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-[10px] font-bold uppercase tracking-tight">
+                  {getDeptName(row.deptId)}
+                </span>
+            ),
+            sortable: true
+        },
+        {
+            key: 'itemId',
+            header: 'Item',
+            cell: (row) => <span className="font-bold text-slate-900">{getItemName(row.itemId)}</span>,
+            sortable: true
+        },
+        {
+            key: 'qty',
+            header: 'Qty Issued',
+            align: 'right',
+            cell: (row) => <span className="font-bold text-slate-900 font-mono tracking-tighter">{row.qty}</span>,
+            sortable: true
+        },
+        {
+            key: 'total',
+            header: 'Total Amount (Rs)',
+            align: 'right',
+            cell: (row) => <span className="font-bold text-slate-500 font-mono tracking-tighter">
+                {row.total ? Number(row.total).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits:2}) : '0.00'}
+            </span>,
+            sortable: true
+        },
+        {
+            key: 'actions',
+            header: 'Actions',
+            align: 'right',
+            cell: (row) => (
+                <button 
+                  onClick={() => handleReverseIssue(row)}
+                  className="px-2 py-1 bg-rose-50 text-rose-600 rounded text-[10px] font-bold uppercase hover:bg-rose-100 transition-colors"
+                >
+                  Reverse
+                </button>
+            )
+        }
+    ];
+
+    const pivotColumns: Column<any>[] = [
+        { key: 'date', header: 'Date', cell: (row) => <span className="font-mono font-bold text-slate-600">{row.date}</span>, sortable: true },
+        { key: 'day', header: 'Day', cell: (row) => <span className="font-medium text-slate-500">{format(new Date(row.date), 'EEE')}</span> },
+        ...pivotData.cols.map(col => ({
+            key: col,
+            header: col,
+            align: 'right' as const,
+            sortable: true,
+            sortFn: (a: any, b: any) => (pivotData.data[a.date][col] || 0) - (pivotData.data[b.date][col] || 0),
+            cell: (row: any) => {
+                const val = pivotData.data[row.date][col] || 0;
+                return <span className="font-mono text-slate-700">{val > 0 ? val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}</span>;
+            }
+        })),
+        {
+            key: 'total',
+            header: 'TOTAL',
+            align: 'right',
+            sortable: true,
+            sortFn: (a: any, b: any) => {
+                const totalA = pivotData.cols.reduce((sum, col) => sum + (pivotData.data[a.date][col] || 0), 0);
+                const totalB = pivotData.cols.reduce((sum, col) => sum + (pivotData.data[b.date][col] || 0), 0);
+                return totalA - totalB;
+            },
+            cell: (row: any) => {
+                const rowTotal = pivotData.cols.reduce((sum, col) => sum + (pivotData.data[row.date][col] || 0), 0);
+                return <span className="font-mono font-bold text-emerald-700">{rowTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>;
+            }
+        }
+    ];
+
+    // Format pivotData.dates into array of objects to satisfy DataTable's requirement extending Record<string,any>
+    const mappedPivotDates = pivotData.dates.map(date => ({ date, id: date }));
 
     return (
         <div className="space-y-6">
@@ -300,135 +412,51 @@ export const IssuesView: React.FC = () => {
                 </div>
             </div>
 
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
-                <div className="p-4 border-b border-slate-200 bg-slate-50/50 flex flex-wrap gap-4 items-center">
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+                <div className="flex flex-wrap items-center gap-4 mb-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
                     <div className="flex items-center gap-2">
-                        <Filter size={16} className="text-slate-400" />
-                        <span className="text-sm font-bold text-slate-600">Filters</span>
+                        <Filter className="text-slate-400" size={16}/>
+                        <span className="text-sm font-bold text-slate-700">Filters</span>
                     </div>
-                    <input 
-                        type="date" 
-                        className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm"
-                        value={filters.dateFrom} onChange={e => setFilters({...filters, dateFrom: e.target.value})}
-                        aria-label="From Date"
-                    />
-                    <span className="text-slate-400 text-sm">to</span>
-                    <input 
-                        type="date" 
-                        className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm"
-                        value={filters.dateTo} onChange={e => setFilters({...filters, dateTo: e.target.value})}
-                        aria-label="To Date"
-                    />
-                    <select 
-                        className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm bg-white"
-                        value={filters.dept} onChange={e => setFilters({...filters, dept: e.target.value})}
-                    >
-                        <option value="">All Sections</option>
-                        {depts.map(d => <option key={d[0]} value={d[0]}>{d[1]}</option>)}
+                    
+                    <select className="border border-slate-200 rounded-md px-3 py-1.5 text-sm bg-white" value={filters.dept} onChange={e => setFilters({...filters, dept: e.target.value})}>
+                        <option value="">All Departments</option>
+                        {depts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                     </select>
-                    <div className="relative">
-                        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                        <input 
-                            type="text" 
-                            placeholder="Search item..." 
-                            className="pl-8 pr-4 py-1.5 border border-slate-200 rounded-lg text-sm w-48"
-                            value={filters.itemSearch} onChange={e => setFilters({...filters, itemSearch: e.target.value})}
-                        />
+
+                    <div className="flex items-center gap-2">
+                        <input type="date" className="border border-slate-200 rounded-md px-3 py-1.5 text-sm bg-white text-slate-600" value={filters.dateFrom} onChange={e => setFilters({...filters, dateFrom: e.target.value})} />
+                        <span className="text-slate-400">to</span>
+                        <input type="date" className="border border-slate-200 rounded-md px-3 py-1.5 text-sm bg-white text-slate-600" value={filters.dateTo} onChange={e => setFilters({...filters, dateTo: e.target.value})} />
                     </div>
-                </div>
-                <div className="overflow-x-auto min-h-[400px]">
-                    {viewMode === 'list' ? (
-                        <table className="w-full text-left border-collapse">
-                            <thead className="bg-slate-50 text-[10px] uppercase tracking-wider text-slate-500 font-bold border-b border-slate-200">
-                                <tr>
-                                    <th className="px-6 py-3">Date</th>
-                                    <th className="px-6 py-3">Section / Dept</th>
-                                    <th className="px-6 py-3">Item Details</th>
-                                    <th className="px-6 py-3 text-right">Quantity Issued</th>
-                                    <th className="px-6 py-3 text-right">Total Amount (Rs)</th>
-                                    <th className="px-6 py-3">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody className="text-xs divide-y divide-slate-100">
-                                {displayedIssues.length === 0 && !loading ? (
-                                  <tr>
-                                    <td colSpan={6} className="px-6 py-12 text-center text-slate-500 italic">No consumption logs found.</td>
-                                  </tr>
-                                ) : (
-                                  displayedIssues.map((row, i) => (
-                                      <tr key={i} className="hover:bg-slate-50/50 transition-colors">
-                                          <td className="px-6 py-4">
-                                             <div className="flex items-center gap-2 text-slate-500 font-medium">
-                                                <Calendar size={14} />
-                                                {row[1]}
-                                             </div>
-                                          </td>
-                                          <td className="px-6 py-4">
-                                             <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-[10px] font-bold uppercase tracking-tight">
-                                               {getDeptName(row[2])}
-                                             </span>
-                                          </td>
-                                          <td className="px-6 py-4 font-bold text-slate-900">{getItemName(row[3])}</td>
-                                          <td className="px-6 py-4 text-right font-bold text-slate-900 font-mono tracking-tighter">
-                                            {row[4]}
-                                          </td>
-                                          <td className="px-6 py-4 text-right font-bold text-slate-500 font-mono tracking-tighter">
-                                            {row[5] ? (Number(row[4]) * Number(row[5])).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits:2}) : '0.00'}
-                                          </td>
-                                          <td className="px-6 py-4">
-                                            <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full text-[10px] font-bold uppercase tracking-tight">
-                                              Synced
-                                            </span>
-                                          </td>
-                                      </tr>
-                                  ))
-                                )}
-                            </tbody>
-                        </table>
-                    ) : (
-                        <table className="w-full text-left border-collapse">
-                            <thead className="bg-slate-50 text-[10px] uppercase tracking-wider text-slate-500 font-bold border-b border-slate-200">
-                                <tr>
-                                    <th className="px-6 py-3 border-r border-slate-200">Date</th>
-                                    <th className="px-6 py-3 border-r border-slate-200">Day</th>
-                                    {pivotData.cols.map(col => (
-                                        <th key={col} className="px-6 py-3 text-right">{col}</th>
-                                    ))}
-                                    <th className="px-6 py-3 text-right text-emerald-700 bg-emerald-50">TOTAL</th>
-                                </tr>
-                            </thead>
-                            <tbody className="text-xs divide-y divide-slate-100">
-                                {pivotData.dates.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={pivotData.cols.length + 3} className="px-6 py-12 text-center text-slate-500 italic">No consumption logs found.</td>
-                                    </tr>
-                                ) : (
-                                    pivotData.dates.map(date => {
-                                        let rowTotal = 0;
-                                        return (
-                                            <tr key={date} className="hover:bg-slate-50/50 transition-colors">
-                                                <td className="px-6 py-4 font-mono font-bold text-slate-600 border-r border-slate-100">{date}</td>
-                                                <td className="px-6 py-4 font-medium text-slate-500 border-r border-slate-100">{format(new Date(date), 'EEE')}</td>
-                                                {pivotData.cols.map(col => {
-                                                    const val = pivotData.data[date][col] || 0;
-                                                    rowTotal += val;
-                                                    return (
-                                                        <td key={col} className="px-6 py-4 text-right font-mono text-slate-700">
-                                                            {val > 0 ? val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}
-                                                        </td>
-                                                    );
-                                                })}
-                                                <td className="px-6 py-4 text-right font-mono font-bold text-emerald-700 bg-emerald-50/50">
-                                                    {rowTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                </td>
-                                            </tr>
-                                        );
-                                    })
-                                )}
-                            </tbody>
-                        </table>
+
+                    {(filters.dept || filters.dateFrom || filters.dateTo) && (
+                        <button onClick={() => setFilters({ dept: '', dateFrom: '', dateTo: '', itemSearch: '' })} className="text-xs text-red-500 hover:text-red-700 font-medium">
+                            Clear Filters
+                        </button>
                     )}
                 </div>
+
+                {viewMode === 'list' ? (
+                    <DataTable 
+                        data={displayedIssues}
+                        columns={listColumns}
+                        loading={loading}
+                        emptyMessage="No consumption logs found."
+                        customSearch={(row, q) => {
+                            return row.date.toLowerCase().includes(q) ||
+                                   getItemName(row.itemId).toLowerCase().includes(q) ||
+                                   getDeptName(row.deptId).toLowerCase().includes(q);
+                        }}
+                    />
+                ) : (
+                    <DataTable 
+                        data={mappedPivotDates}
+                        columns={pivotColumns}
+                        loading={loading}
+                        emptyMessage="No consumption logs found."
+                    />
+                )}
             </div>
 
             <AnimatePresence>
@@ -487,7 +515,7 @@ export const IssuesView: React.FC = () => {
                                                       value={form.deptId} onChange={e => setForm({...form, deptId: e.target.value})}
                                                   >
                                                       <option value="">-- Select Section --</option>
-                                                      {depts.map(d => <option key={d[0]} value={d[0]}>{d[1]}</option>)}
+                                                      {depts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                                                   </select>
                                                 </div>
                                             </div>
@@ -508,7 +536,7 @@ export const IssuesView: React.FC = () => {
                                                                 value={line.itemId} onChange={e => updateLine(idx, 'itemId', e.target.value)}
                                                             >
                                                                 <option value="">-- Choose Item --</option>
-                                                                {filteredItems.map(i => <option key={i[0]} value={i[0]}>{i[1]}</option>)}
+                                                                {filteredItems.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
                                                             </select>
                                                             {line.itemId && (
                                                                 <div className="flex justify-between px-1">

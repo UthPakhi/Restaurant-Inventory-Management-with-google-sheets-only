@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { sheetsService } from '../services/sheetsService';
+import { mapRowToBatch, mapRowToIssue } from '../services/dataMappers';
+import { Batch, Issue } from '../types';
 import { motion } from 'motion/react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isBefore, isSameDay, parseISO, startOfDay, getYear, getMonth, set } from 'date-fns';
 import { Loader2, Calendar, FileText, Download } from 'lucide-react';
-import { cn } from '../lib/utils';
+import { cn, parseFinancialNumber } from '../lib/utils';
 
 export const StoreLedgerView: React.FC = () => {
-    const [batches, setBatches] = useState<any[]>([]);
-    const [issues, setIssues] = useState<any[]>([]);
+    const [batches, setBatches] = useState<Batch[]>([]);
+    const [issues, setIssues] = useState<Issue[]>([]);
     const [loading, setLoading] = useState(false);
     const [selectedMonth, setSelectedMonth] = useState<string>(format(new Date(), 'yyyy-MM'));
 
@@ -22,19 +24,13 @@ export const StoreLedgerView: React.FC = () => {
                 sheetsService.read('Batches!A2:H'),
                 sheetsService.read('Issues!A2:G')
             ]);
-            setBatches(bRows);
-            setIssues(iRows);
+            setBatches((bRows || []).map(mapRowToBatch));
+            setIssues((iRows || []).map(mapRowToIssue));
         } catch (e) {
             console.error('Failure fetching store ledger data', e);
         } finally {
             setLoading(false);
         }
-    };
-
-    const getSafeNumber = (val: any) => {
-        if (val === undefined || val === null) return 0;
-        const parsed = Number(String(val).replace(/,/g, ''));
-        return isNaN(parsed) ? 0 : parsed;
     };
 
     const ledgerData = useMemo(() => {
@@ -48,16 +44,16 @@ export const StoreLedgerView: React.FC = () => {
 
         // Calculate initial balance (all transactions before monthStart)
         batches.forEach(b => {
-             const bDate = b[2] ? new Date(b[2]) : new Date(0);
+             const bDate = b.date ? new Date(b.date) : new Date(0);
              if (isBefore(bDate, monthStart)) {
-                 initialBalance += getSafeNumber(b[3]) * getSafeNumber(b[5]);
+                 initialBalance += Number(b.originalQty) * Number(b.rate);
              }
         });
 
         issues.forEach(i => {
-             const iDate = i[1] ? new Date(i[1]) : new Date(0);
+             const iDate = i.date ? new Date(i.date) : new Date(0);
              if (isBefore(iDate, monthStart)) {
-                 initialBalance -= getSafeNumber(i[4]) * getSafeNumber(i[5]);
+                 initialBalance -= Number(i.qty) * Number(i.rate || 0); // Assuming rate might be missing in older issues
              }
         });
 
@@ -70,16 +66,16 @@ export const StoreLedgerView: React.FC = () => {
             let dailyUsed = 0;
 
             batches.forEach(b => {
-                const bDate = b[2] ? startOfDay(new Date(b[2])) : new Date(0);
+                const bDate = b.date ? startOfDay(new Date(b.date)) : new Date(0);
                 if (isSameDay(bDate, day)) {
-                    dailyPurchased += getSafeNumber(b[3]) * getSafeNumber(b[5]);
+                    dailyPurchased += Number(b.originalQty) * Number(b.rate);
                 }
             });
 
             issues.forEach(i => {
-                const iDate = i[1] ? startOfDay(new Date(i[1])) : new Date(0);
+                const iDate = i.date ? startOfDay(new Date(i.date)) : new Date(0);
                 if (isSameDay(iDate, day)) {
-                    dailyUsed += getSafeNumber(i[4]) * getSafeNumber(i[5]);
+                    dailyUsed += Number(i.qty) * Number(i.rate || 0);
                 }
             });
 

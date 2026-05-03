@@ -2,12 +2,19 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Trash2, Edit2, Search, X, Loader2, Package, Hash, User, ShieldCheck } from 'lucide-react';
 import { format } from 'date-fns';
 import { sheetsService } from '../services/sheetsService';
+import { mapRowToItem, mapRowToDepartment, mapRowToSupplier } from '../services/dataMappers';
+import { Item, Department, Supplier } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
+import { useAppLookup } from '../context/AppContext';
 
+import { toast } from 'sonner';
 export const MastersView: React.FC = () => {
+    const { refreshStaticData } = useAppLookup();
     const [tab, setTab] = useState<'items' | 'depts' | 'suppliers'>('items');
-    const [data, setData] = useState<any[]>([]);
+    const [items, setItems] = useState<Item[]>([]);
+    const [departments, setDepartments] = useState<Department[]>([]);
+    const [suppliers, setSuppliers] = useState<Supplier[]>([]);
     const [loading, setLoading] = useState(false);
     const [isAdding, setIsAdding] = useState(false);
     const [isBulkImport, setIsBulkImport] = useState(false);
@@ -21,9 +28,16 @@ export const MastersView: React.FC = () => {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const range = tab === 'items' ? 'Masters_Items!A2:J' : tab === 'depts' ? 'Masters_Depts!A2:B' : 'Masters_Suppliers!A2:C';
-            const rows = await sheetsService.read(range);
-            setData(rows);
+            if (tab === 'items') {
+                const rows = await sheetsService.read('Masters_Items!A2:J');
+                setItems((rows || []).map(mapRowToItem));
+            } else if (tab === 'depts') {
+                const rows = await sheetsService.read('Masters_Depts!A2:B');
+                setDepartments((rows || []).map(mapRowToDepartment));
+            } else {
+                const rows = await sheetsService.read('Masters_Suppliers!A2:C');
+                setSuppliers((rows || []).map(mapRowToSupplier));
+            }
         } catch (e) {
             console.error(e);
         } finally {
@@ -80,18 +94,19 @@ export const MastersView: React.FC = () => {
                     console.log('Batches append result:', resBatches);
                 }
                 
-                alert(`Successfully imported ${items.length} items and created ${batches.length} stock batches.`);
+                toast.success(`Successfully imported ${items.length} items and created ${batches.length} stock batches.`);
                 setIsBulkImport(false);
                 setBulkText('');
-                fetchData();
+                await fetchData();
+                await refreshStaticData();
             } else {
-                alert("No valid items found to import.");
+                toast.error("No valid items found to import.");
                 setIsBulkImport(false);
                 setBulkText('');
             }
         } catch (e: any) {
             console.error(e);
-            alert("Bulk import failed: " + e.message);
+            toast.error("Bulk import failed: " + e.message);
         } finally {
             setLoading(false);
         }
@@ -101,10 +116,10 @@ export const MastersView: React.FC = () => {
         setLoading(true);
         try {
             await sheetsService.initializeSheetStructure();
-            alert("Spreadsheet structure updated and missing sheets created!");
+            toast.success("Spreadsheet structure updated and missing sheets created!");
         } catch (e: any) {
             console.error(e);
-            alert("Repair failed: " + e.message);
+            toast.error("Repair failed: " + e.message);
         } finally {
             setLoading(false);
         }
@@ -341,10 +356,11 @@ export const MastersView: React.FC = () => {
             }
 
             await fetchData();
-            alert(`Demo data seeded successfully! Created ${rawData.length} items with section mappings and ${demoBatches.length} stock batches.`);
+            await refreshStaticData();
+            toast.success(`Demo data seeded successfully! Created ${rawData.length} items with section mappings and ${demoBatches.length} stock batches.`);
         } catch (e: any) {
             console.error(e);
-            alert("Error seeding data: " + (e.message || "Unknown error."));
+            toast.error("Error seeding data: " + (e.message || "Unknown error."));
         } finally {
             setLoading(false);
         }
@@ -382,9 +398,10 @@ export const MastersView: React.FC = () => {
 
             setIsAdding(false);
             await fetchData();
+            await refreshStaticData();
         } catch (e: any) {
             console.error(e);
-            alert("Failed to add entity: " + e.message);
+            toast.error("Failed to add entity: " + e.message);
         } finally {
             setLoading(false);
         }
@@ -485,28 +502,18 @@ export const MastersView: React.FC = () => {
                                 </tr>
                             </thead>
                             <tbody className="text-xs divide-y divide-slate-100">
-                                {data.map((row, i) => (
-                                    <tr key={i} className="hover:bg-slate-50/50 transition-colors">
-                                        {tab === 'items' && <>
-                                            <td className="px-6 py-4">
-                                                <p className="font-bold text-slate-900 leading-tight mb-0.5">{row[1]}</p>
-                                                <p className="text-[10px] text-slate-400 font-mono tracking-tighter uppercase">{row[0]}</p>
-                                            </td>
-                                            <td className="px-6 py-4 text-slate-500 font-medium">{row[3]}</td>
-                                            <td className="px-6 py-4">
-                                                <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-[10px] font-bold uppercase tracking-tight">{row[6]}</span>
-                                            </td>
-                                            <td className="px-6 py-4 text-right font-mono font-bold text-slate-600">Rs. {row[4]}</td>
-                                            <td className="px-6 py-4 text-right font-mono font-bold text-slate-900">{row[7]}</td>
-                                        </>}
-                                        {tab === 'depts' && <>
-                                            <td className="px-6 py-4 text-[10px] font-mono text-slate-400">{row[0]}</td>
-                                            <td className="px-6 py-4 font-bold text-slate-900 uppercase tracking-tight">{row[1]}</td>
-                                        </>}
-                                        {tab === 'suppliers' && <>
-                                            <td className="px-6 py-4 font-bold text-slate-900">{row[1]}</td>
-                                            <td className="px-6 py-4 text-slate-500">{row[2]}</td>
-                                        </>}
+                                {tab === 'items' && items.map((row) => (
+                                    <tr key={row.id} className="hover:bg-slate-50/50 transition-colors">
+                                        <td className="px-6 py-4">
+                                            <p className="font-bold text-slate-900 leading-tight mb-0.5">{row.name}</p>
+                                            <p className="text-[10px] text-slate-400 font-mono tracking-tighter uppercase">{row.id}</p>
+                                        </td>
+                                        <td className="px-6 py-4 text-slate-500 font-medium">{row.unit}</td>
+                                        <td className="px-6 py-4">
+                                            <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-[10px] font-bold uppercase tracking-tight">{row.category}</span>
+                                        </td>
+                                        <td className="px-6 py-4 text-right font-mono font-bold text-slate-600">Rs. {row.buyPrice}</td>
+                                        <td className="px-6 py-4 text-right font-mono font-bold text-slate-900">{row.openingStock}</td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <button className="p-1.5 hover:bg-slate-100 rounded text-slate-400 hover:text-emerald-600 transition-colors"><Edit2 size={14} /></button>
@@ -515,7 +522,31 @@ export const MastersView: React.FC = () => {
                                         </td>
                                     </tr>
                                 ))}
-                                {data.length === 0 && !loading && (
+                                {tab === 'depts' && departments.map((row) => (
+                                    <tr key={row.id} className="hover:bg-slate-50/50 transition-colors">
+                                        <td className="px-6 py-4 text-[10px] font-mono text-slate-400">{row.id}</td>
+                                        <td className="px-6 py-4 font-bold text-slate-900 uppercase tracking-tight">{row.name}</td>
+                                        <td className="px-6 py-4 text-right">
+                                            <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button className="p-1.5 hover:bg-slate-100 rounded text-slate-400 hover:text-emerald-600 transition-colors"><Edit2 size={14} /></button>
+                                                <button className="p-1.5 hover:bg-slate-100 rounded text-slate-400 hover:text-red-500 transition-colors"><Trash2 size={14} /></button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                                {tab === 'suppliers' && suppliers.map((row) => (
+                                    <tr key={row.id} className="hover:bg-slate-50/50 transition-colors">
+                                        <td className="px-6 py-4 font-bold text-slate-900">{row.name}</td>
+                                        <td className="px-6 py-4 text-slate-500">{row.contact}</td>
+                                        <td className="px-6 py-4 text-right">
+                                            <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button className="p-1.5 hover:bg-slate-100 rounded text-slate-400 hover:text-emerald-600 transition-colors"><Edit2 size={14} /></button>
+                                                <button className="p-1.5 hover:bg-slate-100 rounded text-slate-400 hover:text-red-500 transition-colors"><Trash2 size={14} /></button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                                {((tab === 'items' && items.length === 0) || (tab === 'depts' && departments.length === 0) || (tab === 'suppliers' && suppliers.length === 0)) && !loading && (
                                     <tr>
                                         <td colSpan={10} className="px-6 py-12 text-center text-slate-400 italic">
                                             No {tab} found. Connect your Google Sheet or add entries.

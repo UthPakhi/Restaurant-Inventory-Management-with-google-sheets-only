@@ -1,15 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Loader2, Package, User, Calendar, Receipt, Download, X, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { sheetsService } from '../services/sheetsService';
+import { mapRowToItem, mapRowToSupplier, mapRowToPurchase, mapRowToBatch } from '../services/dataMappers';
+import { Item, Supplier, Purchase, Batch } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { format } from 'date-fns';
-import { cn } from '../lib/utils';
+import { cn, parseFinancialNumber } from '../lib/utils';
+import { useAppLookup } from '../context/AppContext';
+import { DataTable, Column } from './DataTable';
 
+import { toast } from 'sonner';
 export const PurchasesView: React.FC = () => {
-    const [purchases, setPurchases] = useState<any[]>([]);
-    const [items, setItems] = useState<any[]>([]);
-    const [suppliers, setSuppliers] = useState<any[]>([]);
-    const [loading, setLoading] = useState(false);
+    const [purchases, setPurchases] = useState<Purchase[]>([]);
+    const { items, suppliers, loadingStaticData } = useAppLookup();
+    const [loading, setLoading] = useState(true);
     const [isAdding, setIsAdding] = useState(false);
     const [activeTab, setActiveTab] = useState<'form' | 'bulk'>('form');
     const [bulkText, setBulkText] = useState('');
@@ -37,23 +41,20 @@ export const PurchasesView: React.FC = () => {
     };
 
     const fetchData = async () => {
+        if (loadingStaticData) return;
         setLoading(true);
         try {
-            const [pRows, iRows, sRows, bRows] = await Promise.all([
-                sheetsService.read('Purchases!A2:H'),
-                sheetsService.read('Masters_Items!A2:J'),
-                sheetsService.read('Masters_Suppliers!A2:B'),
-                sheetsService.read('Batches!A2:H')
+            const [pRows, bRows] = await Promise.all([
+                sheetsService.getAllPurchases(),
+                sheetsService.getAllBatches()
             ]);
-            setPurchases(pRows);
-            setItems(iRows);
-            setSuppliers(sRows);
+            setPurchases((pRows || []).map(mapRowToPurchase));
 
             // Calculate stock for all items
             const stocks: { [key: string]: number } = {};
-            bRows.forEach((b: any) => {
-                const id = String(b[1]).trim();
-                const qty = parseFloat(String(b[4]).replace(/,/g, '')) || 0;
+            (bRows || []).map(mapRowToBatch).forEach((b: Batch) => {
+                const id = String(b.itemId).trim();
+                const qty = b.remainingQty;
                 stocks[id] = (stocks[id] || 0) + qty;
             });
             setStockLevels(stocks);
@@ -65,31 +66,33 @@ export const PurchasesView: React.FC = () => {
     };
 
     useEffect(() => {
-        fetchData();
-    }, []);
+        if (!loadingStaticData) {
+            fetchData();
+        }
+    }, [loadingStaticData]);
 
     const getItemName = (id: string) => {
         const strId = String(id).trim();
-        const found = items.find(i => String(i[0]).trim() === strId)?.[1];
+        const found = items.find(i => String(i.id).trim() === strId)?.name;
         if (found) return found;
         return strId.startsWith('ITM_') ? 'Deleted Item' : strId;
     };
     const getSupplierName = (id: string) => {
         const strId = String(id).trim();
-        const found = suppliers.find(s => String(s[0]).trim() === strId)?.[1];
+        const found = suppliers.find(s => String(s.id).trim() === strId)?.name;
         if (found) return found;
         return strId.startsWith('SUP_') ? 'Deleted Supplier' : strId;
     };
     const getLastPrice = (itemId: string) => {
         if (!itemId) return null;
         // Try purchases first
-        const itemPurchases = purchases.filter(p => p[2] === itemId);
+        const itemPurchases = purchases.filter(p => p.itemId === itemId);
         if (itemPurchases.length > 0) {
-            return itemPurchases[itemPurchases.length - 1][4];
+            return itemPurchases[itemPurchases.length - 1].rate;
         }
         // Fallback to master buy price (Initial Stock price)
-        const masterItem = items.find(i => i[0] === itemId);
-        return masterItem ? masterItem[4] : null;
+        const masterItem = items.find(i => i.id === itemId);
+        return masterItem ? masterItem.buyPrice : null;
     };
 
     const addLine = () => {
@@ -142,22 +145,18 @@ export const PurchasesView: React.FC = () => {
                 }
             } catch (e) {}
 
-            const foundItem = items.find(i => String(i[1]).toLowerCase() === itemName.toLowerCase());
-            let foundSupplier = suppliers.find(s => String(s[1]).toLowerCase() === supplierName.toLowerCase());
+            const foundItem = items.find(i => String(i.name).toLowerCase() === itemName.toLowerCase());
+            const foundSupplier = suppliers.find(s => String(s.name).toLowerCase() === supplierName.toLowerCase());
             
-            // Generate a supplier ID if not found, since it's just a ref, but actually we may need them to exist in masters.
-            // For now, if not found, just use the string as ID, which falls back to string display. 
-            // Better behavior: match by string, if no match use empty string so user can fix it, but let's supply ID if found.
-            
-            const supplierId = foundSupplier ? foundSupplier[0] : '';
-            const itemId = foundItem ? foundItem[0] : '';
+            const supplierId = foundSupplier ? foundSupplier.id : '';
+            const itemId = foundItem ? foundItem.id : '';
 
             // Check for potential duplicate in existing purchases
             const isDuplicate = purchases.some(p => 
-                p[1] === formattedDate && 
-                p[2] === itemId && 
-                Number(parseFloat(String(p[3]).replace(/,/g, ''))).toFixed(2) === Number(qty).toFixed(2) && 
-                p[6] === supplierId
+                p.date === formattedDate && 
+                p.itemId === itemId && 
+                Number(p.qty).toFixed(2) === Number(qty).toFixed(2) && 
+                p.supplierId === supplierId
             );
 
             parsed.push({
@@ -226,7 +225,7 @@ export const PurchasesView: React.FC = () => {
             fetchData();
         } catch (e: any) {
             console.error('Bulk error', e);
-            alert('Failed to import bulk purchases: ' + e.message);
+            toast.error('Failed to import bulk purchases: ' + e.message);
         } finally {
             setLoading(false);
         }
@@ -276,6 +275,16 @@ export const PurchasesView: React.FC = () => {
         }
     };
 
+    const columns: Column<Purchase>[] = [
+        { key: 'date', header: 'Date', cell: row => <span className="text-slate-500 font-mono text-xs">{row.date}</span>, sortable: true },
+        { key: 'invoice', header: 'Invoice', cell: row => <span className="text-slate-700 font-mono text-xs">{row.invoice}</span>, sortable: true },
+        { key: 'supplierId', header: 'Supplier', cell: row => <span className="font-semibold text-slate-700">{getSupplierName(row.supplierId)}</span>, sortable: true },
+        { key: 'itemId', header: 'Item', cell: row => <span className="font-bold text-slate-900">{getItemName(row.itemId)}</span>, sortable: true },
+        { key: 'qty', header: 'Qty', align: 'right', cell: row => <span className="font-mono text-slate-700">{row.qty}</span>, sortable: true },
+        { key: 'rate', header: 'Rate (Rs)', align: 'right', cell: row => <span className="font-mono text-slate-500">{Number(row.rate).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>, sortable: true },
+        { key: 'total', header: 'Total (Rs)', align: 'right', cell: row => <span className="font-mono font-bold text-emerald-700">{Number(row.total).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>, sortable: true }
+    ];
+
     return (
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -297,52 +306,19 @@ export const PurchasesView: React.FC = () => {
                 </div>
             </div>
 
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
-                <div className="overflow-x-auto min-h-[400px]">
-                    <table className="w-full text-left border-collapse">
-                        <thead className="bg-slate-50 text-[10px] uppercase tracking-wider text-slate-500 font-bold border-b border-slate-200">
-                            <tr>
-                                <th className="px-6 py-3">Date</th>
-                                <th className="px-6 py-3">Item Details</th>
-                                <th className="px-6 py-3">Qty</th>
-                                <th className="px-6 py-3">Unit Rate</th>
-                                <th className="px-6 py-3 text-right">Total Amount</th>
-                                <th className="px-6 py-3">Supplier</th>
-                                <th className="px-6 py-3">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody className="text-xs divide-y divide-slate-100">
-                            {purchases.length === 0 && !loading ? (
-                              <tr>
-                                <td colSpan={7} className="px-6 py-12 text-center text-slate-500 italic">No purchase logs found.</td>
-                              </tr>
-                            ) : (
-                              purchases.map((row, i) => (
-                                  <tr key={i} className="hover:bg-slate-50/50 transition-colors">
-                                      <td className="px-6 py-4">
-                                         <div className="flex items-center gap-2 text-slate-500 font-medium whitespace-nowrap">
-                                            <Calendar size={14} />
-                                            {row[1]}
-                                         </div>
-                                      </td>
-                                      <td className="px-6 py-4 font-bold text-slate-900">{getItemName(row[2])}</td>
-                                      <td className="px-6 py-4 font-mono font-medium text-slate-600">{row[3]}</td>
-                                      <td className="px-6 py-4 font-mono text-slate-500">Rs. {Number(row[4]).toLocaleString()}</td>
-                                      <td className="px-6 py-4 text-right font-bold text-slate-900 font-mono tracking-tighter">
-                                        Rs. {Number(row[5]).toLocaleString()}
-                                      </td>
-                                      <td className="px-6 py-4 text-slate-600 font-medium">{getSupplierName(row[6])}</td>
-                                      <td className="px-6 py-4">
-                                        <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full text-[10px] font-bold uppercase tracking-tight">
-                                          Synced
-                                        </span>
-                                      </td>
-                                  </tr>
-                              ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+                <DataTable 
+                    data={purchases} 
+                    columns={columns} 
+                    loading={loading}
+                    emptyMessage="No purchase logs found."
+                    customSearch={(row, q) => {
+                        return row.date.toLowerCase().includes(q) ||
+                               getItemName(row.itemId).toLowerCase().includes(q) ||
+                               getSupplierName(row.supplierId).toLowerCase().includes(q) ||
+                               String(row.invoice).toLowerCase().includes(q);
+                    }}
+                />
             </div>
 
             <AnimatePresence>
@@ -399,7 +375,7 @@ export const PurchasesView: React.FC = () => {
                                                     value={form.supplierId} onChange={e => setForm({...form, supplierId: e.target.value})}
                                                 >
                                                     <option value="">-- Choose Supplier --</option>
-                                                    {suppliers.map(s => <option key={s[0]} value={s[0]}>{s[1]}</option>)}
+                                                    {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                                                 </select>
                                                 </div>
                                             </div>
@@ -431,7 +407,7 @@ export const PurchasesView: React.FC = () => {
                                                                 value={line.itemId} onChange={e => updateLine(idx, 'itemId', e.target.value)}
                                                             >
                                                                 <option value="">-- Select Item --</option>
-                                                                {items.map(i => <option key={i[0]} value={i[0]}>{i[1]}</option>)}
+                                                                {items.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
                                                             </select>
                                                         </div>
                                                         <div className="col-span-2 space-y-1">

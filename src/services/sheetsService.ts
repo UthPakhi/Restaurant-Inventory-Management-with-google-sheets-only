@@ -13,13 +13,17 @@ export interface GoogleTokens {
 export class SheetsService {
   private tokens: GoogleTokens | null = null;
   private spreadsheetId: string | null = null;
-  private isDemoMode: boolean = false;
+  public isDemoMode: boolean = false;
   private demoData: Record<string, any[][]> = {};
   public currentUserEmail: string = 'Unknown';
 
   constructor(tokens?: GoogleTokens, spreadsheetId?: string) {
     if (tokens) this.tokens = tokens;
     if (spreadsheetId) this.spreadsheetId = spreadsheetId;
+  }
+
+  isConfigured(): boolean {
+    return !!this.tokens && !!this.spreadsheetId;
   }
 
   setCurrentUser(email: string) {
@@ -186,6 +190,32 @@ export class SheetsService {
       return data.values || [];
   }
 
+  // ====== Data Abstraction Methods ======
+
+  async getAllItems(): Promise<any[][]> {
+      return await this.read('Masters_Items!A2:J');
+  }
+
+  async getAllDepartments(): Promise<any[][]> {
+      return await this.read('Masters_Depts!A2:B');
+  }
+
+  async getAllSuppliers(): Promise<any[][]> {
+      return await this.read('Masters_Suppliers!A2:C');
+  }
+
+  async getAllBatches(): Promise<any[][]> {
+      return await this.read('Batches!A2:H');
+  }
+
+  async getAllIssues(): Promise<any[][]> {
+      return await this.read('Issues!A2:G');
+  }
+
+  async getAllPurchases(): Promise<any[][]> {
+      return await this.read('Purchases!A2:I');
+  }
+
   async logAudit(userEmail: string, action: string, sheetName: string, details: string) {
     const timestamp = new Date().toISOString();
     // Do not log audit logic about AuditLogs to avoid infinite loops, though should be fine
@@ -321,13 +351,36 @@ export class SheetsService {
     }
 
     // 3. Record the issue
-    const issueId = `ISS_${Date.now()}`;
+    const issueId = `ISS_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
     await this.append('Issues!A:G', [[issueId, date, deptId, itemId, qtyRequested, avgRate, this.currentUserEmail]]);
     const displayItem = itemName || itemId;
     const displayDept = deptName || deptId;
     await this.logAudit(this.currentUserEmail, 'ISSUE_STOCK', 'Issues', `Issued ${qtyRequested} of item ${displayItem} to dept ${displayDept}`);
 
     return { issueId, avgRate, totalCost };
+  }
+
+  async reverseIssue(issue: any): Promise<any> {
+    const { id, itemId, qty, rate, deptId, date, itemName, deptName } = issue;
+    if (qty <= 0) throw new Error("Cannot reverse a reversal or zero quantity.");
+
+    const ts = Date.now();
+    const batchId = `B_REV_${ts}`;
+    const revIssueId = `REV_${ts}`;
+
+    // 1. Create a new batch to restore the stock at the same rate
+    const newBatch = [batchId, itemId, date, qty, qty, rate, 'Reversal'];
+
+    // 2. Append a negative issue to cancel out the consumption
+    const negativeIssue = [revIssueId, date, deptId, itemId, -qty, rate, this.currentUserEmail];
+
+    await this.append('Batches!A1', [newBatch]);
+    await this.append('Issues!A1', [negativeIssue]);
+
+    const displayItem = itemName || itemId;
+    await this.logAudit(this.currentUserEmail, 'REVERSE_ISSUE', 'Issues', `Reversed issue ${id} for item ${displayItem}, restored ${qty} to stock.`);
+    
+    return { success: true };
   }
 }
 

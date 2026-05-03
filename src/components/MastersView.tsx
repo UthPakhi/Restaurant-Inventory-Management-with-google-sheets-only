@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Trash2, Edit2, Search, X, Loader2, Package, Hash, User, ShieldCheck } from 'lucide-react';
 import { format } from 'date-fns';
 import { sheetsService } from '../services/sheetsService';
-import { mapRowToItem, mapRowToDepartment, mapRowToSupplier } from '../services/dataMappers';
+import { mapRowToItem, mapRowToDepartment, mapRowToSupplier, mapItemToRow } from '../services/dataMappers';
 import { Item, Department, Supplier } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
@@ -25,18 +25,22 @@ export const MastersView: React.FC = () => {
     const [newDept, setNewDept] = useState({ name: '' });
     const [newSupplier, setNewSupplier] = useState({ name: '', contact: '' });
 
+    const [editingItem, setEditingItem] = useState<Item | null>(null);
+    const [editingDept, setEditingDept] = useState<Department | null>(null);
+    const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
+
     const fetchData = async () => {
         setLoading(true);
         try {
             if (tab === 'items') {
                 const rows = await sheetsService.read('Masters_Items!A2:J');
-                setItems((rows || []).map(mapRowToItem));
+                setItems((rows || []).map((row, i) => ({...mapRowToItem(row), rowIndex: i + 2})));
             } else if (tab === 'depts') {
                 const rows = await sheetsService.read('Masters_Depts!A2:B');
-                setDepartments((rows || []).map(mapRowToDepartment));
+                setDepartments((rows || []).map((row, i) => ({...mapRowToDepartment(row), rowIndex: i + 2})));
             } else {
                 const rows = await sheetsService.read('Masters_Suppliers!A2:C');
-                setSuppliers((rows || []).map(mapRowToSupplier));
+                setSuppliers((rows || []).map((row, i) => ({...mapRowToSupplier(row), rowIndex: i + 2})));
             }
         } catch (e) {
             console.error(e);
@@ -58,13 +62,19 @@ export const MastersView: React.FC = () => {
             const batches: any[][] = [];
             const dateStr = openingStockDate;
             
-            lines.forEach(line => {
+            const validationErrors: string[] = [];
+            
+            lines.forEach((line, index) => {
                 const parts = line.split('\t');
                 if (parts.length >= 1) {
                     const name = parts[0]?.trim();
                     // Skip header if present or empty name
                     if (!name || name.toLowerCase() === 'item name') return;
                     
+                    if (parts.length < 3) {
+                       validationErrors.push(`Row ${index + 1} (${name}) missing unit or category.`);
+                    }
+
                     const unit = parts[1]?.trim() || 'pcs';
                     const category = parts[2]?.trim() || 'Raw';
                     const buyPrice = Number((parts[3] || '0').toString().replace(/,/g, '')) || 0;
@@ -84,6 +94,10 @@ export const MastersView: React.FC = () => {
                     }
                 }
             });
+
+            if (validationErrors.length > 0) {
+                 toast.error(`Validation warnings:\n${validationErrors.slice(0, 3).join('\n')}${validationErrors.length > 3 ? `\n...and ${validationErrors.length - 3} more` : ''}`);
+            }
 
             if (items.length > 0) {
                 const resItems = await sheetsService.append('Masters_Items', items);
@@ -126,7 +140,11 @@ export const MastersView: React.FC = () => {
     };
 
     const handleSeedDemo = async () => {
-        if (!confirm("This will seed all 190 items with their department mappings and initial stock. Continue?")) return;
+        if (items.length > 0) {
+            if (!confirm("Your database already has items! Seeding will duplicate them. Are you REALLY sure you want to run this?")) return;
+        } else {
+            if (!confirm("This will seed all 190 items with their department mappings and initial stock. Continue?")) return;
+        }
         setLoading(true);
         try {
             // Seed Depts
@@ -407,6 +425,61 @@ export const MastersView: React.FC = () => {
         }
     };
 
+    const handleUpdateEntity = async () => {
+        setLoading(true);
+        try {
+            if (tab === 'items' && editingItem) {
+                if (!editingItem.name) return;
+                const cellRange = `Masters_Items!A${editingItem.rowIndex}:J${editingItem.rowIndex}`;
+                await sheetsService.update(cellRange, [mapItemToRow(editingItem)]);
+                setEditingItem(null);
+            } else if (tab === 'depts' && editingDept) {
+                if (!editingDept.name) return;
+                const cellRange = `Masters_Depts!A${editingDept.rowIndex}:B${editingDept.rowIndex}`;
+                await sheetsService.update(cellRange, [[editingDept.id, editingDept.name]]);
+                setEditingDept(null);
+            } else if (tab === 'suppliers' && editingSupplier) {
+                if (!editingSupplier.name) return;
+                const cellRange = `Masters_Suppliers!A${editingSupplier.rowIndex}:C${editingSupplier.rowIndex}`;
+                await sheetsService.update(cellRange, [[editingSupplier.id, editingSupplier.name, editingSupplier.contact || '']]);
+                setEditingSupplier(null);
+            }
+            await fetchData();
+            await refreshStaticData();
+            toast.success('Successfully updated.');
+        } catch (e: any) {
+             console.error(e);
+             toast.error("Failed to update: " + e.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleDeleteEntity = async (row: any, type: string) => {
+        if (!confirm("Are you sure you want to delete this? This action cannot be undone and may break references.")) return;
+        setLoading(true);
+        try {
+            let cellRange = '';
+            if (type === 'items') {
+                cellRange = `Masters_Items!A${row.rowIndex}:J${row.rowIndex}`;
+            } else if (type === 'depts') {
+                cellRange = `Masters_Depts!A${row.rowIndex}:B${row.rowIndex}`;
+            } else if (type === 'suppliers') {
+                cellRange = `Masters_Suppliers!A${row.rowIndex}:C${row.rowIndex}`;
+            }
+            // Overwriting with empty row instead of true delete (to maintain structure)
+            await sheetsService.update(cellRange, [['', '', '', '', '', '', '', '', '', '']]);
+            await fetchData();
+            await refreshStaticData();
+            toast.success('Successfully deleted.');
+        } catch (e: any) {
+            console.error(e);
+            toast.error("Failed to delete: " + e.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <div className="space-y-6 text-slate-900">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -503,7 +576,7 @@ export const MastersView: React.FC = () => {
                             </thead>
                             <tbody className="text-xs divide-y divide-slate-100">
                                 {tab === 'items' && items.map((row) => (
-                                    <tr key={row.id} className="hover:bg-slate-50/50 transition-colors">
+                                    <tr key={row.id} className="hover:bg-slate-50/50 transition-colors group">
                                         <td className="px-6 py-4">
                                             <p className="font-bold text-slate-900 leading-tight mb-0.5">{row.name}</p>
                                             <p className="text-[10px] text-slate-400 font-mono tracking-tighter uppercase">{row.id}</p>
@@ -516,32 +589,32 @@ export const MastersView: React.FC = () => {
                                         <td className="px-6 py-4 text-right font-mono font-bold text-slate-900">{row.openingStock}</td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <button className="p-1.5 hover:bg-slate-100 rounded text-slate-400 hover:text-emerald-600 transition-colors"><Edit2 size={14} /></button>
-                                                <button className="p-1.5 hover:bg-slate-100 rounded text-slate-400 hover:text-red-500 transition-colors"><Trash2 size={14} /></button>
+                                                <button onClick={() => setEditingItem(row)} className="p-1.5 hover:bg-slate-100 rounded text-slate-400 hover:text-emerald-600 transition-colors"><Edit2 size={14} /></button>
+                                                <button onClick={() => handleDeleteEntity(row, 'items')} className="p-1.5 hover:bg-slate-100 rounded text-slate-400 hover:text-red-500 transition-colors"><Trash2 size={14} /></button>
                                             </div>
                                         </td>
                                     </tr>
                                 ))}
                                 {tab === 'depts' && departments.map((row) => (
-                                    <tr key={row.id} className="hover:bg-slate-50/50 transition-colors">
+                                    <tr key={row.id} className="hover:bg-slate-50/50 transition-colors group">
                                         <td className="px-6 py-4 text-[10px] font-mono text-slate-400">{row.id}</td>
                                         <td className="px-6 py-4 font-bold text-slate-900 uppercase tracking-tight">{row.name}</td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <button className="p-1.5 hover:bg-slate-100 rounded text-slate-400 hover:text-emerald-600 transition-colors"><Edit2 size={14} /></button>
-                                                <button className="p-1.5 hover:bg-slate-100 rounded text-slate-400 hover:text-red-500 transition-colors"><Trash2 size={14} /></button>
+                                                <button onClick={() => setEditingDept(row)} className="p-1.5 hover:bg-slate-100 rounded text-slate-400 hover:text-emerald-600 transition-colors"><Edit2 size={14} /></button>
+                                                <button onClick={() => handleDeleteEntity(row, 'depts')} className="p-1.5 hover:bg-slate-100 rounded text-slate-400 hover:text-red-500 transition-colors"><Trash2 size={14} /></button>
                                             </div>
                                         </td>
                                     </tr>
                                 ))}
                                 {tab === 'suppliers' && suppliers.map((row) => (
-                                    <tr key={row.id} className="hover:bg-slate-50/50 transition-colors">
+                                    <tr key={row.id} className="hover:bg-slate-50/50 transition-colors group">
                                         <td className="px-6 py-4 font-bold text-slate-900">{row.name}</td>
                                         <td className="px-6 py-4 text-slate-500">{row.contact}</td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <button className="p-1.5 hover:bg-slate-100 rounded text-slate-400 hover:text-emerald-600 transition-colors"><Edit2 size={14} /></button>
-                                                <button className="p-1.5 hover:bg-slate-100 rounded text-slate-400 hover:text-red-500 transition-colors"><Trash2 size={14} /></button>
+                                                <button onClick={() => setEditingSupplier(row)} className="p-1.5 hover:bg-slate-100 rounded text-slate-400 hover:text-emerald-600 transition-colors"><Edit2 size={14} /></button>
+                                                <button onClick={() => handleDeleteEntity(row, 'suppliers')} className="p-1.5 hover:bg-slate-100 rounded text-slate-400 hover:text-red-500 transition-colors"><Trash2 size={14} /></button>
                                             </div>
                                         </td>
                                     </tr>
@@ -742,6 +815,132 @@ export const MastersView: React.FC = () => {
                                 >
                                     {loading ? <Loader2 size={16} className="animate-spin" /> : <ShieldCheck size={16}/>}
                                     Save Entity
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+
+                {(editingItem || editingDept || editingSupplier) && (
+                    <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-6">
+                        <motion.div 
+                            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                            className="bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-2xl border border-slate-200"
+                        >
+                            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                                <h3 className="font-bold text-slate-900 tracking-tight">Edit {tab === 'items' ? 'Item' : tab === 'depts' ? 'Section' : 'Supplier'}</h3>
+                                <button onClick={() => { setEditingItem(null); setEditingDept(null); setEditingSupplier(null); }} className="text-slate-400 hover:text-slate-600 p-1"><X size={20} /></button>
+                            </div>
+                            <div className="p-6 space-y-4">
+                                {tab === 'items' && editingItem && (
+                                    <>
+                                        <div className="space-y-1.5">
+                                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Identification</label>
+                                            <div className="relative">
+                                              <Package size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                              <input 
+                                                  type="text" 
+                                                  placeholder="e.g. Basmati Rice (Premium)" 
+                                                  className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all"
+                                                  value={editingItem.name}
+                                                  onChange={(e) => setEditingItem({...editingItem, name: e.target.value})}
+                                              />
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-1.5">
+                                                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Unit of measure</label>
+                                                <select className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all appearance-none"
+                                                    value={editingItem.unit}
+                                                    onChange={(e) => setEditingItem({...editingItem, unit: e.target.value})}
+                                                >
+                                                    <option>kg</option><option>Gram</option><option>Liter</option><option>Pieces</option><option>Bundle</option>
+                                                </select>
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Cost Center</label>
+                                                <select className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all appearance-none"
+                                                  value={editingItem.category}
+                                                  onChange={(e) => setEditingItem({...editingItem, category: e.target.value})}
+                                                >
+                                                    <option>Raw</option><option>Kitchen</option><option>Bar</option><option>Non-Issue</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-1.5">
+                                                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Base Unit Rate</label>
+                                                <div className="relative">
+                                                  <Hash size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                                  <input type="number" className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all" placeholder="Rs. 0" 
+                                                    value={editingItem.buyPrice} onChange={(e) => setEditingItem({...editingItem, buyPrice: Number(e.target.value)})}
+                                                  />
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-1.5">
+                                                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Min Par Level</label>
+                                                <input type="number" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all" placeholder="0.00" 
+                                                   value={editingItem.minParLevel} onChange={(e) => setEditingItem({...editingItem, minParLevel: Number(e.target.value)})}
+                                                />
+                                                <p className="text-[9px] text-slate-400 leading-none mt-1">Alert when stock falls below this</p>
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Reorder Qty</label>
+                                                <input type="number" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all" placeholder="0.00" 
+                                                   value={editingItem.reorderQty} onChange={(e) => setEditingItem({...editingItem, reorderQty: Number(e.target.value)})}
+                                                />
+                                                <p className="text-[9px] text-slate-400 leading-none mt-1">Default quantity to purchase</p>
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+                                {tab === 'depts' && editingDept && (
+                                    <div className="space-y-4">
+                                        <div className="space-y-1.5">
+                                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Section Name</label>
+                                            <input type="text" className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all placeholder:font-normal placeholder:text-slate-400" placeholder="e.g. Kitchen, Bar..." 
+                                              value={editingDept.name} onChange={(e) => setEditingDept({...editingDept, name: e.target.value})}
+                                              autoFocus
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+                                {tab === 'suppliers' && editingSupplier && (
+                                    <div className="space-y-4">
+                                        <div className="space-y-1.5">
+                                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Supplier Name</label>
+                                            <input type="text" className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all placeholder:font-normal placeholder:text-slate-400" placeholder="Alpha Distributors" 
+                                              value={editingSupplier.name} onChange={(e) => setEditingSupplier({...editingSupplier, name: e.target.value})}
+                                              autoFocus
+                                            />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Contact Info</label>
+                                            <input type="text" className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all" placeholder="Phone, Email, or Address" 
+                                              value={editingSupplier.contact} onChange={(e) => setEditingSupplier({...editingSupplier, contact: e.target.value})}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                            <div className="p-6 bg-slate-50 border-t border-slate-100 flex gap-4">
+                                <button
+                                    onClick={() => { setEditingItem(null); setEditingDept(null); setEditingSupplier(null); }}
+                                    className="flex-1 py-2.5 text-sm font-bold text-slate-500 hover:text-slate-900 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleUpdateEntity}
+                                    disabled={loading}
+                                    className="flex-1 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-bold shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all flex items-center justify-center gap-2"
+                                >
+                                    {loading ? <Loader2 size={16} className="animate-spin" /> : <ShieldCheck size={16}/>}
+                                    Update Entity
                                 </button>
                             </div>
                         </motion.div>

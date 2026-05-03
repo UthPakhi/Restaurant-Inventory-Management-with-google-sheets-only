@@ -12,21 +12,21 @@ This document outlines a detailed, step-by-step testing plan to ensure all featu
    - [x] Test "Try Demo Mode" without connecting to Google Sheets.
    - [x] Verify demo data is loaded and operations work seamlessly in-memory.
 
-## Phase 2: Master Data Management
+## Phase 2: Master Data Management [COMPLETED]
 **Navigation**: Masters View
 1. **Items Master**
-   - Add a new item manually (verify default opening stock behaves correctly).
-   - Bulk import items using CSV/text pasting.
-   - Verify missing fields flag issues in bulk import validation.
-   - Edit an existing item and verify changes reflect everywhere.
+   - [x] Add a new item manually (verify default opening stock behaves correctly).
+   - [x] Bulk import items using CSV/text pasting.
+   - [x] Verify missing fields flag issues in bulk import validation.
+   - [x] Edit an existing item and verify changes reflect everywhere.
 2. **Departments Master**
-   - Create new departments (e.g., Kitchen, Bar).
-   - Ensure departments list updates automatically across other views.
+   - [x] Create new departments (e.g., Kitchen, Bar).
+   - [x] Ensure departments list updates automatically across other views.
 3. **Suppliers Master**
-   - Add new suppliers.
-   - Check supplier presence in the Purchases view dropdowns.
+   - [x] Add new suppliers.
+   - [x] Check supplier presence in the Purchases view dropdowns.
 4. **Data Seeding**
-   - Run the "Seed Demo Data" function and ensure sheets are populated properly without duplicating data excessively.
+   - [x] Run the "Seed Demo Data" function and ensure sheets are populated properly without duplicating data excessively.
 
 ## Phase 3: Purchases (Inwards) & Inventory
 **Navigation**: Purchases View & Inventory View

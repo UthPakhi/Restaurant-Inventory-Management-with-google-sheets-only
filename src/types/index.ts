@@ -10,17 +10,20 @@ export interface Item {
   minParLevel: number;
   reorderQty: number;
   isActive: boolean;
+  rowIndex?: number;
 }
 
 export interface Department {
   id: string;
   name: string;
+  rowIndex?: number;
 }
 
 export interface Supplier {
   id: string;
   name: string;
   contact?: string; // Noticed Contact in Masters_Suppliers schema
+  rowIndex?: number;
 }
 
 export interface Batch {

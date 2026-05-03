@@ -12,7 +12,7 @@ export function InventoryView() {
     setLoading(true);
     try {
       const [itemList, batchList, issueList] = await Promise.all([
-        sheetsService.read('Masters_Items!A2:I'), // Expand range to be safe
+        sheetsService.read('Masters_Items!A2:J'), // Expand range to be safe
         sheetsService.read('Batches!A2:H'),
         sheetsService.read('Issues!A2:G')
       ]);
@@ -67,6 +67,8 @@ export function InventoryView() {
           price: avgRate,
           type: itm[6] || 'Raw',
           opening: Number(String(itm[7]).replace(/,/g, '')) || 0,
+          minParLevel: Number(String(itm[8]).replace(/,/g, '')) || 0,
+          reorderQty: Number(String(itm[9]).replace(/,/g, '')) || 0,
           stock: currentStock,
           value: totalCostVal
         };
@@ -84,10 +86,42 @@ export function InventoryView() {
     fetchData();
   }, []);
 
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
+
+  const handleSort = (key: string) => {
+      let direction: 'asc' | 'desc' = 'asc';
+      if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+          direction = 'desc';
+      }
+      setSortConfig({ key, direction });
+  };
+
   const filteredItems = items.filter(itm => 
     itm.name.toLowerCase().includes(search.toLowerCase()) ||
     itm.type.toLowerCase().includes(search.toLowerCase())
   );
+
+  const sortedItems = [...filteredItems].sort((a, b) => {
+      if (!sortConfig) return 0;
+      const { key, direction } = sortConfig;
+      
+      if (key === 'status') {
+          const aStatus = a.stock <= a.minParLevel ? 0 : 1;
+          const bStatus = b.stock <= b.minParLevel ? 0 : 1;
+          if (aStatus < bStatus) return direction === 'asc' ? -1 : 1;
+          if (aStatus > bStatus) return direction === 'asc' ? 1 : -1;
+          return 0;
+      }
+
+      if (a[key] < b[key]) return direction === 'asc' ? -1 : 1;
+      if (a[key] > b[key]) return direction === 'asc' ? 1 : -1;
+      return 0;
+  });
+
+  const renderSortArrow = (key: string) => {
+      if (!sortConfig || sortConfig.key !== key) return <span className="opacity-0 group-hover:opacity-50 ml-1">↑</span>;
+      return <span className="ml-1">{sortConfig.direction === 'asc' ? '↑' : '↓'}</span>;
+  };
 
   return (
     <div className="space-y-6">
@@ -134,13 +168,13 @@ export function InventoryView() {
           <table className="w-full text-left border-collapse">
             <thead className="bg-slate-50 text-[10px] uppercase tracking-wider text-slate-500 font-bold border-b border-slate-200">
               <tr>
-                <th className="px-6 py-3">Item Details</th>
-                <th className="px-6 py-3">Department</th>
-                <th className="px-6 py-3">Unit</th>
-                <th className="px-6 py-3">Unit Price</th>
-                <th className="px-6 py-3 text-right">Current Stock</th>
-                <th className="px-6 py-3 text-right">Stock Value</th>
-                <th className="px-6 py-3">Status</th>
+                <th className="px-6 py-3 cursor-pointer group hover:bg-slate-100" onClick={() => handleSort('name')}>Item Details{renderSortArrow('name')}</th>
+                <th className="px-6 py-3 cursor-pointer group hover:bg-slate-100" onClick={() => handleSort('type')}>Department{renderSortArrow('type')}</th>
+                <th className="px-6 py-3 cursor-pointer group hover:bg-slate-100" onClick={() => handleSort('unit')}>Unit{renderSortArrow('unit')}</th>
+                <th className="px-6 py-3 cursor-pointer group hover:bg-slate-100" onClick={() => handleSort('price')}>Unit Price{renderSortArrow('price')}</th>
+                <th className="px-6 py-3 text-right cursor-pointer group hover:bg-slate-100" onClick={() => handleSort('stock')}>Current Stock{renderSortArrow('stock')}</th>
+                <th className="px-6 py-3 text-right cursor-pointer group hover:bg-slate-100" onClick={() => handleSort('value')}>Stock Value{renderSortArrow('value')}</th>
+                <th className="px-6 py-3 cursor-pointer group hover:bg-slate-100" onClick={() => handleSort('status')}>Status{renderSortArrow('status')}</th>
               </tr>
             </thead>
             <tbody className="text-xs divide-y divide-slate-100">
@@ -153,14 +187,14 @@ export function InventoryView() {
                     </div>
                   </td>
                 </tr>
-              ) : filteredItems.length === 0 ? (
+              ) : sortedItems.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-6 py-12 text-center text-slate-400">
                     No items found matching your criteria.
                   </td>
                 </tr>
               ) : (
-                filteredItems.map((item) => (
+                sortedItems.map((item) => (
                   <tr key={item.id} className="hover:bg-slate-50/50 transition-colors">
                     <td className="px-6 py-4">
                        <div className="flex items-center gap-3">
@@ -169,7 +203,6 @@ export function InventoryView() {
                           </div>
                           <div>
                             <p className="font-bold text-slate-800 tracking-tight leading-tight">{item.name}</p>
-                            <p className="text-[10px] text-slate-400 font-mono">ID: {item.id}</p>
                           </div>
                        </div>
                     </td>
@@ -183,7 +216,7 @@ export function InventoryView() {
                     <td className="px-6 py-4 text-right">
                        <span className={cn(
                          "font-bold font-mono text-sm tracking-tighter",
-                         item.stock <= 10 ? "text-red-600" : "text-slate-900"
+                         item.stock <= item.minParLevel ? "text-red-600" : "text-slate-900"
                        )}>
                          {item.stock.toFixed(2)}
                        </span>
@@ -192,12 +225,22 @@ export function InventoryView() {
                       Rs. {item.value.toLocaleString()}
                     </td>
                     <td className="px-6 py-4">
-                      <span className={cn(
-                        "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-tight",
-                        item.stock <= 10 ? "bg-red-100 text-red-700" : "bg-emerald-100 text-emerald-700"
-                      )}>
-                        {item.stock <= 10 ? 'Low Stock' : 'Healthy'}
-                      </span>
+                      {item.stock <= item.minParLevel ? (
+                        <div className="flex flex-col gap-1">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-tight bg-red-100 text-red-700 max-w-max">
+                            Low Stock
+                          </span>
+                          {item.reorderQty > 0 && (
+                            <span className="text-[10px] font-medium text-red-600 leading-tight">
+                              Order {item.reorderQty} {item.unit}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-tight bg-emerald-100 text-emerald-700 max-w-max">
+                          Healthy
+                        </span>
+                      )}
                     </td>
                   </tr>
                 ))

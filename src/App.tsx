@@ -68,6 +68,7 @@ export default function App() {
         if (parsed.spreadsheetId === 'demo-mode') {
           sheetsService.setDemoMode(true);
           setUser({ email: 'demo@example.com', name: 'Demo User' });
+          sheetsService.setCurrentUser('demo@example.com');
         } else {
           sheetsService.setTokens(parsed.tokens);
           sheetsService.setSpreadsheetId(parsed.spreadsheetId);
@@ -91,6 +92,7 @@ export default function App() {
       const data = await res.json();
       if (data.email) {
         setUser({ email: data.email, name: data.name || data.given_name || "User" });
+        sheetsService.setCurrentUser(data.email);
       }
     } catch (e) {
       console.error("Failed to fetch user profile", e);
@@ -103,6 +105,7 @@ export default function App() {
     setIsInitialized(true);
     if (data.spreadsheetId === 'demo-mode') {
       setUser({ email: 'demo@example.com', name: 'Demo User' });
+      sheetsService.setCurrentUser('demo@example.com');
     } else {
       fetchUserProfile(data.tokens);
     }

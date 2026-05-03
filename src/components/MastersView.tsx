@@ -14,6 +14,8 @@ export const MastersView: React.FC = () => {
     const [bulkText, setBulkText] = useState('');
 
     const [newItem, setNewItem] = useState({ name: '', deptIds: '', unit: 'kg', buyPrice: '0', sellPrice: '0', category: 'Raw', openingStock: '0', minParLevel: '0', reorderQty: '0' });
+    const [newDept, setNewDept] = useState({ name: '' });
+    const [newSupplier, setNewSupplier] = useState({ name: '', contact: '' });
 
     const fetchData = async () => {
         setLoading(true);
@@ -43,23 +45,27 @@ export const MastersView: React.FC = () => {
             
             lines.forEach(line => {
                 const parts = line.split('\t');
-                if (parts.length >= 4) {
-                    // Skip header if present
-                    if (parts[1].toLowerCase() === 'item') return;
+                if (parts.length >= 1) {
+                    const name = parts[0]?.trim();
+                    // Skip header if present or empty name
+                    if (!name || name.toLowerCase() === 'item name') return;
                     
-                    const name = parts[1].trim();
-                    const qty = Number(parts[2].trim().replace(/,/g, ''));
-                    const rate = Number(parts[3].trim().replace(/,/g, ''));
-                    if (isNaN(qty) || isNaN(rate)) return;
+                    const unit = parts[1]?.trim() || 'pcs';
+                    const category = parts[2]?.trim() || 'Raw';
+                    const buyPrice = Number((parts[3] || '0').toString().replace(/,/g, '')) || 0;
+                    const sellPrice = Number((parts[4] || '0').toString().replace(/,/g, '')) || 0;
+                    const qty = Number((parts[5] || '0').toString().replace(/,/g, '')) || 0;
+                    const minPar = Number((parts[6] || '0').toString().replace(/,/g, '')) || 0;
+                    const reorder = Number((parts[7] || '0').toString().replace(/,/g, '')) || 0;
 
                     const id = `ITM_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
                     
                     // Schema: [id, name, deptIds, unit, buyPrice, sellPrice, category, openingStock, minParLevel, reorderQty]
-                    items.push([id, name, '', 'pcs', rate, '0', 'Opening', qty, 0, 0]);
+                    items.push([id, name, '', unit, buyPrice, sellPrice, category, qty, minPar, reorder]);
                     
                     if (qty > 0) {
                         // Schema: [Batch_ID, Item_ID, Date, Qty_Original, Qty_Remaining, Unit_Cost, Source]
-                        batches.push([`B_OPEN_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`, id, dateStr, qty, qty, rate, 'Opening']);
+                        batches.push([`B_OPEN_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`, id, dateStr, qty, qty, buyPrice, 'Opening']);
                     }
                 }
             });
@@ -77,9 +83,14 @@ export const MastersView: React.FC = () => {
                 setIsBulkImport(false);
                 setBulkText('');
                 fetchData();
+            } else {
+                alert("No valid items found to import.");
+                setIsBulkImport(false);
+                setBulkText('');
             }
-        } catch (e) {
+        } catch (e: any) {
             console.error(e);
+            alert("Bulk import failed: " + e.message);
         } finally {
             setLoading(false);
         }
@@ -338,27 +349,41 @@ export const MastersView: React.FC = () => {
         }
     };
 
-    const handleAddItem = async () => {
-        if (!newItem.name) return;
+    const handleAddEntity = async () => {
         setLoading(true);
         try {
-            const id = `ITM_${Date.now()}`;
-            const values = [[id, newItem.name, newItem.deptIds, newItem.unit, newItem.buyPrice, newItem.sellPrice, newItem.category, newItem.openingStock, newItem.minParLevel, newItem.reorderQty]];
-            await sheetsService.append('Masters_Items', values);
-            
-            const qty = parseFloat(newItem.openingStock);
-            if (qty > 0) {
-                const dateStr = format(new Date(), 'yyyy-MM-dd');
-                await sheetsService.append('Batches', [[`B_OPEN_${Date.now()}`, id, dateStr, qty, qty, newItem.buyPrice, 'Opening']]);
+            if (tab === 'items') {
+                if (!newItem.name) return;
+                const id = `ITM_${Date.now()}`;
+                const values = [[id, newItem.name, newItem.deptIds, newItem.unit, newItem.buyPrice, newItem.sellPrice, newItem.category, newItem.openingStock, newItem.minParLevel, newItem.reorderQty]];
+                await sheetsService.append('Masters_Items', values);
+                
+                const qty = parseFloat(newItem.openingStock);
+                if (qty > 0) {
+                    const dateStr = format(new Date(), 'yyyy-MM-dd');
+                    await sheetsService.append('Batches', [[`B_OPEN_${Date.now()}`, id, dateStr, qty, qty, newItem.buyPrice, 'Opening']]);
+                }
+                
+                setNewItem({ name: '', deptIds: '', unit: 'kg', buyPrice: '0', sellPrice: '0', category: 'Raw', openingStock: '0', minParLevel: '0', reorderQty: '0' });
+            } else if (tab === 'depts') {
+                if (!newDept.name) return;
+                const id = `DPT_${Date.now()}`;
+                const values = [[id, newDept.name]];
+                await sheetsService.append('Masters_Depts', values);
+                setNewDept({ name: '' });
+            } else if (tab === 'suppliers') {
+                if (!newSupplier.name) return;
+                const id = `SUP_${Date.now()}`;
+                const values = [[id, newSupplier.name, newSupplier.contact]];
+                await sheetsService.append('Masters_Suppliers', values);
+                setNewSupplier({ name: '', contact: '' });
             }
-            
+
             setIsAdding(false);
-            setNewItem({ name: '', deptIds: '', unit: 'kg', buyPrice: '0', sellPrice: '0', category: 'Raw', openingStock: '0', minParLevel: '0', reorderQty: '0' });
             await fetchData();
-            alert("Item added successfully with initial stock.");
         } catch (e: any) {
             console.error(e);
-            alert("Failed to add item: " + e.message);
+            alert("Failed to add entity: " + e.message);
         } finally {
             setLoading(false);
         }
@@ -519,8 +544,10 @@ export const MastersView: React.FC = () => {
                                 <button onClick={() => setIsBulkImport(false)} className="text-slate-400 hover:text-slate-600 p-1"><X size={20} /></button>
                             </div>
                             <div className="p-6 space-y-4">
-                                <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl text-[10px] text-blue-700 font-medium">
-                                    Expected format: Date [TAB] Item Name [TAB] Qty [TAB] Rate [TAB] Total
+                                <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl text-[10px] text-blue-700 font-medium whitespace-pre-wrap">
+                                    Expected format (Tab Separated):<br />
+                                    Item Name [TAB] Unit [TAB] Category [TAB] Buy Price [TAB] Sell Price [TAB] Opening Stock [TAB] Min Par Level [TAB] Reorder Qty<br />
+                                    <span className="text-blue-500 font-normal">Example: Tomato [TAB] kg [TAB] Raw [TAB] 50 [TAB] 0 [TAB] 10 [TAB] 5 [TAB] 20</span>
                                 </div>
                                 <textarea 
                                     className="w-full h-80 p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all resize-none"
@@ -626,7 +653,34 @@ export const MastersView: React.FC = () => {
                                         </div>
                                     </>
                                 )}
-                                {tab !== 'items' && <p className="text-center py-8 text-slate-400 italic text-sm">Form for {tab} pending implementation details.</p>}
+                                {tab === 'depts' && (
+                                    <div className="space-y-4">
+                                        <div className="space-y-1.5">
+                                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Section Name</label>
+                                            <input type="text" className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all placeholder:font-normal placeholder:text-slate-400" placeholder="e.g. Kitchen, Bar..." 
+                                              value={newDept.name} onChange={(e) => setNewDept({...newDept, name: e.target.value})}
+                                              autoFocus
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+                                {tab === 'suppliers' && (
+                                    <div className="space-y-4">
+                                        <div className="space-y-1.5">
+                                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Supplier Name</label>
+                                            <input type="text" className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all placeholder:font-normal placeholder:text-slate-400" placeholder="Alpha Distributors" 
+                                              value={newSupplier.name} onChange={(e) => setNewSupplier({...newSupplier, name: e.target.value})}
+                                              autoFocus
+                                            />
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Contact Info</label>
+                                            <input type="text" className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all" placeholder="Phone, Email, or Address" 
+                                              value={newSupplier.contact} onChange={(e) => setNewSupplier({...newSupplier, contact: e.target.value})}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                             <div className="p-6 bg-slate-50 border-t border-slate-100 flex gap-4">
                                 <button
@@ -636,7 +690,7 @@ export const MastersView: React.FC = () => {
                                     Discard
                                 </button>
                                 <button
-                                    onClick={handleAddItem}
+                                    onClick={handleAddEntity}
                                     disabled={loading}
                                     className="flex-1 py-2.5 bg-emerald-600 text-white rounded-lg text-sm font-bold shadow-lg shadow-emerald-600/20 hover:bg-emerald-700 transition-all flex items-center justify-center gap-2"
                                 >

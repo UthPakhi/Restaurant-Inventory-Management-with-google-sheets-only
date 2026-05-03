@@ -15,10 +15,15 @@ export class SheetsService {
   private spreadsheetId: string | null = null;
   private isDemoMode: boolean = false;
   private demoData: Record<string, any[][]> = {};
+  public currentUserEmail: string = 'Unknown';
 
   constructor(tokens?: GoogleTokens, spreadsheetId?: string) {
     if (tokens) this.tokens = tokens;
     if (spreadsheetId) this.spreadsheetId = spreadsheetId;
+  }
+
+  setCurrentUser(email: string) {
+    this.currentUserEmail = email;
   }
 
   setDemoMode(isDemo: boolean) {
@@ -253,7 +258,7 @@ export class SheetsService {
     return data;
   }
 
-  async issueFIFO(itemId: string, qtyRequested: number, date: string, deptId: string): Promise<any> {
+  async issueFIFO(itemId: string, qtyRequested: number, date: string, deptId: string, itemName?: string, deptName?: string): Promise<any> {
     // Robust number parsing
     const parseNum = (val: any) => {
         if (val === undefined || val === null) return 0;
@@ -284,7 +289,8 @@ export class SheetsService {
 
     const totalAvailable = itemBatches.reduce((sum, b) => sum + b.remainingQty, 0);
     if (totalAvailable < qtyRequested) {
-        throw new Error(`Insufficient stock for item ${itemId}. Available: ${totalAvailable.toFixed(2)}, Requested: ${qtyRequested}`);
+        const displayItem = itemName || itemId;
+        throw new Error(`Insufficient stock for item ${displayItem}. Available: ${totalAvailable.toFixed(2)}, Requested: ${qtyRequested}`);
     }
 
     let remainingToIssue = qtyRequested;
@@ -316,8 +322,10 @@ export class SheetsService {
 
     // 3. Record the issue
     const issueId = `ISS_${Date.now()}`;
-    await this.append('Issues!A:G', [[issueId, date, deptId, itemId, qtyRequested, avgRate, 'demo@example.com']]);
-    await this.logAudit('demo@example.com', 'ISSUE_STOCK', 'Issues', `Issued ${qtyRequested} of item ${itemId} to dept ${deptId}`);
+    await this.append('Issues!A:G', [[issueId, date, deptId, itemId, qtyRequested, avgRate, this.currentUserEmail]]);
+    const displayItem = itemName || itemId;
+    const displayDept = deptName || deptId;
+    await this.logAudit(this.currentUserEmail, 'ISSUE_STOCK', 'Issues', `Issued ${qtyRequested} of item ${displayItem} to dept ${displayDept}`);
 
     return { issueId, avgRate, totalCost };
   }

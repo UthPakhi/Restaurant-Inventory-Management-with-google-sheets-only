@@ -16,18 +16,28 @@ export const PurchasesView: React.FC = () => {
     const [form, setForm] = useState({
         date: format(new Date(), 'yyyy-MM-dd'),
         supplierId: '',
-        invoice: '',
+        invoice: `INV-${format(new Date(), 'yyyyMMdd-HHms')}`,
         lines: [{ itemId: '', qty: '', rate: '' }]
     });
+
+    const handleOpenAdd = () => {
+        setForm({
+            date: format(new Date(), 'yyyy-MM-dd'),
+            supplierId: '',
+            invoice: `INV-${format(new Date(), 'yyyyMMdd-HHms')}`,
+            lines: [{ itemId: '', qty: '', rate: '' }]
+        });
+        setIsAdding(true);
+    };
 
     const fetchData = async () => {
         setLoading(true);
         try {
             const [pRows, iRows, sRows, bRows] = await Promise.all([
                 sheetsService.read('Purchases!A2:H'),
-                sheetsService.read('Masters_Items!A2:H'),
+                sheetsService.read('Masters_Items!A2:J'),
                 sheetsService.read('Masters_Suppliers!A2:B'),
-                sheetsService.read('Batches!A2:G')
+                sheetsService.read('Batches!A2:H')
             ]);
             setPurchases(pRows);
             setItems(iRows);
@@ -52,8 +62,18 @@ export const PurchasesView: React.FC = () => {
         fetchData();
     }, []);
 
-    const getItemName = (id: string) => items.find(i => i[0] === id)?.[1] || id;
-    const getSupplierName = (id: string) => suppliers.find(s => s[0] === id)?.[1] || id;
+    const getItemName = (id: string) => {
+        const strId = String(id).trim();
+        const found = items.find(i => String(i[0]).trim() === strId)?.[1];
+        if (found) return found;
+        return strId.startsWith('ITM_') ? 'Deleted Item' : strId;
+    };
+    const getSupplierName = (id: string) => {
+        const strId = String(id).trim();
+        const found = suppliers.find(s => String(s[0]).trim() === strId)?.[1];
+        if (found) return found;
+        return strId.startsWith('SUP_') ? 'Deleted Supplier' : strId;
+    };
     const getLastPrice = (itemId: string) => {
         if (!itemId) return null;
         // Try purchases first
@@ -113,13 +133,13 @@ export const PurchasesView: React.FC = () => {
             // 2. Create batches for FIFO
             await sheetsService.append('Batches!A1', bValues);
             
-            await sheetsService.logAudit('demo@example.com', 'CREATE_PURCHASES', 'Purchases', `Added ${validLines.length} item(s) to stock.`);
+            await sheetsService.logAudit(sheetsService.currentUserEmail, 'CREATE_PURCHASES', 'Purchases', `Added ${validLines.length} item(s) to stock.`);
 
             setIsAdding(false);
             setForm({
                 date: format(new Date(), 'yyyy-MM-dd'),
                 supplierId: '',
-                invoice: '',
+                invoice: `INV-${format(new Date(), 'yyyyMMdd-HHms')}`,
                 lines: [{ itemId: '', qty: '', rate: '' }]
             });
             fetchData();
@@ -143,7 +163,7 @@ export const PurchasesView: React.FC = () => {
                     Export
                   </button>
                   <button 
-                    onClick={() => setIsAdding(true)}
+                    onClick={handleOpenAdd}
                     className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium shadow-md hover:bg-emerald-700 transition-all"
                   >
                     <Plus size={16} /> New Purchase
@@ -263,7 +283,7 @@ export const PurchasesView: React.FC = () => {
                                     <div className="space-y-3">
                                         {form.lines.map((line, idx) => (
                                             <div key={idx} className="grid grid-cols-12 gap-3 items-center animate-in slide-in-from-right-2 duration-200 bg-slate-50/50 p-3 rounded-xl border border-slate-100">
-                                                <div className="col-span-6 space-y-1">
+                                                <div className="col-span-5 space-y-1">
                                                     <label className="text-[8px] uppercase font-bold text-slate-400 ml-1">Item</label>
                                                     <select className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all"
                                                         value={line.itemId} onChange={e => updateLine(idx, 'itemId', e.target.value)}
@@ -285,7 +305,7 @@ export const PurchasesView: React.FC = () => {
                                                         </p>
                                                     )}
                                                 </div>
-                                                <div className="col-span-3 space-y-1">
+                                                <div className="col-span-2 space-y-1">
                                                     <label className="text-[8px] uppercase font-bold text-slate-400 ml-1">Rate (Rs.)</label>
                                                     <input type="number" 
                                                         className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all"
@@ -295,28 +315,19 @@ export const PurchasesView: React.FC = () => {
                                                     {line.itemId && getLastPrice(line.itemId) && (
                                                         <div className="flex flex-col ml-1">
                                                             <p className="text-[8px] text-slate-400 italic">
-                                                                Last Price: Rs. {Number(getLastPrice(line.itemId)).toLocaleString()}
+                                                                Last: Rs. {Number(getLastPrice(line.itemId)).toLocaleString()}
                                                             </p>
-                                                            {line.rate && (
-                                                                <p className={cn(
-                                                                    "text-[8px] font-bold",
-                                                                    Number(line.rate) > Number(getLastPrice(line.itemId)) ? "text-red-500" : 
-                                                                    Number(line.rate) < Number(getLastPrice(line.itemId)) ? "text-emerald-600" : "text-slate-400"
-                                                                )}>
-                                                                    {Number(line.rate) > Number(getLastPrice(line.itemId)) ? (
-                                                                        `↑ Increased by Rs. ${(Number(line.rate) - Number(getLastPrice(line.itemId))).toLocaleString()}`
-                                                                    ) : Number(line.rate) < Number(getLastPrice(line.itemId)) ? (
-                                                                        `↓ Decreased by Rs. ${(Number(getLastPrice(line.itemId)) - Number(line.rate)).toLocaleString()}`
-                                                                    ) : (
-                                                                        "Unchanged"
-                                                                    )}
-                                                                </p>
-                                                            )}
                                                         </div>
                                                     )}
                                                 </div>
+                                                <div className="col-span-2 space-y-1">
+                                                    <label className="text-[8px] uppercase font-bold text-slate-400 ml-1 text-emerald-600">Total (Rs.)</label>
+                                                    <div className="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-lg text-sm font-bold text-slate-700 min-h-[38px] flex items-center">
+                                                        {line.qty && line.rate ? (Number(line.qty) * Number(line.rate)).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0.00'}
+                                                    </div>
+                                                </div>
                                                 <div className="col-span-1 flex justify-center pt-4">
-                                                    <button onClick={() => removeLine(idx)} className="p-2 text-slate-300 hover:text-red-500">
+                                                    <button onClick={() => removeLine(idx)} className="p-2 text-slate-300 hover:text-red-500 transition-colors">
                                                         <Plus className="rotate-45" size={20} />
                                                     </button>
                                                 </div>

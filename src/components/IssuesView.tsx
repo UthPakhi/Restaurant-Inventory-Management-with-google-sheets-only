@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Filter, Download, ArrowRightLeft, Utensils, Calendar, Package, Loader2 } from 'lucide-react';
+import { Plus, Search, Filter, Download, ArrowRightLeft, Utensils, Calendar, Package, Loader2, X, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { sheetsService } from '../services/sheetsService';
 import { motion, AnimatePresence } from 'motion/react';
 import { format } from 'date-fns';
@@ -11,6 +11,12 @@ export const IssuesView: React.FC = () => {
     const [depts, setDepts] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [isAdding, setIsAdding] = useState(false);
+    const [activeTab, setActiveTab] = useState<'form' | 'bulk'>('form');
+    const [bulkText, setBulkText] = useState('');
+    const [bulkPreview, setBulkPreview] = useState<any[] | null>(null);
+    const [bulkSummary, setBulkSummary] = useState<any | null>(null);
+    const [viewMode, setViewMode] = useState<'list' | 'pivot'>('list');
+    const [filters, setFilters] = useState({ dateFrom: '', dateTo: '', dept: '', itemSearch: '' });
 
     const [form, setForm] = useState({
         date: format(new Date(), 'yyyy-MM-dd'),
@@ -20,18 +26,21 @@ export const IssuesView: React.FC = () => {
 
     const [stockLevels, setStockLevels] = useState<{ [key: string]: number }>({});
 
+    const [batches, setBatches] = useState<any[]>([]);
+
     const fetchData = async () => {
         setLoading(true);
         try {
             const [iRows, itemRows, dRows, bRows] = await Promise.all([
-                sheetsService.read('Issues!A2:G'),
-                sheetsService.read('Masters_Items!A2:H'),
+                sheetsService.read('Issues!A2:H'),
+                sheetsService.read('Masters_Items!A2:J'),
                 sheetsService.read('Masters_Depts!A2:B'),
-                sheetsService.read('Batches!A2:G')
+                sheetsService.read('Batches!A2:H')
             ]);
             setIssues(iRows);
             setItems(itemRows);
             setDepts(dRows);
+            setBatches(bRows);
             
             // Calculate stock for all items
             const stocks: { [key: string]: number } = {};
@@ -52,8 +61,39 @@ export const IssuesView: React.FC = () => {
         fetchData();
     }, []);
 
-    const getItemName = (id: string) => items.find(i => i[0] === id)?.[1] || id;
-    const getDeptName = (id: string) => depts.find(d => d[0] === id)?.[1] || id;
+    const getItemName = (id: string) => {
+        const strId = String(id).trim();
+        const found = items.find(i => String(i[0]).trim() === strId)?.[1];
+        if (found) return found;
+        return strId.startsWith('ITM_') ? 'Deleted Item' : strId;
+    };
+    const getDeptName = (id: string) => {
+        const strId = String(id).trim();
+        const found = depts.find(d => String(d[0]).trim() === strId)?.[1];
+        if (found) return found;
+        return strId.startsWith('DPT_') ? 'Deleted Dept' : strId;
+    };
+
+    const calculateFIFOTotal = (itemId: string, qtyStr: string | number) => {
+        const qtyToIssue = parseFloat(String(qtyStr)) || 0;
+        if (qtyToIssue <= 0 || !itemId) return 0;
+        
+        const itemBatches = batches
+            .filter(b => b[1] === itemId && parseFloat(String(b[4]).replace(/,/g, '')) > 0)
+            .sort((a,b) => new Date(a[2]).getTime() - new Date(b[2]).getTime());
+            
+        let remQty = qtyToIssue;
+        let total = 0;
+        for (const b of itemBatches) {
+            if (remQty <= 0) break;
+            const bRQty = parseFloat(String(b[4]).replace(/,/g, '')) || 0;
+            const bRate = parseFloat(String(b[5]).replace(/,/g, '')) || 0;
+            const issueFromThis = Math.min(remQty, bRQty);
+            total += issueFromThis * bRate;
+            remQty -= issueFromThis;
+        }
+        return total;
+    };
 
     const filteredItems = items.filter(i => {
         if (!form.deptId) return true;
@@ -89,7 +129,9 @@ export const IssuesView: React.FC = () => {
         try {
             for (const line of validLines) {
                 const qty = Number(line.qty);
-                await sheetsService.issueFIFO(line.itemId, qty, form.date, form.deptId);
+                const itemName = getItemName(line.itemId);
+                const deptName = getDeptName(form.deptId);
+                await sheetsService.issueFIFO(line.itemId, qty, form.date, form.deptId, itemName, deptName);
             }
             
             setIsAdding(false);
@@ -107,6 +149,132 @@ export const IssuesView: React.FC = () => {
         }
     };
 
+    const handleBulkParse = () => {
+        const lines = bulkText.split('\n').filter(l => l.trim().length > 0);
+        const validLines = [];
+        const errors = [];
+
+        for (let i = 0; i < lines.length; i++) {
+            const row = lines[i].split('\t');
+            if (row.length < 4) {
+                errors.push(`Row ${i + 1}: Invalid format (expected 4 columns)`);
+                continue;
+            }
+            const [dateStr, deptNameStr, itemNameStr, qtyStr] = row;
+            
+            const foundDept = depts.find(d => String(d[1]).trim().toLowerCase() === String(deptNameStr).trim().toLowerCase());
+            if (!foundDept) {
+                errors.push(`Row ${i + 1}: Unknown Section "${deptNameStr}"`);
+                continue;
+            }
+
+            const foundItem = items.find(itm => String(itm[1]).trim().toLowerCase() === String(itemNameStr).trim().toLowerCase());
+            if (!foundItem) {
+                errors.push(`Row ${i + 1}: Unknown Item "${itemNameStr}"`);
+                continue;
+            }
+
+            const qty = parseFloat(qtyStr);
+            if (isNaN(qty) || qty <= 0) {
+                errors.push(`Row ${i + 1}: Invalid Quantity "${qtyStr}"`);
+                continue;
+            }
+            
+            let formattedDate;
+            try {
+                formattedDate = format(new Date(dateStr), 'yyyy-MM-dd');
+            } catch {
+                errors.push(`Row ${i + 1}: Invalid Date "${dateStr}"`);
+                continue;
+            }
+
+            validLines.push({
+                id: `line_${Date.now()}_${i}`,
+                date: formattedDate,
+                deptId: foundDept[0],
+                itemId: foundItem[0],
+                qty,
+                deptName: foundDept[1],
+                itemName: foundItem[1],
+                stock: stockLevels[foundItem[0]] || 0
+            });
+        }
+
+        if (errors.length > 0) {
+            alert(`Found ${errors.length} errors. Please fix them:\n` + errors.slice(0, 15).join('\n') + (errors.length > 15 ? '\n...' : ''));
+        }
+        
+        if (validLines.length > 0) {
+            setBulkPreview(validLines);
+        }
+    };
+
+    const submitBulkPreview = async () => {
+        setLoading(true);
+        let totalCost = 0;
+        const bySection: Record<string, number> = {};
+        let successCount = 0;
+        const failedLines = [];
+        
+        for (const line of bulkPreview!) {
+            if (line.qty <= 0) continue;
+            try {
+               const res = await sheetsService.issueFIFO(line.itemId, line.qty, line.date, line.deptId, line.itemName, line.deptName);
+               totalCost += res.totalCost;
+               bySection[line.deptName] = (bySection[line.deptName] || 0) + res.totalCost;
+               successCount++;
+            } catch(e: any) {
+               failedLines.push({...line, error: e.message || "Unknown error"});
+            }
+        }
+        
+        setLoading(false);
+        setBulkPreview(null);
+        setBulkSummary({
+            successCount,
+            failedLines,
+            totalCost,
+            bySection
+        });
+        setBulkText('');
+        fetchData();
+    };
+
+    const displayedIssues = [...issues].sort((a,b) => new Date(b[1]).getTime() - new Date(a[1]).getTime()).filter(row => {
+        const date = row[1];
+        const deptId = row[2];
+        const itemName = getItemName(row[3]).toLowerCase();
+        
+        if (filters.dateFrom && new Date(date) < new Date(filters.dateFrom)) return false;
+        if (filters.dateTo && new Date(date) > new Date(filters.dateTo)) return false;
+        if (filters.dept && deptId !== filters.dept) return false;
+        if (filters.itemSearch && !itemName.includes(filters.itemSearch.toLowerCase())) return false;
+        return true;
+    });
+
+    const pivotData = React.useMemo(() => {
+        const rows: Record<string, Record<string, number>> = {};
+        const cols = new Set<string>();
+        
+        displayedIssues.forEach(issue => {
+            const date = issue[1];
+            const deptName = getDeptName(issue[2]);
+            const qty = Number(String(issue[4]).replace(/,/g, '')) || 0;
+            const rate = Number(String(issue[5] || '0').replace(/,/g, '')) || 0;
+            const amount = qty * rate;
+            
+            if (!rows[date]) rows[date] = {};
+            rows[date][deptName] = (rows[date][deptName] || 0) + amount;
+            cols.add(deptName);
+        });
+        
+        return {
+            dates: Object.keys(rows).sort((a,b) => new Date(b).getTime() - new Date(a).getTime()),
+            cols: Array.from(cols).sort(),
+            data: rows
+        };
+    }, [displayedIssues, getDeptName]);
+
     return (
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -115,6 +283,10 @@ export const IssuesView: React.FC = () => {
                   <p className="text-sm text-slate-500">Record and track inventory usage by department.</p>
                 </div>
                 <div className="flex items-center gap-3">
+                  <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
+                      <button onClick={() => setViewMode('list')} className={cn("px-4 py-1.5 text-xs font-bold rounded-lg transition-all", viewMode === 'list' && "bg-white text-emerald-600 shadow-sm")}>List View</button>
+                      <button onClick={() => setViewMode('pivot')} className={cn("px-4 py-1.5 text-xs font-bold rounded-lg transition-all", viewMode === 'pivot' && "bg-white text-emerald-600 shadow-sm")}>Pivot View</button>
+                  </div>
                   <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium shadow-sm hover:bg-slate-50 transition-all">
                     <Download size={14} className="text-slate-500" />
                     Export
@@ -129,50 +301,133 @@ export const IssuesView: React.FC = () => {
             </div>
 
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+                <div className="p-4 border-b border-slate-200 bg-slate-50/50 flex flex-wrap gap-4 items-center">
+                    <div className="flex items-center gap-2">
+                        <Filter size={16} className="text-slate-400" />
+                        <span className="text-sm font-bold text-slate-600">Filters</span>
+                    </div>
+                    <input 
+                        type="date" 
+                        className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm"
+                        value={filters.dateFrom} onChange={e => setFilters({...filters, dateFrom: e.target.value})}
+                        aria-label="From Date"
+                    />
+                    <span className="text-slate-400 text-sm">to</span>
+                    <input 
+                        type="date" 
+                        className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm"
+                        value={filters.dateTo} onChange={e => setFilters({...filters, dateTo: e.target.value})}
+                        aria-label="To Date"
+                    />
+                    <select 
+                        className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm bg-white"
+                        value={filters.dept} onChange={e => setFilters({...filters, dept: e.target.value})}
+                    >
+                        <option value="">All Sections</option>
+                        {depts.map(d => <option key={d[0]} value={d[0]}>{d[1]}</option>)}
+                    </select>
+                    <div className="relative">
+                        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <input 
+                            type="text" 
+                            placeholder="Search item..." 
+                            className="pl-8 pr-4 py-1.5 border border-slate-200 rounded-lg text-sm w-48"
+                            value={filters.itemSearch} onChange={e => setFilters({...filters, itemSearch: e.target.value})}
+                        />
+                    </div>
+                </div>
                 <div className="overflow-x-auto min-h-[400px]">
-                    <table className="w-full text-left border-collapse">
-                        <thead className="bg-slate-50 text-[10px] uppercase tracking-wider text-slate-500 font-bold border-b border-slate-200">
-                            <tr>
-                                <th className="px-6 py-3">Date</th>
-                                <th className="px-6 py-3">Section / Dept</th>
-                                <th className="px-6 py-3">Item Details</th>
-                                <th className="px-6 py-3 text-right">Quantity Issued</th>
-                                <th className="px-6 py-3">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody className="text-xs divide-y divide-slate-100">
-                            {issues.length === 0 && !loading ? (
-                              <tr>
-                                <td colSpan={5} className="px-6 py-12 text-center text-slate-500 italic">No consumption logs found.</td>
-                              </tr>
-                            ) : (
-                              issues.map((row, i) => (
-                                  <tr key={i} className="hover:bg-slate-50/50 transition-colors">
-                                      <td className="px-6 py-4">
-                                         <div className="flex items-center gap-2 text-slate-500 font-medium">
-                                            <Calendar size={14} />
-                                            {row[1]}
-                                         </div>
-                                      </td>
-                                      <td className="px-6 py-4">
-                                         <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-[10px] font-bold uppercase tracking-tight">
-                                           {getDeptName(row[2])}
-                                         </span>
-                                      </td>
-                                      <td className="px-6 py-4 font-bold text-slate-900">{getItemName(row[3])}</td>
-                                      <td className="px-6 py-4 text-right font-bold text-slate-900 font-mono tracking-tighter">
-                                        {row[4]}
-                                      </td>
-                                      <td className="px-6 py-4">
-                                        <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full text-[10px] font-bold uppercase tracking-tight">
-                                          Synced
-                                        </span>
-                                      </td>
+                    {viewMode === 'list' ? (
+                        <table className="w-full text-left border-collapse">
+                            <thead className="bg-slate-50 text-[10px] uppercase tracking-wider text-slate-500 font-bold border-b border-slate-200">
+                                <tr>
+                                    <th className="px-6 py-3">Date</th>
+                                    <th className="px-6 py-3">Section / Dept</th>
+                                    <th className="px-6 py-3">Item Details</th>
+                                    <th className="px-6 py-3 text-right">Quantity Issued</th>
+                                    <th className="px-6 py-3 text-right">Total Amount (Rs)</th>
+                                    <th className="px-6 py-3">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody className="text-xs divide-y divide-slate-100">
+                                {displayedIssues.length === 0 && !loading ? (
+                                  <tr>
+                                    <td colSpan={6} className="px-6 py-12 text-center text-slate-500 italic">No consumption logs found.</td>
                                   </tr>
-                              ))
-                            )}
-                        </tbody>
-                    </table>
+                                ) : (
+                                  displayedIssues.map((row, i) => (
+                                      <tr key={i} className="hover:bg-slate-50/50 transition-colors">
+                                          <td className="px-6 py-4">
+                                             <div className="flex items-center gap-2 text-slate-500 font-medium">
+                                                <Calendar size={14} />
+                                                {row[1]}
+                                             </div>
+                                          </td>
+                                          <td className="px-6 py-4">
+                                             <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-[10px] font-bold uppercase tracking-tight">
+                                               {getDeptName(row[2])}
+                                             </span>
+                                          </td>
+                                          <td className="px-6 py-4 font-bold text-slate-900">{getItemName(row[3])}</td>
+                                          <td className="px-6 py-4 text-right font-bold text-slate-900 font-mono tracking-tighter">
+                                            {row[4]}
+                                          </td>
+                                          <td className="px-6 py-4 text-right font-bold text-slate-500 font-mono tracking-tighter">
+                                            {row[5] ? (Number(row[4]) * Number(row[5])).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits:2}) : '0.00'}
+                                          </td>
+                                          <td className="px-6 py-4">
+                                            <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full text-[10px] font-bold uppercase tracking-tight">
+                                              Synced
+                                            </span>
+                                          </td>
+                                      </tr>
+                                  ))
+                                )}
+                            </tbody>
+                        </table>
+                    ) : (
+                        <table className="w-full text-left border-collapse">
+                            <thead className="bg-slate-50 text-[10px] uppercase tracking-wider text-slate-500 font-bold border-b border-slate-200">
+                                <tr>
+                                    <th className="px-6 py-3 border-r border-slate-200">Date</th>
+                                    <th className="px-6 py-3 border-r border-slate-200">Day</th>
+                                    {pivotData.cols.map(col => (
+                                        <th key={col} className="px-6 py-3 text-right">{col}</th>
+                                    ))}
+                                    <th className="px-6 py-3 text-right text-emerald-700 bg-emerald-50">TOTAL</th>
+                                </tr>
+                            </thead>
+                            <tbody className="text-xs divide-y divide-slate-100">
+                                {pivotData.dates.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={pivotData.cols.length + 3} className="px-6 py-12 text-center text-slate-500 italic">No consumption logs found.</td>
+                                    </tr>
+                                ) : (
+                                    pivotData.dates.map(date => {
+                                        let rowTotal = 0;
+                                        return (
+                                            <tr key={date} className="hover:bg-slate-50/50 transition-colors">
+                                                <td className="px-6 py-4 font-mono font-bold text-slate-600 border-r border-slate-100">{date}</td>
+                                                <td className="px-6 py-4 font-medium text-slate-500 border-r border-slate-100">{format(new Date(date), 'EEE')}</td>
+                                                {pivotData.cols.map(col => {
+                                                    const val = pivotData.data[date][col] || 0;
+                                                    rowTotal += val;
+                                                    return (
+                                                        <td key={col} className="px-6 py-4 text-right font-mono text-slate-700">
+                                                            {val > 0 ? val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}
+                                                        </td>
+                                                    );
+                                                })}
+                                                <td className="px-6 py-4 text-right font-mono font-bold text-emerald-700 bg-emerald-50/50">
+                                                    {rowTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
+                                )}
+                            </tbody>
+                        </table>
+                    )}
                 </div>
             </div>
 
@@ -194,84 +449,308 @@ export const IssuesView: React.FC = () => {
                                   <Plus className="rotate-45" size={24} />
                                 </button>
                             </div>
-                            <div className="p-6 space-y-6 overflow-y-auto max-h-[70vh]">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-1.5">
-                                        <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Date</label>
-                                        <div className="relative">
-                                          <Calendar size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                                          <input type="date" className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all" 
-                                              value={form.date} onChange={e => setForm({...form, date: e.target.value})}
-                                          />
-                                        </div>
-                                    </div>
-                                    <div className="space-y-1.5">
-                                        <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Department / Section</label>
-                                        <div className="relative">
-                                          <Utensils size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                                          <select className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none appearance-none bg-no-repeat transition-all"
-                                              style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%23a1a1aa\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\' /%3E%3C/svg%3E")', backgroundPosition: 'right 0.75rem center', backgroundSize: '1rem' }}
-                                              value={form.deptId} onChange={e => setForm({...form, deptId: e.target.value})}
-                                          >
-                                              <option value="">-- Select Section --</option>
-                                              {depts.map(d => <option key={d[0]} value={d[0]}>{d[1]}</option>)}
-                                          </select>
-                                        </div>
-                                    </div>
-                                </div>
 
-                                <div className="space-y-4">
-                                    <div className="flex justify-between items-center">
-                                        <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider text-emerald-600">Line Items</label>
-                                        <button onClick={addLine} disabled={form.lines.length >= 10} className="text-xs font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1 bg-emerald-50 px-2 py-1 rounded">
-                                            <Plus size={12} /> Add Item
+                            <div className="px-6 pt-4 border-b border-slate-100 flex gap-4">
+                                <button 
+                                    onClick={() => setActiveTab('form')}
+                                    className={cn("pb-3 text-sm font-bold border-b-2 transition-all", activeTab === 'form' ? "border-emerald-500 text-emerald-600" : "border-transparent text-slate-400 hover:text-slate-600")}
+                                >
+                                    Manual Entry
+                                </button>
+                                <button 
+                                    onClick={() => setActiveTab('bulk')}
+                                    className={cn("pb-3 text-sm font-bold border-b-2 transition-all", activeTab === 'bulk' ? "border-emerald-500 text-emerald-600" : "border-transparent text-slate-400 hover:text-slate-600")}
+                                >
+                                    Bulk Import (Text)
+                                </button>
+                            </div>
+
+                            {activeTab === 'form' ? (
+                                <>
+                                    <div className="p-6 space-y-6 overflow-y-auto max-h-[60vh]">
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-1.5">
+                                                <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Date</label>
+                                                <div className="relative">
+                                                  <Calendar size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                                  <input type="date" className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all" 
+                                                      value={form.date} onChange={e => setForm({...form, date: e.target.value})}
+                                                  />
+                                                </div>
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Department / Section</label>
+                                                <div className="relative">
+                                                  <Utensils size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                                  <select className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none appearance-none bg-no-repeat transition-all"
+                                                      style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%23a1a1aa\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\' /%3E%3C/svg%3E")', backgroundPosition: 'right 0.75rem center', backgroundSize: '1rem' }}
+                                                      value={form.deptId} onChange={e => setForm({...form, deptId: e.target.value})}
+                                                  >
+                                                      <option value="">-- Select Section --</option>
+                                                      {depts.map(d => <option key={d[0]} value={d[0]}>{d[1]}</option>)}
+                                                  </select>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-4">
+                                            <div className="flex justify-between items-center">
+                                                <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider text-emerald-600">Line Items</label>
+                                                <button onClick={addLine} disabled={form.lines.length >= 10} className="text-xs font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1 bg-emerald-50 px-2 py-1 rounded">
+                                                    <Plus size={12} /> Add Item
+                                                </button>
+                                            </div>
+                                            <div className="space-y-3">
+                                                {form.lines.map((line, idx) => (
+                                                    <div key={idx} className="grid grid-cols-12 gap-3 items-start animate-in slide-in-from-left-2 duration-200">
+                                                        <div className="col-span-6 space-y-1">
+                                                            <select className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all"
+                                                                value={line.itemId} onChange={e => updateLine(idx, 'itemId', e.target.value)}
+                                                            >
+                                                                <option value="">-- Choose Item --</option>
+                                                                {filteredItems.map(i => <option key={i[0]} value={i[0]}>{i[1]}</option>)}
+                                                            </select>
+                                                            {line.itemId && (
+                                                                <div className="flex justify-between px-1">
+                                                                    <span className="text-[8px] font-bold text-slate-400 italic">
+                                                                        Stock: {(stockLevels[line.itemId] || 0).toFixed(2)}
+                                                                    </span>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        <div className="col-span-3">
+                                                            <input type="number" 
+                                                                className={cn(
+                                                                    "w-full px-3 py-2 bg-slate-50 border rounded-lg text-sm focus:ring-2 focus:outline-none transition-all",
+                                                                    line.qty && stockLevels[line.itemId] !== undefined && Number(line.qty) > stockLevels[line.itemId]
+                                                                        ? "border-red-500 focus:ring-red-500/20"
+                                                                        : "border-slate-200 focus:ring-emerald-500/20"
+                                                                )}
+                                                                placeholder="Qty"
+                                                                value={line.qty} onChange={e => updateLine(idx, 'qty', e.target.value)}
+                                                            />
+                                                        </div>
+                                                        <div className="col-span-2 pt-2 text-right">
+                                                            {line.itemId && line.qty ? (
+                                                                <div className="text-xs font-bold text-slate-600">
+                                                                    Rs {(calculateFIFOTotal(line.itemId, line.qty) || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits:2})}
+                                                                </div>
+                                                            ) : null}
+                                                        </div>
+                                                        <div className="col-span-1 text-center">
+                                                            <button onClick={() => removeLine(idx)} className="p-2 text-slate-300 hover:text-red-500 mt-0.5">
+                                                                <Plus className="rotate-45" size={18} />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="p-6 bg-slate-50 border-t border-slate-100">
+                                        <button
+                                            onClick={handleSubmit} 
+                                            disabled={loading || !form.deptId || form.lines.some(l => !l.itemId || !l.qty || (stockLevels[l.itemId] !== undefined && Number(l.qty) > stockLevels[l.itemId]))}
+                                            className="w-full py-3 bg-emerald-600 text-white rounded-lg font-bold shadow-lg shadow-emerald-600/20 flex items-center justify-center transition-all hover:bg-emerald-700 disabled:bg-slate-400"
+                                        >
+                                            {loading ? <Loader2 size={20} className="animate-spin" /> : `Post ${form.lines.filter(l => l.itemId && l.qty).length} Items`}
                                         </button>
                                     </div>
-                                    <div className="space-y-3">
-                                        {form.lines.map((line, idx) => (
-                                            <div key={idx} className="flex gap-3 items-start animate-in slide-in-from-left-2 duration-200">
-                                                <div className="flex-1 space-y-1">
-                                                    <select className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all"
-                                                        value={line.itemId} onChange={e => updateLine(idx, 'itemId', e.target.value)}
-                                                    >
-                                                        <option value="">-- Choose Item --</option>
-                                                        {filteredItems.map(i => <option key={i[0]} value={i[0]}>{i[1]}</option>)}
-                                                    </select>
-                                                    {line.itemId && (
-                                                        <div className="flex justify-between px-1">
-                                                            <span className="text-[8px] font-bold text-slate-400 italic">
-                                                                Stock: {(stockLevels[line.itemId] || 0).toFixed(2)}
-                                                            </span>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                                <div className="w-24">
-                                                    <input type="number" 
-                                                        className={cn(
-                                                            "w-full px-3 py-2 bg-slate-50 border rounded-lg text-sm focus:ring-2 focus:outline-none transition-all",
-                                                            line.qty && stockLevels[line.itemId] !== undefined && Number(line.qty) > stockLevels[line.itemId]
-                                                                ? "border-red-500 focus:ring-red-500/20"
-                                                                : "border-slate-200 focus:ring-emerald-500/20"
-                                                        )}
-                                                        placeholder="Qty"
-                                                        value={line.qty} onChange={e => updateLine(idx, 'qty', e.target.value)}
-                                                    />
-                                                </div>
-                                                <button onClick={() => removeLine(idx)} className="p-2 text-slate-300 hover:text-red-500 mt-0.5">
-                                                    <Plus className="rotate-45" size={18} />
-                                                </button>
+                                </>
+                            ) : (
+                                <>
+                                    <div className="p-6 space-y-4">
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Paste Text (TSV Format)</label>
+                                            <p className="text-xs text-slate-500">Format strictly: <code className="bg-slate-100 px-1 py-0.5 rounded text-slate-700">Date [tab] Section/Dept [tab] Item Name [tab] Qty</code></p>
+                                            <textarea 
+                                                className="w-full h-48 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all whitespace-pre"
+                                                placeholder="5/1/2026&#9;Handi&#9;Oil Talo&#9;1&#10;5/1/2026&#9;Pizza&#9;Macaroni&#9;2"
+                                                value={bulkText} onChange={e => setBulkText(e.target.value)}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="p-6 bg-slate-50 border-t border-slate-100">
+                                        <button
+                                            onClick={handleBulkParse} 
+                                            disabled={loading || !bulkText.trim()}
+                                            className="w-full py-3 bg-emerald-600 text-white rounded-lg font-bold shadow-lg shadow-emerald-600/20 flex items-center justify-center transition-all hover:bg-emerald-700 disabled:bg-slate-400"
+                                        >
+                                            {loading ? <Loader2 size={20} className="animate-spin" /> : `Process Bulk Import`}
+                                        </button>
+                                    </div>
+                                </>
+                            )}
+                        </motion.div>
+                    </div>
+                )}
+                
+                {bulkPreview && (
+                    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                        <motion.div 
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            className="bg-white rounded-xl shadow-xl w-full max-w-4xl flex flex-col max-h-[90vh]"
+                        >
+                            <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+                                <div>
+                                    <h3 className="font-bold text-slate-900 text-lg">Confirm Bulk Issue</h3>
+                                    <p className="text-sm text-slate-500">Review {bulkPreview.length} item(s) before submitting.</p>
+                                </div>
+                                <button onClick={() => setBulkPreview(null)} className="p-2 text-slate-400 hover:bg-slate-100 rounded-full transition-colors">
+                                    <X size={20} />
+                                </button>
+                            </div>
+                            <div className="flex-1 overflow-auto p-4 bg-slate-50/50">
+                                <table className="w-full text-sm text-left">
+                                    <thead className="text-[10px] uppercase font-bold tracking-wider text-slate-500 bg-slate-50">
+                                        <tr>
+                                            <th className="px-4 py-3 rounded-tl-lg">Date</th>
+                                            <th className="px-4 py-3">Section</th>
+                                            <th className="px-4 py-3">Item</th>
+                                            <th className="px-4 py-3 text-right">Stock</th>
+                                            <th className="px-4 py-3 w-32 border-x whitespace-nowrap bg-white text-center">Issue Qty</th>
+                                            <th className="px-4 py-3 text-right">Est. Total (Rs)</th>
+                                            <th className="px-4 py-3 w-10 rounded-tr-lg"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100 bg-white">
+                                        {(() => {
+                                            const itemTotals: Record<string, number> = {};
+                                            bulkPreview.forEach(l => {
+                                                itemTotals[l.itemId] = (itemTotals[l.itemId] || 0) + (parseFloat(l.qty) || 0);
+                                            });
+                                            const hasGlobalError = bulkPreview.some(l => itemTotals[l.itemId] > l.stock);
+
+                                            return bulkPreview.map((line, idx) => {
+                                                const hasError = itemTotals[line.itemId] > line.stock;
+                                                return (
+                                                    <tr key={line.id} className={cn(hasError && "bg-red-50/50")}>
+                                                        <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{line.date}</td>
+                                                        <td className="px-4 py-3 font-semibold text-indigo-600 whitespace-nowrap">{line.deptName}</td>
+                                                        <td className="px-4 py-3 text-slate-900 font-medium">{line.itemName}</td>
+                                                        <td className="px-4 py-3 text-right text-slate-500">{line.stock.toFixed(2)}</td>
+                                                        <td className="p-0 border-x relative">
+                                                            <input 
+                                                                type="number" 
+                                                                className={cn("w-full h-full px-4 py-3 text-center focus:outline-none focus:ring-2 focus:ring-inset font-bold", hasError ? "text-red-600 focus:ring-red-500 bg-red-50/30" : "focus:ring-emerald-500")}
+                                                                value={line.qty} 
+                                                                onChange={e => {
+                                                                    const newPreview = [...bulkPreview];
+                                                                    newPreview[idx].qty = parseFloat(e.target.value) || 0;
+                                                                    setBulkPreview(newPreview);
+                                                                }}
+                                                            />
+                                                        </td>
+                                                        <td className="px-4 py-3 text-right font-bold text-slate-700">
+                                                            {line.qty ? (calculateFIFOTotal(line.itemId, line.qty) || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits:2}) : '-'}
+                                                        </td>
+                                                        <td className="px-4 py-2 text-center">
+                                                            <button 
+                                                                onClick={() => setBulkPreview(bulkPreview.filter(l => l.id !== line.id))}
+                                                                className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors"
+                                                                title="Remove Item"
+                                                            >
+                                                                <X size={16} />
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            });
+                                        })()}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div className="p-6 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
+                                <div className="text-sm font-medium">
+                                    {(() => {
+                                        const itemTotals: Record<string, number> = {};
+                                        bulkPreview.forEach(l => {
+                                            itemTotals[l.itemId] = (itemTotals[l.itemId] || 0) + (parseFloat(l.qty as string) || 0);
+                                        });
+                                        const hasGlobalError = bulkPreview.some(l => itemTotals[l.itemId] > l.stock);
+                                        return hasGlobalError ? (
+                                            <span className="text-red-600 flex items-center gap-1"><AlertTriangle size={16}/> Warning: Some items cumulatively exceed available stock.</span>
+                                        ) : (
+                                            <span className="text-emerald-600 flex items-center gap-1"><CheckCircle2 size={16}/> All items have sufficient stock.</span>
+                                        );
+                                    })()}
+                                </div>
+                                <div className="flex gap-3">
+                                    <button onClick={() => setBulkPreview(null)} className="px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-200 rounded-lg transition-colors">
+                                        Cancel
+                                    </button>
+                                    <button 
+                                        onClick={submitBulkPreview}
+                                        disabled={loading || bulkPreview.length === 0 || (() => {
+                                            const itemTotals: Record<string, number> = {};
+                                            bulkPreview.forEach(l => {
+                                                itemTotals[l.itemId] = (itemTotals[l.itemId] || 0) + (parseFloat(l.qty as string) || 0);
+                                            });
+                                            return bulkPreview.some(l => itemTotals[l.itemId] > l.stock);
+                                        })()}
+                                        className="px-6 py-2 bg-emerald-600 text-white text-sm font-bold rounded-lg shadow-lg shadow-emerald-500/20 hover:bg-emerald-700 transition-all disabled:opacity-50 flex items-center gap-2"
+                                    >
+                                        {loading ? <Loader2 size={16} className="animate-spin" /> : 'Confirm & Issue'}
+                                    </button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+
+                {bulkSummary && (
+                    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                        <motion.div 
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            className="bg-white rounded-xl shadow-xl w-full max-w-md flex flex-col"
+                        >
+                            <div className="p-6 border-b border-slate-100 flex items-center gap-3">
+                                <div className="p-2 bg-emerald-100 rounded-full text-emerald-600">
+                                    <CheckCircle2 size={24} />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-slate-900 text-lg">Import Complete</h3>
+                                    <p className="text-sm text-slate-500">Successfully issued {bulkSummary.successCount} items.</p>
+                                </div>
+                            </div>
+                            <div className="p-6 space-y-4">
+                                <div>
+                                    <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1">Total Worth Issued</p>
+                                    <p className="text-2xl font-bold text-slate-900 text-emerald-600">Rs {bulkSummary.totalCost.toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
+                                </div>
+                                <div className="pt-4 border-t border-slate-100">
+                                    <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-3">Issued By Section</p>
+                                    <div className="space-y-2">
+                                        {Object.entries(bulkSummary.bySection).map(([dept, cost]) => (
+                                            <div key={dept} className="flex justify-between items-center text-sm">
+                                                <span className="font-medium text-slate-700">{dept}</span>
+                                                <span className="font-bold text-slate-900">Rs {(cost as number).toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                                             </div>
                                         ))}
                                     </div>
                                 </div>
+
+                                {bulkSummary.failedLines.length > 0 && (
+                                    <div className="pt-4 border-t border-slate-100">
+                                        <p className="text-[10px] uppercase font-bold text-red-500 tracking-wider mb-2 flex items-center gap-1"><AlertTriangle size={12}/> Failed to Issue ({bulkSummary.failedLines.length})</p>
+                                        <div className="max-h-32 overflow-y-auto space-y-1 text-xs">
+                                            {bulkSummary.failedLines.map((l: any, i: number) => (
+                                                <div key={i} className="text-red-700 bg-red-50 p-2 rounded">
+                                                    <strong>{l.itemName}</strong>: {l.error}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
-                            <div className="p-6 bg-slate-50 border-t border-slate-100">
-                                <button
-                                    onClick={handleSubmit} 
-                                    disabled={loading || !form.deptId || form.lines.some(l => !l.itemId || !l.qty || (stockLevels[l.itemId] !== undefined && Number(l.qty) > stockLevels[l.itemId]))}
-                                    className="w-full py-3 bg-emerald-600 text-white rounded-lg font-bold shadow-lg shadow-emerald-600/20 flex items-center justify-center transition-all hover:bg-emerald-700 disabled:bg-slate-400"
+                            <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
+                                <button 
+                                    onClick={() => setBulkSummary(null)}
+                                    className="px-6 py-2 bg-slate-900 text-white text-sm font-bold rounded-lg shadow-lg hover:bg-slate-800 transition-all"
                                 >
-                                    {loading ? <Loader2 size={20} className="animate-spin" /> : `Post ${form.lines.filter(l => l.itemId && l.qty).length} Items`}
+                                    Done
                                 </button>
                             </div>
                         </motion.div>

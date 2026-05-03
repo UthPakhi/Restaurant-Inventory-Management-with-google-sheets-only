@@ -98,16 +98,21 @@ export const SummaryView: React.FC = () => {
         const monthFiltered = filtered.filter(i => i[1] && i[1].startsWith(selectedMonth));
         
         const aggregated = monthFiltered.reduce((acc: any, curr: any) => {
-            const itemName = items.find(it => it[0] === curr[3])?.[1] || curr[3];
+            const itemId = String(curr[3]).trim();
+            const itemName = items.find(it => String(it[0]).trim() === itemId)?.[1] || itemId;
             const qty = parseNum(curr[4]);
             const rate = parseNum(curr[5]);
             const val = qty * rate;
-            acc[itemName] = (acc[itemName] || 0) + val;
+            
+            if (!acc[itemName]) acc[itemName] = { value: 0, qty: 0 };
+            acc[itemName].value += val;
+            acc[itemName].qty += qty;
+            
             return acc;
         }, {});
 
         return Object.entries(aggregated)
-            .map(([name, value]) => ({ name, value: Number(value) }))
+            .map(([name, data]: [string, any]) => ({ name, value: Number(data.value), qty: Number(data.qty) }))
             .sort((a, b) => b.value - a.value)
             .slice(0, topN);
     };
@@ -531,7 +536,19 @@ export const SummaryView: React.FC = () => {
                                 />
                                 <Tooltip 
                                     cursor={{ fill: '#f8fafc' }}
-                                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSize: '12px' }}
+                                    content={({ active, payload }) => {
+                                        if (active && payload && payload.length) {
+                                            const data = payload[0].payload;
+                                            return (
+                                                <div className="bg-white p-3 rounded-xl shadow-lg border border-slate-100 text-xs">
+                                                    <p className="font-bold text-slate-800 mb-1">{data.name}</p>
+                                                    <p className="text-slate-600 font-medium pb-0.5">Value: <span className="text-emerald-600 font-bold font-mono">Rs. {data.value.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span></p>
+                                                    <p className="text-slate-600 font-medium">Quantity: <span className="text-slate-800 font-bold font-mono">{data.qty.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span></p>
+                                                </div>
+                                            );
+                                        }
+                                        return null;
+                                    }}
                                 />
                                 <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={20}>
                                     {deptChartData.map((_entry, index) => (

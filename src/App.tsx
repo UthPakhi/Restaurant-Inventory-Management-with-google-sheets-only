@@ -1,0 +1,283 @@
+import { useState, useEffect } from 'react';
+import { 
+  BarChart3, 
+  ShoppingCart, 
+  Package, 
+  LogOut, 
+  Settings, 
+  LayoutDashboard, 
+  ArrowRightLeft,
+  Menu,
+  Plus,
+  BookOpen,
+  History,
+  Activity
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { cn } from './lib/utils';
+import { format } from 'date-fns';
+
+import { SetupWizard } from './components/SetupWizard';
+import { InventoryView } from './components/InventoryView';
+import { PurchasesView } from './components/PurchasesView';
+import { IssuesView } from './components/IssuesView';
+import { MastersView } from './components/MastersView';
+import { SummaryView } from './components/SummaryView';
+import { SettingsView } from './components/SettingsView';
+import { RecipesView } from './components/RecipesView';
+import { VarianceReportView } from './components/VarianceReportView';
+import { AuditLogsView } from './components/AuditLogsView';
+import { VendorLedgerView } from './components/VendorLedgerView';
+import { sheetsService, GoogleTokens } from './services/sheetsService';
+
+// Types
+type View = 'summary' | 'variance' | 'inventory' | 'purchases' | 'issues' | 'cashflow' | 'sales' | 'recipes' | 'masters' | 'settings' | 'audit' | 'ledger';
+
+export default function App() {
+  const [activeView, setActiveView] = useState<View>('summary');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 1024);
+  const [user, setUser] = useState<{ email: string; name: string } | null>(null);
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [appData, setAppData] = useState<{ tokens: GoogleTokens; spreadsheetId: string } | null>(null);
+  const [branding, setBranding] = useState<{ name: string; logoUrl: string }>({ name: 'RestoManage', logoUrl: '' });
+
+  // Initialize from LocalStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('resto_manage_data');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setAppData(parsed);
+
+        const loadBranding = () => {
+          const bSaved = localStorage.getItem(`resto_branding_${parsed.spreadsheetId}`);
+          if (bSaved) {
+            try {
+              const bParsed = JSON.parse(bSaved);
+              setBranding({
+                name: bParsed.restaurantName || 'RestoManage',
+                logoUrl: bParsed.logoUrl || ''
+              });
+            } catch (e) {}
+          }
+        };
+        loadBranding();
+        window.addEventListener('branding-changed', loadBranding);
+
+        if (parsed.spreadsheetId === 'demo-mode') {
+          sheetsService.setDemoMode(true);
+          setUser({ email: 'demo@example.com', name: 'Demo User' });
+        } else {
+          sheetsService.setTokens(parsed.tokens);
+          sheetsService.setSpreadsheetId(parsed.spreadsheetId);
+          fetchUserProfile(parsed.tokens);
+        }
+        setIsInitialized(true);
+      } catch (e) {
+        console.error("Failed to parse saved data", e);
+      }
+    }
+  }, []);
+
+  const fetchUserProfile = async (tokens: GoogleTokens) => {
+    if (!tokens.access_token) return;
+    try {
+      const res = await fetch("/api/auth/me", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tokens }),
+      });
+      const data = await res.json();
+      if (data.email) {
+        setUser({ email: data.email, name: data.name || data.given_name || "User" });
+      }
+    } catch (e) {
+      console.error("Failed to fetch user profile", e);
+    }
+  };
+
+  const handleSetupComplete = (data: { tokens: GoogleTokens; spreadsheetId: string }) => {
+    setAppData(data);
+    localStorage.setItem('resto_manage_data', JSON.stringify(data));
+    setIsInitialized(true);
+    if (data.spreadsheetId === 'demo-mode') {
+      setUser({ email: 'demo@example.com', name: 'Demo User' });
+    } else {
+      fetchUserProfile(data.tokens);
+    }
+  };
+
+  const navItems = [
+    { id: 'summary', label: 'Summary / Analytics', icon: BarChart3 },
+    { id: 'variance', label: 'Variance Report', icon: BarChart3 },
+    { id: 'inventory', label: 'Stock Status', icon: Package },
+    { id: 'purchases', label: 'Purchases', icon: ShoppingCart },
+    { id: 'issues', label: 'Issues', icon: ArrowRightLeft },
+    { id: 'recipes', label: 'Recipe BOM', icon: Activity },
+    { id: 'ledger', label: 'Vendor Ledger', icon: BookOpen },
+    { id: 'masters', label: 'Setup Masters', icon: Settings },
+    { id: 'audit', label: 'Audit Logs', icon: History },
+    { id: 'settings', label: 'App Settings', icon: Settings },
+  ];
+
+  if (!isInitialized) {
+    return <SetupWizard onComplete={handleSetupComplete} />;
+  }
+
+  return (
+    <div className={cn(
+      "flex h-screen w-full bg-slate-50 text-slate-900 overflow-hidden font-sans transition-colors duration-300",
+      isDarkMode && "bg-slate-950 text-slate-100 dark"
+    )}>
+      {isSidebarOpen && (
+        <div 
+           className="fixed inset-0 bg-slate-900/50 z-40 lg:hidden"
+           onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+      {/* Sidebar */}
+      <aside className={cn(
+        "fixed lg:relative z-50 h-full w-64 bg-slate-900 text-white flex flex-col transition-transform duration-300 shrink-0",
+        !isSidebarOpen && "-translate-x-full lg:translate-x-0 lg:w-20",
+        isDarkMode && "bg-slate-950 border-r border-slate-800"
+      )}>
+        <div className="p-6 flex items-center gap-3">
+          {branding.logoUrl ? (
+            <img src={branding.logoUrl} alt="Logo" className="w-8 h-8 rounded-lg object-cover shrink-0 bg-white" />
+          ) : (
+            <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center font-bold text-slate-900 shrink-0">
+              {branding.name.charAt(0).toUpperCase()}
+            </div>
+          )}
+          {isSidebarOpen && (
+            <motion.span 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }}
+              className="text-xl font-bold tracking-tight truncate"
+            >
+              {branding.name}
+            </motion.span>
+          )}
+        </div>
+
+        <nav className="flex-1 px-4 space-y-1 overflow-y-auto font-sans">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = activeView === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => {
+                   setActiveView(item.id as View);
+                   if (window.innerWidth < 1024) {
+                     setIsSidebarOpen(false);
+                   }
+                }}
+                className={cn(
+                  "w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-bold transition-all duration-200 group text-left",
+                  isActive 
+                    ? "bg-emerald-500/10 text-emerald-400" 
+                    : "text-slate-400 hover:text-white hover:bg-slate-800",
+                )}
+              >
+                <Icon size={18} className={cn(
+                  "shrink-0",
+                  isActive ? "text-emerald-400" : "text-slate-500 group-hover:text-white"
+                )} />
+                {isSidebarOpen && <span className="uppercase tracking-tight text-[11px]">{item.label}</span>}
+              </button>
+            );
+          })}
+        </nav>
+
+        <div className="p-4 mt-auto border-t border-slate-800">
+           {isInitialized && isSidebarOpen && (
+             <div className="mb-4 p-3 bg-slate-800/50 rounded-lg border border-slate-700/50">
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Sheet ID</p>
+                <p className="text-[9px] text-emerald-500 font-mono truncate">{appData?.spreadsheetId}</p>
+             </div>
+           )}
+          <div className="flex items-center gap-3 p-2 rounded-lg bg-slate-800/50 group">
+            <div className="w-8 h-8 rounded bg-orange-400 flex items-center justify-center text-xs font-bold shrink-0">
+              {user?.name.slice(0, 2) || "AD"}
+            </div>
+            {isSidebarOpen && (
+              <div className="flex-1 overflow-hidden">
+                <p className="text-xs font-semibold truncate">{user?.name}</p>
+                <p className="text-[10px] text-slate-500 truncate lowercase">{user?.email}</p>
+              </div>
+            )}
+            <button 
+                onClick={() => { localStorage.clear(); window.location.reload(); }}
+                className="text-slate-500 hover:text-red-400 transition-colors ml-auto"
+            >
+              <LogOut size={14} />
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <main className="flex-1 flex flex-col h-full overflow-hidden">
+        {/* Header */}
+        <header className={cn(
+          "h-16 px-6 flex items-center justify-between shrink-0 border-b border-slate-200 bg-white shadow-sm",
+          isDarkMode && "bg-slate-900 border-slate-800"
+        )}>
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              className="p-2 hover:bg-slate-100 rounded-lg"
+            >
+              <Menu size={20} className="text-slate-500" />
+            </button>
+            <div>
+              <h1 className="text-lg font-bold tracking-tight capitalize leading-none mb-0.5">{activeView.replace('-', ' ')}</h1>
+              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Operations Hub v1.0</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 text-slate-900">
+             <button
+               onClick={() => setIsDarkMode(!isDarkMode)}
+               className="p-2 rounded-lg bg-slate-50 border border-slate-100 hover:bg-slate-100 transition-all font-bold"
+             >
+               {isDarkMode ? "☀️" : "🌙"}
+             </button>
+             <button className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-lg shadow-emerald-500/20 hover:bg-emerald-700 transition-all flex items-center gap-2">
+               <Plus size={16} />
+               Record Entry
+             </button>
+          </div>
+        </header>
+
+        <section className="flex-1 overflow-y-auto p-6 scroll-smooth">
+          <div className="max-w-6xl mx-auto h-full">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeView}
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.98 }}
+                transition={{ duration: 0.2 }}
+                className="h-full"
+              >
+                {activeView === 'summary' && <SummaryView />}
+                {activeView === 'variance' && <VarianceReportView />}
+                {activeView === 'inventory' && <InventoryView />}
+                {activeView === 'purchases' && <PurchasesView />}
+                {activeView === 'issues' && <IssuesView />}
+                {activeView === 'recipes' && <RecipesView />}
+                {activeView === 'ledger' && <VendorLedgerView />}
+                {activeView === 'masters' && <MastersView />}
+                {activeView === 'audit' && <AuditLogsView />}
+                {activeView === 'settings' && <SettingsView />}
+              </motion.div>
+            </AnimatePresence>
+          </div>
+        </section>
+      </main>
+    </div>
+  );
+}

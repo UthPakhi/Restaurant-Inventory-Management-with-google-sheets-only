@@ -206,28 +206,46 @@ export class SheetsService {
 
   // ====== Data Abstraction Methods ======
 
+  private async getWithFallback(range: string, localTableName: 'masters_items' | 'masters_depts' | 'masters_suppliers' | 'batches' | 'issues' | 'purchases'): Promise<any[][]> {
+      try {
+          if (typeof navigator !== 'undefined' && !navigator.onLine) {
+              const localDb = (await import('./localDb')).localDb;
+              const cached = await localDb.getTable(localTableName);
+              if (cached) return cached;
+          }
+          const data = await this.read(range);
+          import('./localDb').then(m => m.localDb.setTable(localTableName, data)).catch(console.error);
+          return data;
+      } catch (err) {
+          const localDb = (await import('./localDb')).localDb;
+          const cached = await localDb.getTable(localTableName);
+          if (cached) return cached;
+          throw err;
+      }
+  }
+
   async getAllItems(): Promise<any[][]> {
-      return await this.read('Masters_Items!A2:J');
+      return this.getWithFallback('Masters_Items!A2:J', 'masters_items');
   }
 
   async getAllDepartments(): Promise<any[][]> {
-      return await this.read('Masters_Depts!A2:B');
+      return this.getWithFallback('Masters_Depts!A2:B', 'masters_depts');
   }
 
   async getAllSuppliers(): Promise<any[][]> {
-      return await this.read('Masters_Suppliers!A2:C');
+      return this.getWithFallback('Masters_Suppliers!A2:C', 'masters_suppliers');
   }
 
   async getAllBatches(): Promise<any[][]> {
-      return await this.read('Batches!A2:H');
+      return this.getWithFallback('Batches!A2:H', 'batches');
   }
 
   async getAllIssues(): Promise<any[][]> {
-      return await this.read('Issues!A2:G');
+      return this.getWithFallback('Issues!A2:G', 'issues');
   }
 
   async getAllPurchases(): Promise<any[][]> {
-      return await this.read('Purchases!A2:I');
+      return this.getWithFallback('Purchases!A2:I', 'purchases');
   }
 
   async logAudit(userEmail: string, action: string, sheetName: string, details: string) {

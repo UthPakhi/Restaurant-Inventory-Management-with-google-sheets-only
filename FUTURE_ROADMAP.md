@@ -10,7 +10,7 @@ This document outlines the strategic progression of the TC Inventory Management 
 ## 📋 Phase 1: Foundational Enhancements (Basic)
 *Target: Improve Quality of Life, Speed, and Usability.*
 
-- [ ] **Offline-First Mode via Service Workers (PWA)**
+- [x] **Offline-First Mode via Service Workers (PWA)**
   - *Implementation:* Integrate `vite-plugin-pwa`. Cache the React app shell. Use IndexedDB (via `idb`) to locally store Google Sheets data reads. Allow offline caching of Masters and Inventory so the floor manager can view stock when internet is spotty.
   - *🤖 LLM Execution Plan:*
     1. **Install Dependencies:** Add `vite-plugin-pwa` and `idb` to the project.

@@ -338,10 +338,10 @@ export const SummaryView: React.FC = () => {
     return (
         <div className="space-y-6 pb-20">
             {/* Header & Filters */}
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm dark:bg-slate-900 dark:border-slate-800">
                 <div>
-                    <h2 className="text-2xl font-bold tracking-tight text-slate-900">Operations Analytics</h2>
-                    <p className="text-sm text-slate-500">Deep-dive into consumption patterns and costing.</p>
+                    <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Operations Analytics</h2>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">Deep-dive into consumption patterns and costing.</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
                     <button 
@@ -366,7 +366,7 @@ export const SummaryView: React.FC = () => {
                         <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 ml-1">View Month</label>
                         <input 
                             type="month" 
-                            className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                            className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300"
                             value={selectedMonth}
                             onChange={(e) => setSelectedMonth(e.target.value)}
                         />
@@ -374,7 +374,7 @@ export const SummaryView: React.FC = () => {
                     <div className="flex flex-col gap-1">
                         <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 ml-1">Section Filter</label>
                         <select 
-                            className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-600 focus:outline-none"
+                            className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-600 focus:outline-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300"
                             value={selectedDept}
                             onChange={(e) => setSelectedDept(e.target.value)}
                         >
@@ -393,17 +393,17 @@ export const SummaryView: React.FC = () => {
                     { label: 'Total Items', value: totalItemsCount, icon: Layers, color: 'text-blue-600', sub: `${itemsInStockCount} Currently in Stock` },
                     { label: 'Fresh vs Store', value: `${costStats.storeIssues ? ((costStats.freshPurchase / costStats.storeIssues) * 100).toFixed(0) : 0}%`, icon: ShoppingCart, color: 'text-amber-600', sub: 'Fresh daily ratio' },
                 ].map((kpi, i) => (
-                    <div key={i} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                    <div key={i} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between dark:bg-slate-900 dark:border-slate-800">
                         <div className="flex justify-between items-start mb-2">
                             <div className={cn("p-2 rounded-lg bg-opacity-10", kpi.color.replace('text-', 'bg-'))}>
                                 <kpi.icon size={18} className={kpi.color} />
                             </div>
-                            <ArrowUpRight size={14} className="text-slate-300" />
+                            <ArrowUpRight size={14} className="text-slate-300 dark:text-slate-600" />
                         </div>
                         <div>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 mt-3">{kpi.label}</p>
-                            <p className="text-xl font-bold text-slate-900 tracking-tight truncate">{kpi.value}</p>
-                            <p className="text-[10px] text-slate-500 font-medium mt-1">{kpi.sub}</p>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 mt-3 dark:text-slate-500">{kpi.label}</p>
+                            <p className="text-xl font-bold text-slate-900 tracking-tight truncate dark:text-white">{kpi.value}</p>
+                            <p className="text-[10px] text-slate-500 font-medium mt-1 dark:text-slate-400">{kpi.sub}</p>
                         </div>
                     </div>
                 ))}
@@ -411,14 +411,14 @@ export const SummaryView: React.FC = () => {
 
             {/* Restock Alerts */}
             {getRestockAlerts().length > 0 && (
-                <div className="bg-rose-50 border border-emerald-200 p-6 rounded-2xl shadow-sm">
+                <div className="bg-rose-50 border border-emerald-200 p-6 rounded-2xl shadow-sm dark:bg-rose-950/20 dark:border-rose-900/30">
                     <div className="flex justify-between items-center mb-4">
                         <div>
-                            <h3 className="text-lg font-bold text-rose-800 flex items-center gap-2">
+                            <h3 className="text-lg font-bold text-rose-800 flex items-center gap-2 dark:text-rose-400">
                                 <Activity size={20} />
                                 Smart Restock Alerts
                             </h3>
-                            <p className="text-sm text-rose-600 font-medium">The following items have fallen below their minimum par level.</p>
+                            <p className="text-sm text-rose-600 font-medium dark:text-rose-500">The following items have fallen below their minimum par level.</p>
                         </div>
                         <button 
                             onClick={handleGeneratePO}
@@ -428,22 +428,22 @@ export const SummaryView: React.FC = () => {
                         </button>
                     </div>
                     <div className="overflow-x-auto">
-                        <table className="w-full text-left bg-white rounded-xl overflow-hidden shadow-sm border border-rose-100">
-                            <thead className="bg-rose-100/50">
+                        <table className="w-full text-left bg-white rounded-xl overflow-hidden shadow-sm border border-rose-100 dark:bg-slate-900 dark:border-rose-950">
+                            <thead className="bg-rose-100/50 dark:bg-rose-950/40">
                                 <tr>
-                                    <th className="py-3 px-4 text-xs font-bold text-rose-800 uppercase tracking-wider">Item Name</th>
-                                    <th className="py-3 px-4 text-xs font-bold text-rose-800 uppercase tracking-wider text-right">Current Stock</th>
-                                    <th className="py-3 px-4 text-xs font-bold text-rose-800 uppercase tracking-wider text-right">Min Par Level</th>
-                                    <th className="py-3 px-4 text-xs font-bold text-rose-800 uppercase tracking-wider text-right">Recommended Reorder</th>
+                                    <th className="py-3 px-4 text-xs font-bold text-rose-800 uppercase tracking-wider dark:text-rose-300">Item Name</th>
+                                    <th className="py-3 px-4 text-xs font-bold text-rose-800 uppercase tracking-wider text-right dark:text-rose-300">Current Stock</th>
+                                    <th className="py-3 px-4 text-xs font-bold text-rose-800 uppercase tracking-wider text-right dark:text-rose-300">Min Par Level</th>
+                                    <th className="py-3 px-4 text-xs font-bold text-rose-800 uppercase tracking-wider text-right dark:text-rose-300">Recommended Reorder</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-rose-50">
+                            <tbody className="divide-y divide-rose-50 dark:divide-rose-950/50">
                                 {getRestockAlerts().map((alert, i) => (
-                                    <tr key={i} className="hover:bg-rose-50/50 transition-colors">
-                                        <td className="py-3 px-4 text-sm font-bold text-slate-800">{alert.name}</td>
-                                        <td className="py-3 px-4 text-sm font-bold text-rose-600 text-right">{alert.current} {alert.unit}</td>
-                                        <td className="py-3 px-4 text-sm font-medium text-slate-500 text-right">{alert.min} {alert.unit}</td>
-                                        <td className="py-3 px-4 text-sm font-bold text-emerald-600 text-right">
+                                    <tr key={i} className="hover:bg-rose-50/50 dark:hover:bg-rose-950/20 transition-colors">
+                                        <td className="py-3 px-4 text-sm font-bold text-slate-800 dark:text-slate-200">{alert.name}</td>
+                                        <td className="py-3 px-4 text-sm font-bold text-rose-600 text-right dark:text-rose-400">{alert.current} {alert.unit}</td>
+                                        <td className="py-3 px-4 text-sm font-medium text-slate-500 text-right dark:text-slate-500">{alert.min} {alert.unit}</td>
+                                        <td className="py-3 px-4 text-sm font-bold text-emerald-600 text-right dark:text-emerald-400">
                                             {alert.reorder || Math.max(alert.min - alert.current, 0)} {alert.unit}
                                         </td>
                                     </tr>
@@ -456,17 +456,17 @@ export const SummaryView: React.FC = () => {
 
             <div className="grid grid-cols-12 gap-6">
                 {/* Consumption Mix */}
-                <div className="col-span-12 lg:col-span-8 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[400px]">
+                <div className="col-span-12 lg:col-span-8 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[400px] dark:bg-slate-900 dark:border-slate-800">
                     <div className="flex items-center justify-between mb-6">
                         <div className="flex items-center gap-2">
                             <BarChart3 size={18} className="text-emerald-500" />
-                            <h3 className="font-bold text-slate-900 tracking-tight">Top {topN} Items by Value</h3>
+                            <h3 className="font-bold text-slate-900 tracking-tight dark:text-white">Top {topN} Items by Value</h3>
                         </div>
                         <div className="flex items-center gap-2">
                             <label className="text-[10px] font-bold text-slate-400">Limit</label>
                             <input 
                                 type="number" 
-                                className="w-12 px-2 py-1 bg-slate-50 border border-slate-200 rounded text-xs text-center"
+                                className="w-12 px-2 py-1 bg-slate-50 border border-slate-200 rounded text-xs text-center dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300"
                                 value={topN}
                                 onChange={(e) => setTopN(Number(e.target.value))}
                             />
@@ -486,15 +486,15 @@ export const SummaryView: React.FC = () => {
                                     width={120}
                                 />
                                 <Tooltip 
-                                    cursor={{ fill: '#f8fafc' }}
+                                    cursor={{ fill: 'rgba(255,255,255,0.05)' }}
                                     content={({ active, payload }) => {
                                         if (active && payload && payload.length) {
                                             const data = payload[0].payload;
                                             return (
-                                                <div className="bg-white p-3 rounded-xl shadow-lg border border-slate-100 text-xs">
-                                                    <p className="font-bold text-slate-800 mb-1">{data.name}</p>
-                                                    <p className="text-slate-600 font-medium pb-0.5">Value: <span className="text-emerald-600 font-bold font-mono">Rs. {data.value.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span></p>
-                                                    <p className="text-slate-600 font-medium">Quantity: <span className="text-slate-800 font-bold font-mono">{data.qty.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span></p>
+                                                <div className="bg-white p-3 rounded-xl shadow-lg border border-slate-100 text-xs dark:bg-slate-800 dark:border-slate-700">
+                                                    <p className="font-bold text-slate-800 mb-1 dark:text-white">{data.name}</p>
+                                                    <p className="text-slate-600 font-medium pb-0.5 dark:text-slate-400">Value: <span className="text-emerald-600 font-bold font-mono dark:text-emerald-400">Rs. {data.value.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span></p>
+                                                    <p className="text-slate-600 font-medium dark:text-slate-400">Quantity: <span className="text-slate-800 font-bold font-mono dark:text-slate-200">{data.qty.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span></p>
                                                 </div>
                                             );
                                         }
@@ -512,23 +512,23 @@ export const SummaryView: React.FC = () => {
                 </div>
 
                 {/* Section Distribution */}
-                <div className="col-span-12 lg:col-span-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[400px]">
+                <div className="col-span-12 lg:col-span-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[400px] dark:bg-slate-900 dark:border-slate-800">
                     <div className="flex items-center gap-2 mb-6">
                         <PieChart size={18} className="text-blue-500" />
-                        <h3 className="font-bold text-slate-900 tracking-tight">Section Contribution</h3>
+                        <h3 className="font-bold text-slate-900 tracking-tight dark:text-white">Section Contribution</h3>
                     </div>
                     <div className="flex-1 overflow-y-auto space-y-4 pr-2 custom-scrollbar">
                         {sectionData.map((sec, i) => {
                             const percentage = ((sec.value / costStats.storeIssues) * 100).toFixed(1);
                             return (
                                 <div key={i} className="space-y-1.5">
-                                    <div className="flex justify-between items-center text-[11px] font-bold text-slate-600">
+                                    <div className="flex justify-between items-center text-[11px] font-bold text-slate-600 dark:text-slate-400">
                                         <span className="uppercase tracking-wide">{sec.name}</span>
                                         <span>Rs. {sec.value.toLocaleString()} ({percentage}%)</span>
                                     </div>
-                                    <div className="w-full bg-slate-100 rounded-full h-2">
+                                    <div className="w-full bg-slate-100 rounded-full h-2 dark:bg-slate-800">
                                         <div 
-                                            className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                                            className="h-full bg-emerald-500 rounded-full transition-all duration-500 dark:bg-emerald-600"
                                             style={{ width: `${percentage}%` }}
                                         />
                                     </div>
@@ -539,10 +539,10 @@ export const SummaryView: React.FC = () => {
                 </div>
 
                 {/* Monthly Store Trend */}
-                <div className="col-span-12 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm h-[350px]">
+                <div className="col-span-12 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm h-[350px] dark:bg-slate-900 dark:border-slate-800">
                     <div className="flex items-center gap-2 mb-6">
                         <TrendingUp size={18} className="text-orange-500" />
-                        <h3 className="font-bold text-slate-900 tracking-tight">Store Consumption Trend (Last 6 Months)</h3>
+                        <h3 className="font-bold text-slate-900 tracking-tight dark:text-white">Store Consumption Trend (Last 6 Months)</h3>
                     </div>
                     <div className="w-full h-full pb-10">
                         <ResponsiveContainer width="100%" height="100%">

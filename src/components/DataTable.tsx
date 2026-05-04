@@ -109,11 +109,11 @@ export function DataTable<T extends Record<string, any>>({
       {searchable && (
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="relative max-w-sm w-full">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={16} />
             <input
               type="text"
               placeholder="Search..."
-              className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors"
+              className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors dark:bg-slate-900 dark:border-slate-800 dark:text-slate-200"
                 value={search}
                 onChange={(e) => {
                   setSearch(e.target.value);
@@ -122,10 +122,10 @@ export function DataTable<T extends Record<string, any>>({
             />
           </div>
           {pagination && (
-            <div className="flex items-center gap-2 text-sm text-slate-500">
+            <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
                <span>Show</span>
                <select
-                 className="p-1 border border-slate-200 rounded bg-white text-slate-700 outline-none"
+                 className="p-1 border border-slate-200 rounded bg-white text-slate-700 outline-none dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300"
                  value={pageSize}
                  onChange={(e) => {
                      setPageSize(Number(e.target.value));
@@ -140,17 +140,17 @@ export function DataTable<T extends Record<string, any>>({
         </div>
       )}
 
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden dark:bg-slate-900 dark:border-slate-800">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
-            <thead className="bg-slate-50 text-[10px] uppercase tracking-wider text-slate-500 font-bold border-b border-slate-200">
+            <thead className="bg-slate-50 text-[10px] uppercase tracking-wider text-slate-500 font-bold border-b border-slate-200 dark:bg-slate-950/50 dark:text-slate-400 dark:border-slate-800">
               <tr>
                 {columns.map(col => (
                   <th 
                     key={col.key}
                     className={cn(
                         "px-6 py-4 whitespace-nowrap select-none",
-                        col.sortable && "cursor-pointer hover:bg-slate-100 transition-colors",
+                        col.sortable && "cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors",
                         col.align === 'right' && "text-right",
                         col.align === 'center' && "text-center"
                     )}
@@ -159,29 +159,29 @@ export function DataTable<T extends Record<string, any>>({
                     <div className={cn("flex items-center gap-2", col.align === 'right' && "justify-end", col.align === 'center' && "justify-center")}>
                         {col.header}
                         {col.sortable && (
-                            <ArrowUpDown size={12} className={cn("text-slate-300", sortConfig?.key === col.key && "text-emerald-500")} />
+                            <ArrowUpDown size={12} className={cn("text-slate-300 dark:text-slate-600", sortConfig?.key === col.key && "text-emerald-500")} />
                         )}
                     </div>
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="text-xs divide-y divide-slate-100">
+            <tbody className="text-xs divide-y divide-slate-100 dark:divide-slate-800/50">
               {loading ? (
                 <tr>
                   <td colSpan={columns.length} className="px-6 py-12 text-center">
-                    <Loader2 className="animate-spin text-slate-400 mx-auto" size={24} />
+                    <Loader2 className="animate-spin text-slate-400 dark:text-slate-600 mx-auto" size={24} />
                   </td>
                 </tr>
               ) : paginatedData.length === 0 ? (
                 <tr>
-                  <td colSpan={columns.length} className="px-6 py-12 text-center text-slate-400 italic">
+                  <td colSpan={columns.length} className="px-6 py-12 text-center text-slate-400 italic dark:text-slate-600">
                     {emptyMessage}
                   </td>
                 </tr>
               ) : (
                 paginatedData.map((row, i) => (
-                  <tr key={i} className="hover:bg-slate-50/50 transition-colors">
+                  <tr key={i} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
                     {columns.map(col => (
                       <td 
                         key={col.key} 
@@ -203,13 +203,13 @@ export function DataTable<T extends Record<string, any>>({
       </div>
 
       {pagination && filteredData.length > 0 && (
-        <div className="flex items-center justify-between text-sm text-slate-500">
+        <div className="flex items-center justify-between text-sm text-slate-500 dark:text-slate-400">
             <div>
                Showing {((page - 1) * pageSize) + 1} to {Math.min(page * pageSize, filteredData.length)} of {filteredData.length} entries
             </div>
             <div className="flex items-center gap-1">
                <button
-                 className="p-1.5 rounded hover:bg-slate-100 disabled:opacity-50 transition-colors"
+                 className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 transition-colors"
                  disabled={page === 1}
                  onClick={() => setPage(p => p - 1)}
                >
@@ -228,7 +228,7 @@ export function DataTable<T extends Record<string, any>>({
                           key={pageNum}
                           className={cn(
                               "w-7 h-7 rounded-md font-medium transition-colors",
-                              page === pageNum ? "bg-emerald-500 text-white" : "hover:bg-slate-100 text-slate-600"
+                              page === pageNum ? "bg-emerald-500 text-white" : "hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400"
                           )}
                           onClick={() => setPage(pageNum)}
                         >
@@ -238,7 +238,7 @@ export function DataTable<T extends Record<string, any>>({
                  })}
                </div>
                <button
-                 className="p-1.5 rounded hover:bg-slate-100 disabled:opacity-50 transition-colors"
+                 className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 transition-colors"
                  disabled={page === totalPages}
                  onClick={() => setPage(p => p + 1)}
                >

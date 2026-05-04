@@ -156,14 +156,14 @@ export const StoreLedgerView: React.FC = () => {
 
     return (
         <div className="space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 text-slate-900 dark:text-slate-100">
                 <div>
-                  <h2 className="text-2xl font-bold tracking-tight">Store Ledger</h2>
-                  <p className="text-sm text-slate-500">Track daily store value, opening balances, and consumption.</p>
+                  <h2 className="text-2xl font-bold tracking-tight dark:text-white">Store Ledger</h2>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">Track daily store value, opening balances, and consumption.</p>
                 </div>
                 <div className="flex items-center gap-3">
                   <select 
-                      className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-bold text-slate-700 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all shadow-sm cursor-pointer"
+                      className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-bold text-slate-700 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all shadow-sm cursor-pointer dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200"
                       value={selectedItem}
                       onChange={(e) => setSelectedItem(e.target.value)}
                   >
@@ -173,7 +173,7 @@ export const StoreLedgerView: React.FC = () => {
                       ))}
                   </select>
                   <select 
-                      className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-bold text-slate-700 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all shadow-sm cursor-pointer"
+                      className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-bold text-slate-700 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all shadow-sm cursor-pointer dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200"
                       value={selectedMonth}
                       onChange={(e) => setSelectedMonth(e.target.value)}
                   >
@@ -181,64 +181,64 @@ export const StoreLedgerView: React.FC = () => {
                           <option key={opt} value={opt}>{format(parseISO(opt + '-01'), 'MMMM yyyy')}</option>
                       ))}
                   </select>
-                  <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium shadow-sm hover:bg-slate-50 transition-all">
-                    <Download size={14} className="text-slate-500" />
+                  <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium shadow-sm hover:bg-slate-50 transition-all dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700">
+                    <Download size={14} className="text-slate-500 dark:text-slate-400" />
                     Export
                   </button>
                 </div>
             </div>
 
             {loading ? (
-                <div className="flex items-center justify-center h-64 bg-white rounded-xl border border-slate-200 shadow-sm">
+                <div className="flex items-center justify-center h-64 bg-white rounded-xl border border-slate-200 shadow-sm dark:bg-slate-900 dark:border-slate-800">
                     <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
                 </div>
             ) : (
                 <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col"
+                    className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col dark:bg-slate-900 dark:border-slate-800"
                 >
-                    <div className="p-6 bg-slate-50/50 border-b border-slate-200 grid grid-cols-1 md:grid-cols-2 gap-6">
-                         <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
-                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Opening {selectedItem === 'all' ? 'Store Value' : 'Stock Quantity'}</p>
-                             <h3 className="text-2xl font-black text-slate-800 font-mono tracking-tighter">{selectedItem === 'all' ? 'Rs ' : ''}{(ledgerData.initialBalance || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits:2})}</h3>
+                    <div className="p-6 bg-slate-50/50 border-b border-slate-200 grid grid-cols-1 md:grid-cols-2 gap-6 dark:bg-slate-950/20 dark:border-slate-800">
+                         <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm dark:bg-slate-900 dark:border-slate-800">
+                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 dark:text-slate-500">Opening {selectedItem === 'all' ? 'Store Value' : 'Stock Quantity'}</p>
+                             <h3 className="text-2xl font-black text-slate-800 font-mono tracking-tighter dark:text-slate-100">{selectedItem === 'all' ? 'Rs ' : ''}{(ledgerData.initialBalance || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits:2})}</h3>
                          </div>
-                         <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
-                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Closing {selectedItem === 'all' ? 'Store Value' : 'Stock Quantity'}</p>
-                             <h3 className="text-2xl font-black text-emerald-600 font-mono tracking-tighter">{selectedItem === 'all' ? 'Rs ' : ''}{(ledgerData.closingBalance || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits:2})}</h3>
+                         <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm dark:bg-slate-900 dark:border-slate-800">
+                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 dark:text-slate-500">Closing {selectedItem === 'all' ? 'Store Value' : 'Stock Quantity'}</p>
+                             <h3 className="text-2xl font-black text-emerald-600 font-mono tracking-tighter dark:text-emerald-400">{selectedItem === 'all' ? 'Rs ' : ''}{(ledgerData.closingBalance || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits:2})}</h3>
                          </div>
                     </div>
                     <div className="overflow-x-auto min-h-[400px]">
                         <table className="w-full text-left border-collapse">
-                            <thead className="bg-slate-50 border-b border-slate-200">
+                            <thead className="bg-slate-50 border-b border-slate-200 dark:bg-slate-950/40 dark:border-slate-800">
                                 <tr>
-                                    <th className="px-6 py-4 text-[10px] uppercase font-bold text-slate-500 tracking-wider">Date</th>
-                                    <th className="px-6 py-4 text-[10px] uppercase font-bold text-slate-500 tracking-wider text-right">Opening Balance</th>
-                                    <th className="px-6 py-4 text-[10px] uppercase font-bold text-slate-500 tracking-wider text-right">Purchased / Added</th>
-                                    <th className="px-6 py-4 text-[10px] uppercase font-bold text-slate-500 tracking-wider text-right">Used / Issued</th>
-                                    <th className="px-6 py-4 text-[10px] uppercase font-bold text-slate-500 tracking-wider text-right">Closing Balance</th>
+                                    <th className="px-6 py-4 text-[10px] uppercase font-bold text-slate-500 tracking-wider dark:text-slate-400">Date</th>
+                                    <th className="px-6 py-4 text-[10px] uppercase font-bold text-slate-500 tracking-wider text-right dark:text-slate-400">Opening Balance</th>
+                                    <th className="px-6 py-4 text-[10px] uppercase font-bold text-slate-500 tracking-wider text-right dark:text-slate-400">Purchased / Added</th>
+                                    <th className="px-6 py-4 text-[10px] uppercase font-bold text-slate-500 tracking-wider text-right dark:text-slate-400">Used / Issued</th>
+                                    <th className="px-6 py-4 text-[10px] uppercase font-bold text-slate-500 tracking-wider text-right dark:text-slate-400">Closing Balance</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-100">
+                            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                                 {ledgerData.ledgerDays && ledgerData.ledgerDays.map((day: any, idx: number) => (
-                                    <tr key={`${day.date}-${idx}`} className={cn("hover:bg-slate-50/50 transition-colors", (day.isEmpty || day.isClosingRow) && "bg-slate-50/30")}>
+                                    <tr key={`${day.date}-${idx}`} className={cn("hover:bg-slate-50/50 transition-colors dark:hover:bg-slate-800/40", (day.isEmpty || day.isClosingRow) && "bg-slate-50/30 dark:bg-slate-950/10")}>
                                         <td className="px-6 py-4">
-                                            <div className="flex items-center gap-2 font-medium text-slate-700">
-                                                <Calendar size={14} className="text-slate-400" />
+                                            <div className="flex items-center gap-2 font-medium text-slate-700 dark:text-slate-300">
+                                                <Calendar size={14} className="text-slate-400 dark:text-slate-500" />
                                                 {format(parseISO(day.date), 'dd MMM yyyy')}
-                                                {day.isClosingRow && <span className="text-[10px] ml-2 px-1.5 py-0.5 bg-slate-200 text-slate-600 rounded">End of Month</span>}
+                                                {day.isClosingRow && <span className="text-[10px] ml-2 px-1.5 py-0.5 bg-slate-200 text-slate-600 rounded dark:bg-slate-800 dark:text-slate-400">End of Month</span>}
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4 text-right font-mono text-slate-600 font-medium whitespace-nowrap">
+                                        <td className="px-6 py-4 text-right font-mono text-slate-600 font-medium whitespace-nowrap dark:text-slate-400">
                                             {day.openingBalance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                                         </td>
-                                        <td className="px-6 py-4 text-right font-mono text-emerald-600 font-medium whitespace-nowrap">
+                                        <td className="px-6 py-4 text-right font-mono text-emerald-600 font-medium whitespace-nowrap dark:text-emerald-400">
                                             {day.purchased !== 0 ? `${day.purchased > 0 ? '+' : '-'} ${Math.abs(day.purchased).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}` : '-'}
                                         </td>
-                                        <td className={cn("px-6 py-4 text-right font-mono font-medium whitespace-nowrap", day.used < 0 ? "text-emerald-600" : "text-rose-600")}>
+                                        <td className={cn("px-6 py-4 text-right font-mono font-medium whitespace-nowrap", day.used < 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400")}>
                                             {day.used !== 0 ? `${day.used > 0 ? '-' : '+'} ${Math.abs(day.used).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}` : '-'}
                                         </td>
-                                        <td className="px-6 py-4 text-right font-mono text-slate-900 font-bold whitespace-nowrap tracking-tight">
+                                        <td className="px-6 py-4 text-right font-mono text-slate-900 font-bold whitespace-nowrap tracking-tight dark:text-white">
                                             {day.closingBalance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                                         </td>
                                     </tr>

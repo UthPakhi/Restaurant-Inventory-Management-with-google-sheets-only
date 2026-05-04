@@ -402,14 +402,14 @@ export const IssuesView: React.FC = () => {
             key: 'qty',
             header: 'Qty Issued',
             align: 'right',
-            cell: (row) => <span className="font-bold text-slate-900 font-mono tracking-tighter">{row.qty}</span>,
+            cell: (row) => <span className="font-bold text-slate-900 font-mono tracking-tighter dark:text-white">{row.qty}</span>,
             sortable: true
         },
         {
             key: 'total',
             header: 'Total Amount (Rs)',
             align: 'right',
-            cell: (row) => <span className="font-bold text-slate-500 font-mono tracking-tighter">
+            cell: (row) => <span className="font-bold text-slate-500 font-mono tracking-tighter dark:text-slate-400">
                 {row.total ? Number(row.total).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits:2}) : '0.00'}
             </span>,
             sortable: true
@@ -435,8 +435,8 @@ export const IssuesView: React.FC = () => {
     ];
 
     const pivotColumns: Column<any>[] = [
-        { key: 'date', header: 'Date', cell: (row) => <span className="font-mono font-bold text-slate-600">{row.date}</span>, sortable: true },
-        { key: 'day', header: 'Day', cell: (row) => <span className="font-medium text-slate-500">{format(new Date(row.date), 'EEE')}</span> },
+        { key: 'date', header: 'Date', cell: (row) => <span className="font-mono font-bold text-slate-600 dark:text-slate-400">{row.date}</span>, sortable: true },
+        { key: 'day', header: 'Day', cell: (row) => <span className="font-medium text-slate-500 dark:text-slate-500">{format(new Date(row.date), 'EEE')}</span> },
         ...pivotData.cols.map(col => ({
             key: col,
             header: col,
@@ -445,7 +445,7 @@ export const IssuesView: React.FC = () => {
             sortFn: (a: any, b: any) => (pivotData.data[a.date][col] || 0) - (pivotData.data[b.date][col] || 0),
             cell: (row: any) => {
                 const val = pivotData.data[row.date][col] || 0;
-                return <span className="font-mono text-slate-700">{val > 0 ? val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}</span>;
+                return <span className="font-mono text-slate-700 dark:text-slate-300">{val > 0 ? val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}</span>;
             }
         })),
         {
@@ -460,7 +460,7 @@ export const IssuesView: React.FC = () => {
             },
             cell: (row: any) => {
                 const rowTotal = pivotData.cols.reduce((sum, col) => sum + (pivotData.data[row.date][col] || 0), 0);
-                return <span className="font-mono font-bold text-emerald-700">{rowTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>;
+                return <span className="font-mono font-bold text-emerald-700 dark:text-emerald-400">{rowTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>;
             }
         }
     ];
@@ -472,16 +472,16 @@ export const IssuesView: React.FC = () => {
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                  <h2 className="text-2xl font-bold tracking-tight">Consumption Log</h2>
-                  <p className="text-sm text-slate-500">Record and track inventory usage by department.</p>
+                  <h2 className="text-2xl font-bold tracking-tight dark:text-white">Consumption Log</h2>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">Record and track inventory usage by department.</p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
-                      <button onClick={() => setViewMode('list')} className={cn("px-4 py-1.5 text-xs font-bold rounded-lg transition-all", viewMode === 'list' && "bg-white text-emerald-600 shadow-sm")}>List View</button>
-                      <button onClick={() => setViewMode('pivot')} className={cn("px-4 py-1.5 text-xs font-bold rounded-lg transition-all", viewMode === 'pivot' && "bg-white text-emerald-600 shadow-sm")}>Pivot View</button>
+                  <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 dark:bg-slate-900 dark:border-slate-800">
+                      <button onClick={() => setViewMode('list')} className={cn("px-4 py-1.5 text-xs font-bold rounded-lg transition-all", viewMode === 'list' ? "bg-white text-emerald-600 shadow-sm dark:bg-slate-800 dark:text-emerald-400" : "text-slate-500 dark:text-slate-400")}>List View</button>
+                      <button onClick={() => setViewMode('pivot')} className={cn("px-4 py-1.5 text-xs font-bold rounded-lg transition-all", viewMode === 'pivot' ? "bg-white text-emerald-600 shadow-sm dark:bg-slate-800 dark:text-emerald-400" : "text-slate-500 dark:text-slate-400")}>Pivot View</button>
                   </div>
-                  <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium shadow-sm hover:bg-slate-50 transition-all">
-                    <Download size={14} className="text-slate-500" />
+                  <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium shadow-sm hover:bg-slate-50 transition-all dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800">
+                    <Download size={14} className="text-slate-500 dark:text-slate-400" />
                     Export
                   </button>
                   <button 
@@ -493,22 +493,22 @@ export const IssuesView: React.FC = () => {
                 </div>
             </div>
 
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
-                <div className="flex flex-wrap items-center gap-4 mb-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 dark:bg-slate-900 dark:border-slate-800">
+                <div className="flex flex-wrap items-center gap-4 mb-4 bg-slate-50 p-4 rounded-xl border border-slate-100 dark:bg-slate-950/50 dark:border-slate-800">
                     <div className="flex items-center gap-2">
                         <Filter className="text-slate-400" size={16}/>
-                        <span className="text-sm font-bold text-slate-700">Filters</span>
+                        <span className="text-sm font-bold text-slate-700 dark:text-slate-300">Filters</span>
                     </div>
                     
-                    <select className="border border-slate-200 rounded-md px-3 py-1.5 text-sm bg-white" value={filters.dept} onChange={e => setFilters({...filters, dept: e.target.value})}>
+                    <select className="border border-slate-200 rounded-md px-3 py-1.5 text-sm bg-white dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200" value={filters.dept} onChange={e => setFilters({...filters, dept: e.target.value})}>
                         <option value="">All Departments</option>
                         {depts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                     </select>
 
                     <div className="flex items-center gap-2">
-                        <input type="date" className="border border-slate-200 rounded-md px-3 py-1.5 text-sm bg-white text-slate-600" value={filters.dateFrom} onChange={e => setFilters({...filters, dateFrom: e.target.value})} />
+                        <input type="date" className="border border-slate-200 rounded-md px-3 py-1.5 text-sm bg-white text-slate-600 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200" value={filters.dateFrom} onChange={e => setFilters({...filters, dateFrom: e.target.value})} />
                         <span className="text-slate-400">to</span>
-                        <input type="date" className="border border-slate-200 rounded-md px-3 py-1.5 text-sm bg-white text-slate-600" value={filters.dateTo} onChange={e => setFilters({...filters, dateTo: e.target.value})} />
+                        <input type="date" className="border border-slate-200 rounded-md px-3 py-1.5 text-sm bg-white text-slate-600 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200" value={filters.dateTo} onChange={e => setFilters({...filters, dateTo: e.target.value})} />
                     </div>
 
                     {(filters.dept || filters.dateFrom || filters.dateTo) && (
@@ -546,39 +546,39 @@ export const IssuesView: React.FC = () => {
                         <motion.div 
                             initial={{ opacity: 0, scale: 0.95, y: 10 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
-                            className="bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-2xl border border-slate-200"
+                            className="bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-2xl border border-slate-200 dark:bg-slate-900 dark:border-slate-800"
                         >
                             <div className="p-6 text-center space-y-4">
-                                <div className="w-16 h-16 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <div className="w-16 h-16 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto mb-4 dark:bg-rose-950/30 dark:text-rose-400">
                                     <ArrowRightLeft size={32} />
                                 </div>
-                                <h3 className="text-xl font-bold text-slate-900">Confirm Reversal</h3>
-                                <div className="bg-slate-50 p-4 rounded-xl text-left border border-slate-100 space-y-2">
+                                <h3 className="text-xl font-bold text-slate-900 dark:text-white">Confirm Reversal</h3>
+                                <div className="bg-slate-50 p-4 rounded-xl text-left border border-slate-100 space-y-2 dark:bg-slate-950/50 dark:border-slate-800">
                                    <div className="flex justify-between text-xs">
-                                       <span className="text-slate-500">Item:</span>
-                                       <span className="font-bold text-slate-900">{getItemName(reversingIssue.itemId)}</span>
+                                       <span className="text-slate-500 dark:text-slate-400">Item:</span>
+                                       <span className="font-bold text-slate-900 dark:text-white">{getItemName(reversingIssue.itemId)}</span>
                                    </div>
                                    <div className="flex justify-between text-xs">
-                                       <span className="text-slate-500">Quantity:</span>
-                                       <span className="font-bold text-slate-900">{reversingIssue.qty} {items.find(i => i.id === reversingIssue.itemId)?.unit}</span>
+                                       <span className="text-slate-500 dark:text-slate-400">Quantity:</span>
+                                       <span className="font-bold text-slate-900 dark:text-white">{reversingIssue.qty} {items.find(i => i.id === reversingIssue.itemId)?.unit}</span>
                                    </div>
                                    <div className="flex justify-between text-xs">
-                                       <span className="text-slate-500">Department:</span>
-                                       <span className="font-bold text-slate-900">{getDeptName(reversingIssue.deptId)}</span>
+                                       <span className="text-slate-500 dark:text-slate-400">Department:</span>
+                                       <span className="font-bold text-slate-900 dark:text-white">{getDeptName(reversingIssue.deptId)}</span>
                                    </div>
-                                   <div className="flex justify-between text-xs pt-2 border-t border-slate-200">
-                                       <span className="text-slate-500 font-bold">Total Amount:</span>
-                                       <span className="font-bold text-rose-600">Rs {Number(reversingIssue.total).toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                                   <div className="flex justify-between text-xs pt-2 border-t border-slate-200 dark:border-slate-800">
+                                       <span className="text-slate-500 font-bold dark:text-slate-400">Total Amount:</span>
+                                       <span className="font-bold text-rose-600 dark:text-rose-400">Rs {Number(reversingIssue.total).toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
                                    </div>
                                 </div>
-                                <p className="text-sm text-slate-500">
+                                <p className="text-sm text-slate-500 dark:text-slate-400">
                                     This will create a restoration entry in inventory and a negative consumption log to balance the records.
                                 </p>
                             </div>
-                            <div className="p-6 bg-slate-50 flex gap-3 border-t border-slate-100">
+                            <div className="p-6 bg-slate-50 flex gap-3 border-t border-slate-100 dark:bg-slate-950/30 dark:border-slate-800">
                                 <button 
                                     onClick={() => setReversingIssue(null)}
-                                    className="flex-1 py-3 px-4 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 transition-all"
+                                    className="flex-1 py-3 px-4 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 transition-all dark:bg-slate-900 dark:border-slate-800 dark:text-slate-400 dark:hover:bg-slate-800"
                                 >
                                     Cancel
                                 </button>
@@ -599,28 +599,28 @@ export const IssuesView: React.FC = () => {
                             initial={{ opacity: 0, scale: 0.95, y: 10 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                            className="bg-white rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl border border-slate-200"
+                            className="bg-white rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl border border-slate-200 dark:bg-slate-900 dark:border-slate-800"
                         >
-                            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 dark:bg-slate-950/50 dark:border-slate-800">
                                 <div>
-                                  <h3 className="font-bold text-slate-900">Bulk Store Issue</h3>
-                                  <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Kitchen & Section Consumption</p>
+                                  <h3 className="font-bold text-slate-900 dark:text-white">Bulk Store Issue</h3>
+                                  <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider dark:text-slate-400">Kitchen & Section Consumption</p>
                                 </div>
-                                <button onClick={() => setIsAdding(false)} className="text-slate-400 hover:text-slate-600 p-1">
+                                <button onClick={() => setIsAdding(false)} className="text-slate-400 hover:text-slate-600 p-1 dark:hover:text-slate-300">
                                   <Plus className="rotate-45" size={24} />
                                 </button>
                             </div>
 
-                            <div className="px-6 pt-4 border-b border-slate-100 flex gap-4">
+                            <div className="px-6 pt-4 border-b border-slate-100 flex gap-4 dark:border-slate-800">
                                 <button 
                                     onClick={() => setActiveTab('form')}
-                                    className={cn("pb-3 text-sm font-bold border-b-2 transition-all", activeTab === 'form' ? "border-emerald-500 text-emerald-600" : "border-transparent text-slate-400 hover:text-slate-600")}
+                                    className={cn("pb-3 text-sm font-bold border-b-2 transition-all", activeTab === 'form' ? "border-emerald-500 text-emerald-600 dark:text-emerald-500" : "border-transparent text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300")}
                                 >
                                     Manual Entry
                                 </button>
                                 <button 
                                     onClick={() => setActiveTab('bulk')}
-                                    className={cn("pb-3 text-sm font-bold border-b-2 transition-all", activeTab === 'bulk' ? "border-emerald-500 text-emerald-600" : "border-transparent text-slate-400 hover:text-slate-600")}
+                                    className={cn("pb-3 text-sm font-bold border-b-2 transition-all", activeTab === 'bulk' ? "border-emerald-500 text-emerald-600 dark:text-emerald-500" : "border-transparent text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300")}
                                 >
                                     Bulk Import (Text)
                                 </button>
@@ -631,19 +631,19 @@ export const IssuesView: React.FC = () => {
                                     <div className="p-6 space-y-6 overflow-y-auto max-h-[60vh]">
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="space-y-1.5">
-                                                <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Date</label>
+                                                <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider dark:text-slate-500">Date</label>
                                                 <div className="relative">
-                                                  <Calendar size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                                                  <input type="date" className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all" 
+                                                  <Calendar size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                                  <input type="date" className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200" 
                                                       value={form.date} onChange={e => setForm({...form, date: e.target.value})}
                                                   />
                                                 </div>
                                             </div>
                                             <div className="space-y-1.5">
-                                                <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Department / Section</label>
+                                                <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider dark:text-slate-500">Department / Section</label>
                                                 <div className="relative">
                                                   <Utensils size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                                                  <select className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none appearance-none bg-no-repeat transition-all"
+                                                  <select className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none appearance-none bg-no-repeat transition-all dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200"
                                                       style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%23a1a1aa\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\' /%3E%3C/svg%3E")', backgroundPosition: 'right 0.75rem center', backgroundSize: '1rem' }}
                                                       value={form.deptId} onChange={e => setForm({...form, deptId: e.target.value})}
                                                   >
@@ -656,8 +656,8 @@ export const IssuesView: React.FC = () => {
 
                                         <div className="space-y-4">
                                             <div className="flex justify-between items-center">
-                                                <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider text-emerald-600">Line Items</label>
-                                                <button onClick={addLine} disabled={form.lines.length >= 10} className="text-xs font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1 bg-emerald-50 px-2 py-1 rounded">
+                                                <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider text-emerald-600 dark:text-emerald-500">Line Items</label>
+                                                <button onClick={addLine} disabled={form.lines.length >= 10} className="text-xs font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1 bg-emerald-50 px-2 py-1 rounded dark:bg-emerald-950/30 dark:text-emerald-400">
                                                     <Plus size={12} /> Add Item
                                                 </button>
                                             </div>
@@ -665,7 +665,7 @@ export const IssuesView: React.FC = () => {
                                                 {form.lines.map((line, idx) => (
                                                     <div key={idx} className="grid grid-cols-12 gap-3 items-start animate-in slide-in-from-left-2 duration-200">
                                                         <div className="col-span-6 space-y-1">
-                                                            <select className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all"
+                                                            <select className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200"
                                                                 value={line.itemId} onChange={e => updateLine(idx, 'itemId', e.target.value)}
                                                             >
                                                                 <option value="">-- Choose Item --</option>
@@ -673,7 +673,7 @@ export const IssuesView: React.FC = () => {
                                                             </select>
                                                             {line.itemId && (
                                                                 <div className="flex justify-between px-1">
-                                                                    <span className="text-[8px] font-bold text-slate-400 italic">
+                                                                    <span className="text-[8px] font-bold text-slate-400 italic dark:text-slate-500">
                                                                         Stock: {(stockLevels[line.itemId] || 0).toFixed(2)}
                                                                     </span>
                                                                 </div>
@@ -682,10 +682,10 @@ export const IssuesView: React.FC = () => {
                                                         <div className="col-span-3">
                                                             <input type="number" 
                                                                 className={cn(
-                                                                    "w-full px-3 py-2 bg-slate-50 border rounded-lg text-sm focus:ring-2 focus:outline-none transition-all",
+                                                                    "w-full px-3 py-2 bg-slate-50 border rounded-lg text-sm focus:ring-2 focus:outline-none transition-all dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200",
                                                                     line.qty && stockLevels[line.itemId] !== undefined && Number(line.qty) > stockLevels[line.itemId]
-                                                                        ? "border-red-500 focus:ring-red-500/20"
-                                                                        : "border-slate-200 focus:ring-emerald-500/20"
+                                                                        ? "border-red-500 focus:ring-red-500/20 dark:border-red-900"
+                                                                        : "border-slate-200 focus:ring-emerald-500/20 dark:border-slate-700"
                                                                 )}
                                                                 placeholder="Qty"
                                                                 value={line.qty} onChange={e => updateLine(idx, 'qty', e.target.value)}
@@ -693,13 +693,13 @@ export const IssuesView: React.FC = () => {
                                                         </div>
                                                         <div className="col-span-2 pt-2 text-right">
                                                             {line.itemId && line.qty ? (
-                                                                <div className="text-xs font-bold text-slate-600">
+                                                                <div className="text-xs font-bold text-slate-600 dark:text-slate-400">
                                                                     Rs {(calculateFIFOTotal(line.itemId, line.qty) || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits:2})}
                                                                 </div>
                                                             ) : null}
                                                         </div>
                                                         <div className="col-span-1 text-center">
-                                                            <button onClick={() => removeLine(idx)} className="p-2 text-slate-300 hover:text-red-500 mt-0.5">
+                                                            <button onClick={() => removeLine(idx)} className="p-2 text-slate-300 hover:text-red-500 mt-0.5 dark:text-slate-600 dark:hover:text-red-400">
                                                                 <Plus className="rotate-45" size={18} />
                                                             </button>
                                                         </div>
@@ -708,11 +708,11 @@ export const IssuesView: React.FC = () => {
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="p-6 bg-slate-50 border-t border-slate-100">
+                                    <div className="p-6 bg-slate-50 border-t border-slate-100 dark:bg-slate-950/30 dark:border-slate-800">
                                         <button
                                             onClick={handleSubmit} 
                                             disabled={loading || !form.deptId || form.lines.some(l => !l.itemId || !l.qty || (stockLevels[l.itemId] !== undefined && Number(l.qty) > stockLevels[l.itemId]))}
-                                            className="w-full py-3 bg-emerald-600 text-white rounded-lg font-bold shadow-lg shadow-emerald-600/20 flex items-center justify-center transition-all hover:bg-emerald-700 disabled:bg-slate-400"
+                                            className="w-full py-3 bg-emerald-600 text-white rounded-lg font-bold shadow-lg shadow-emerald-600/20 flex items-center justify-center transition-all hover:bg-emerald-700 disabled:bg-slate-400 dark:disabled:bg-slate-800 dark:disabled:text-slate-500"
                                         >
                                             {loading ? <Loader2 size={20} className="animate-spin" /> : `Post ${form.lines.filter(l => l.itemId && l.qty).length} Items`}
                                         </button>
@@ -722,20 +722,20 @@ export const IssuesView: React.FC = () => {
                                 <>
                                     <div className="p-6 space-y-4">
                                         <div className="space-y-2">
-                                            <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Paste Text (TSV Format)</label>
-                                            <p className="text-xs text-slate-500">Format strictly: <code className="bg-slate-100 px-1 py-0.5 rounded text-slate-700">Date [tab] Section/Dept [tab] Item Name [tab] Qty</code></p>
+                                            <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider dark:text-slate-500">Paste Text (TSV Format)</label>
+                                            <p className="text-xs text-slate-500 dark:text-slate-400">Format strictly: <code className="bg-slate-100 px-1 py-0.5 rounded text-slate-700 dark:bg-slate-800 dark:text-slate-300">Date [tab] Section/Dept [tab] Item Name [tab] Qty</code></p>
                                             <textarea 
-                                                className="w-full h-48 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all whitespace-pre"
+                                                className="w-full h-48 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all whitespace-pre dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200"
                                                 placeholder="5/1/2026&#9;Handi&#9;Oil Talo&#9;1&#10;5/1/2026&#9;Pizza&#9;Macaroni&#9;2"
                                                 value={bulkText} onChange={e => setBulkText(e.target.value)}
                                             />
                                         </div>
                                     </div>
-                                    <div className="p-6 bg-slate-50 border-t border-slate-100">
+                                    <div className="p-6 bg-slate-50 border-t border-slate-100 dark:bg-slate-950/30 dark:border-slate-800">
                                         <button
                                             onClick={handleBulkParse} 
                                             disabled={loading || loadingStaticData || !bulkText.trim()}
-                                            className="w-full py-3 bg-emerald-600 text-white rounded-lg font-bold shadow-lg shadow-emerald-600/20 flex items-center justify-center transition-all hover:bg-emerald-700 disabled:bg-slate-400"
+                                            className="w-full py-3 bg-emerald-600 text-white rounded-lg font-bold shadow-lg shadow-emerald-600/20 flex items-center justify-center transition-all hover:bg-emerald-700 disabled:bg-slate-400 dark:disabled:bg-slate-800 dark:disabled:text-slate-500"
                                         >
                                             {loading || loadingStaticData ? <Loader2 size={20} className="animate-spin" /> : `Process Bulk Import`}
                                         </button>
@@ -751,31 +751,31 @@ export const IssuesView: React.FC = () => {
                         <motion.div 
                             initial={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}
-                            className="bg-white rounded-xl shadow-xl w-full max-w-4xl flex flex-col max-h-[90vh]"
+                            className="bg-white rounded-xl shadow-xl w-full max-w-4xl flex flex-col max-h-[90vh] dark:bg-slate-900 dark:border dark:border-slate-800"
                         >
-                            <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+                            <div className="p-6 border-b border-slate-100 flex justify-between items-center dark:border-slate-800">
                                 <div>
-                                    <h3 className="font-bold text-slate-900 text-lg">Confirm Bulk Issue</h3>
-                                    <p className="text-sm text-slate-500">Review {bulkPreview.length} item(s) before submitting.</p>
+                                    <h3 className="font-bold text-slate-900 text-lg dark:text-white">Confirm Bulk Issue</h3>
+                                    <p className="text-sm text-slate-500 dark:text-slate-400">Review {bulkPreview.length} item(s) before submitting.</p>
                                 </div>
-                                <button onClick={() => setBulkPreview(null)} className="p-2 text-slate-400 hover:bg-slate-100 rounded-full transition-colors">
+                                <button onClick={() => setBulkPreview(null)} className="p-2 text-slate-400 hover:bg-slate-100 rounded-full transition-colors dark:hover:bg-slate-800 dark:text-slate-500">
                                     <X size={20} />
                                 </button>
                             </div>
-                            <div className="flex-1 overflow-auto p-4 bg-slate-50/50">
+                            <div className="flex-1 overflow-auto p-4 bg-slate-50/50 dark:bg-slate-950/20">
                                 <table className="w-full text-sm text-left">
-                                    <thead className="text-[10px] uppercase font-bold tracking-wider text-slate-500 bg-slate-50">
+                                    <thead className="text-[10px] uppercase font-bold tracking-wider text-slate-500 bg-slate-50 dark:bg-slate-950 dark:text-slate-400">
                                         <tr>
                                             <th className="px-4 py-3 rounded-tl-lg">Date</th>
                                             <th className="px-4 py-3">Section</th>
                                             <th className="px-4 py-3">Item</th>
                                             <th className="px-4 py-3 text-right">Stock</th>
-                                            <th className="px-4 py-3 w-32 border-x whitespace-nowrap bg-white text-center">Issue Qty</th>
+                                            <th className="px-4 py-3 w-32 border-x whitespace-nowrap bg-white text-center dark:bg-slate-900 dark:border-slate-800">Issue Qty</th>
                                             <th className="px-4 py-3 text-right">Est. Total (Rs)</th>
                                             <th className="px-4 py-3 w-10 rounded-tr-lg"></th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-slate-100 bg-white">
+                                    <tbody className="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-900">
                                         {(() => {
                                             const itemTotals: Record<string, number> = {};
                                             bulkPreview.forEach(l => {
@@ -786,15 +786,15 @@ export const IssuesView: React.FC = () => {
                                             return bulkPreview.map((line, idx) => {
                                                 const hasError = itemTotals[line.itemId] > line.stock;
                                                 return (
-                                                    <tr key={line.id} className={cn(hasError && "bg-red-50/50")}>
-                                                        <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{line.date}</td>
-                                                        <td className="px-4 py-3 font-semibold text-indigo-600 whitespace-nowrap">{line.deptName}</td>
-                                                        <td className="px-4 py-3 text-slate-900 font-medium">{line.itemName}</td>
-                                                        <td className="px-4 py-3 text-right text-slate-500">{line.stock.toFixed(2)}</td>
-                                                        <td className="p-0 border-x relative">
+                                                    <tr key={line.id} className={cn(hasError && "bg-red-50/50 dark:bg-red-950/20")}>
+                                                        <td className="px-4 py-3 text-slate-600 whitespace-nowrap dark:text-slate-400">{line.date}</td>
+                                                        <td className="px-4 py-3 font-semibold text-indigo-600 whitespace-nowrap dark:text-indigo-400">{line.deptName}</td>
+                                                        <td className="px-4 py-3 text-slate-900 font-medium dark:text-white">{line.itemName}</td>
+                                                        <td className="px-4 py-3 text-right text-slate-500 dark:text-slate-500">{line.stock.toFixed(2)}</td>
+                                                        <td className="p-0 border-x relative dark:border-slate-800">
                                                             <input 
                                                                 type="number" 
-                                                                className={cn("w-full h-full px-4 py-3 text-center focus:outline-none focus:ring-2 focus:ring-inset font-bold", hasError ? "text-red-600 focus:ring-red-500 bg-red-50/30" : "focus:ring-emerald-500")}
+                                                                className={cn("w-full h-full px-4 py-3 text-center focus:outline-none focus:ring-2 focus:ring-inset font-bold dark:bg-slate-800", hasError ? "text-red-600 focus:ring-red-500 bg-red-50/30 dark:bg-red-950/40" : "focus:ring-emerald-500 dark:text-slate-200")}
                                                                 value={line.qty} 
                                                                 onChange={e => {
                                                                     const newPreview = [...bulkPreview];
@@ -803,13 +803,13 @@ export const IssuesView: React.FC = () => {
                                                                 }}
                                                             />
                                                         </td>
-                                                        <td className="px-4 py-3 text-right font-bold text-slate-700">
+                                                        <td className="px-4 py-3 text-right font-bold text-slate-700 dark:text-slate-300">
                                                             {line.qty ? (calculateFIFOTotal(line.itemId, line.qty) || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits:2}) : '-'}
                                                         </td>
                                                         <td className="px-4 py-2 text-center">
                                                             <button 
                                                                 onClick={() => setBulkPreview(bulkPreview.filter(l => l.id !== line.id))}
-                                                                className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors"
+                                                                className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors dark:text-slate-600 dark:hover:text-red-400 dark:hover:bg-red-950/30"
                                                                 title="Remove Item"
                                                             >
                                                                 <X size={16} />
@@ -822,7 +822,7 @@ export const IssuesView: React.FC = () => {
                                     </tbody>
                                 </table>
                             </div>
-                            <div className="p-6 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
+                             <div className="p-6 border-t border-slate-100 bg-slate-50 flex items-center justify-between dark:bg-slate-950/30 dark:border-slate-800">
                                 <div className="text-sm font-medium">
                                     {(() => {
                                         const itemTotals: Record<string, number> = {};
@@ -831,9 +831,9 @@ export const IssuesView: React.FC = () => {
                                         });
                                         const hasGlobalError = bulkPreview.some(l => itemTotals[l.itemId] > l.stock);
                                         return hasGlobalError ? (
-                                            <span className="text-red-600 flex items-center gap-1"><AlertTriangle size={16}/> Warning: Some items cumulatively exceed available stock.</span>
+                                            <span className="text-red-600 flex items-center gap-1 dark:text-red-400"><AlertTriangle size={16}/> Warning: Some items cumulatively exceed available stock.</span>
                                         ) : (
-                                            <span className="text-emerald-600 flex items-center gap-1"><CheckCircle2 size={16}/> All items have sufficient stock.</span>
+                                            <span className="text-emerald-600 flex items-center gap-1 dark:text-emerald-400"><CheckCircle2 size={16}/> All items have sufficient stock.</span>
                                         );
                                     })()}
                                 </div>
@@ -843,7 +843,7 @@ export const IssuesView: React.FC = () => {
                                             setBulkPreview(null);
                                             setIsAdding(true);
                                         }} 
-                                        className="px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-200 rounded-lg transition-colors"
+                                        className="px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-200 rounded-lg transition-colors dark:text-slate-400 dark:hover:bg-slate-800"
                                     >
                                         Cancel
                                     </button>

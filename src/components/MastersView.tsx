@@ -595,13 +595,13 @@ export const MastersView: React.FC = () => {
     };
 
     return (
-        <div className="space-y-6 text-slate-900">
+        <div className="space-y-6 text-slate-900 dark:text-slate-100">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                  <h2 className="text-2xl font-bold tracking-tight">Master Foundation</h2>
-                  <p className="text-sm text-slate-500">Configure core entities for your restaurant operations.</p>
+                  <h2 className="text-2xl font-bold tracking-tight dark:text-white">Master Foundation</h2>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">Configure core entities for your restaurant operations.</p>
                 </div>
-                <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 shadow-sm">
+                <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 shadow-sm dark:bg-slate-800 dark:border-slate-700">
                     {[
                         { id: 'items', label: 'Items' },
                         { id: 'depts', label: 'Sections' },
@@ -613,7 +613,7 @@ export const MastersView: React.FC = () => {
                             onClick={() => setTab(t.id as any)}
                             className={cn(
                                 "px-4 py-1.5 text-xs font-bold rounded-lg transition-all",
-                                tab === t.id ? "bg-white text-emerald-600 shadow-sm" : "text-slate-500 hover:text-slate-800"
+                                tab === t.id ? "bg-white text-emerald-600 shadow-sm dark:bg-slate-900 dark:text-emerald-400" : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
                             )}
                         >
                             {t.label}
@@ -623,9 +623,9 @@ export const MastersView: React.FC = () => {
             </div>
             
             {tab === 'settings' && (
-                <div className="p-6 md:p-8 space-y-8 bg-white border border-slate-200 shadow-sm rounded-xl">
+                <div className="p-6 md:p-8 space-y-8 bg-white border border-slate-200 shadow-sm rounded-xl dark:bg-slate-900 dark:border-slate-800">
                   <div className="space-y-5">
-                    <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                    <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2 dark:text-white">
                       <Store size={20} className="text-emerald-500" />
                       Restaurant Branding
                     </h3>
@@ -633,16 +633,17 @@ export const MastersView: React.FC = () => {
                     <div className="flex flex-col md:flex-row gap-8 items-start">
                       {/* Logo Upload */}
                       <div className="flex flex-col gap-3">
-                        <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Restaurant Logo</label>
-                        <div className="relative group w-32 h-32 rounded-2xl border-2 border-dashed border-slate-300 flex items-center justify-center bg-slate-50 overflow-hidden hover:border-emerald-500 transition-colors cursor-pointer">
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-widest dark:text-slate-400">Restaurant Logo</label>
+                        <div className="relative group w-32 h-32 rounded-2xl border-2 border-dashed border-slate-300 flex items-center justify-center bg-slate-50 overflow-hidden hover:border-emerald-500 transition-colors cursor-pointer dark:bg-slate-800/50 dark:border-slate-700 dark:hover:border-emerald-500">
                           {logoUrl ? (
                             <img src={logoUrl} alt="Logo" className="w-full h-full object-cover" />
                           ) : (
-                            <div className="flex flex-col items-center text-slate-400">
+                            <div className="flex flex-col items-center text-slate-400 dark:text-slate-500">
                               <ImageIcon size={32} className="mb-2 opacity-50" />
                               <span className="text-[10px] font-bold uppercase">Upload Logo</span>
                             </div>
-                          )}
+                          )
+}
                           <input 
                             type="file" 
                             accept="image/*" 
@@ -656,7 +657,7 @@ export const MastersView: React.FC = () => {
                         {logoUrl && (
                           <button 
                             onClick={() => setLogoUrl('')}
-                            className="text-[10px] font-bold text-rose-500 hover:text-rose-600 uppercase tracking-wider text-center"
+                            className="text-[10px] font-bold text-rose-500 hover:text-rose-600 uppercase tracking-wider text-center dark:text-rose-400 dark:hover:text-rose-300"
                           >
                             Remove Logo
                           </button>
@@ -666,20 +667,20 @@ export const MastersView: React.FC = () => {
                       {/* General Settings */}
                       <div className="flex-1 w-full space-y-4">
                         <div className="flex flex-col gap-2">
-                          <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Restaurant Name</label>
+                          <label className="text-xs font-bold text-slate-500 uppercase tracking-widest dark:text-slate-400">Restaurant Name</label>
                           <input 
                             type="text" 
                             value={restaurantName}
                             onChange={(e) => setRestaurantName(e.target.value)}
                             placeholder="E.g., The Grand Palace"
-                            className="w-full p-4 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent font-medium"
+                            className="w-full p-4 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent font-medium dark:bg-slate-800 dark:border-slate-700 dark:text-white dark:placeholder:text-slate-600"
                           />
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  <div className="pt-6 border-t border-slate-100 flex justify-end">
+                  <div className="pt-6 border-t border-slate-100 flex justify-end dark:border-slate-800">
                     <button 
                       onClick={handleSaveSettings}
                       disabled={loading}
@@ -693,17 +694,17 @@ export const MastersView: React.FC = () => {
             )}
 
             {tab !== 'settings' && (
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
-                <div className="p-4 border-b border-slate-100 flex items-center justify-between gap-4 bg-slate-50/50">
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col dark:bg-slate-900 dark:border-slate-800">
+                <div className="p-4 border-b border-slate-100 flex items-center justify-between gap-4 bg-slate-50/50 dark:bg-slate-950/20 dark:border-slate-800">
                     <div className="relative flex-1 max-w-sm">
                         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                        <input type="text" placeholder={`Search ${tab}...`} className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20" />
+                        <input type="text" placeholder={`Search ${tab}...`} className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:bg-slate-800 dark:border-slate-700 dark:text-white dark:placeholder:text-slate-600" />
                     </div>
                     <div className="flex gap-2">
                         <button 
                             onClick={() => setShowInactive(!showInactive)}
                             className={cn("px-4 py-2 border rounded-lg text-sm font-medium transition-all flex items-center gap-2", 
-                                showInactive ? "bg-slate-800 text-white border-slate-800" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50")}
+                                showInactive ? "bg-slate-800 text-white border-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:border-slate-100" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-400 dark:border-slate-700 dark:hover:bg-slate-800")}
                         >
                             {showInactive ? "Hide Inactive" : "Show Inactive"}
                         </button>
@@ -712,20 +713,20 @@ export const MastersView: React.FC = () => {
                                 <button 
                                     onClick={handleRepairSheets}
                                     title="If seed data or inventory fails, use this to create missing sheets/columns"
-                                    className="px-4 py-2 border border-slate-200 bg-white text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-50 transition-all flex items-center gap-2"
+                                    className="px-4 py-2 border border-slate-200 bg-white text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-50 transition-all flex items-center gap-2 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
                                 >
                                     <ShieldCheck size={14} className="text-blue-500" />
                                     Repair Structure
                                 </button>
                                 <button 
                                     onClick={handleSeedDemo}
-                                    className="px-4 py-2 border border-slate-200 bg-white text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-50 transition-all"
+                                    className="px-4 py-2 border border-slate-200 bg-white text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-50 transition-all dark:bg-slate-900 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
                                 >
                                     Seed Demo Data
                                 </button>
                                 <button 
                                     onClick={() => setIsBulkImport(true)}
-                                    className="px-4 py-2 border border-slate-200 bg-white text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-50 transition-all"
+                                    className="px-4 py-2 border border-slate-200 bg-white text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-50 transition-all dark:bg-slate-900 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
                                 >
                                     Bulk Import
                                 </button>
@@ -768,79 +769,80 @@ export const MastersView: React.FC = () => {
                                     <th className="px-6 py-3 text-right text-slate-400">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody className="text-xs divide-y divide-slate-100">
+                            <tbody className="text-xs divide-y divide-slate-100 dark:divide-slate-800">
                                 {tab === 'items' && items.filter(r => showInactive || r.isActive !== false).map((row) => (
-                                    <tr key={row.id} className={cn("hover:bg-slate-50/50 transition-colors group", row.isActive === false && "opacity-60 grayscale-[0.5]")}>
+                                    <tr key={row.id} className={cn("hover:bg-slate-50/50 transition-colors group dark:hover:bg-slate-800/40", row.isActive === false && "opacity-60 grayscale-[0.5]")}>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-2">
-                                                <p className="font-bold text-slate-900 leading-tight">{row.name}</p>
-                                                {row.isActive === false && <span className="bg-slate-200 text-slate-500 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase tracking-tighter">Inactive</span>}
+                                                <p className="font-bold text-slate-900 leading-tight dark:text-white">{row.name}</p>
+                                                {row.isActive === false && <span className="bg-slate-200 text-slate-500 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase tracking-tighter dark:bg-slate-800 dark:text-slate-400">Inactive</span>}
                                             </div>
-                                            <p className="text-[10px] text-slate-400 font-mono tracking-tighter uppercase">{row.id}</p>
+                                            <p className="text-[10px] text-slate-400 font-mono tracking-tighter uppercase dark:text-slate-500">{row.id}</p>
                                         </td>
-                                        <td className="px-6 py-4 text-slate-500 font-medium">{row.unit}</td>
+                                        <td className="px-6 py-4 text-slate-500 font-medium dark:text-slate-400">{row.unit}</td>
                                         <td className="px-6 py-4">
-                                            <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-[10px] font-bold uppercase tracking-tight">{row.category}</span>
+                                            <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-[10px] font-bold uppercase tracking-tight dark:bg-slate-800 dark:text-slate-300">{row.category}</span>
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="flex flex-wrap gap-1">
                                                 {row.deptIds ? row.deptIds.split(',').map(dId => {
                                                     const d = allDepts.find(ad => ad.id === dId.trim());
                                                     return d ? (
-                                                        <span key={dId} className="px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded-[4px] text-[10px] font-bold border border-blue-100">
+                                                        <span key={dId} className="px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded-[4px] text-[10px] font-bold border border-blue-100 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-900/50">
                                                             {d.name}
                                                         </span>
                                                     ) : null;
-                                                }) : <span className="text-[10px] text-slate-300 italic">None</span>}
+                                                }) : <span className="text-[10px] text-slate-300 italic dark:text-slate-600">None</span>}
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4 text-right font-mono font-bold text-slate-600">Rs. {row.buyPrice}</td>
-                                        <td className="px-6 py-4 text-right font-mono font-bold text-slate-900">{row.openingStock}</td>
+                                        <td className="px-6 py-4 text-right font-mono font-bold text-slate-600 dark:text-slate-400">Rs. {row.buyPrice}</td>
+                                        <td className="px-6 py-4 text-right font-mono font-bold text-slate-900 dark:text-white">{row.openingStock}</td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <button onClick={() => setEditingItem(row)} className="p-1.5 hover:bg-slate-100 rounded text-slate-400 hover:text-emerald-600 transition-colors"><Edit2 size={14} /></button>
-                                                <button onClick={() => handleDeleteEntity(row, 'items')} className="p-1.5 hover:bg-slate-100 rounded text-slate-400 hover:text-red-500 transition-colors"><Trash2 size={14} /></button>
+                                                <button onClick={() => setEditingItem(row)} className="p-1.5 hover:bg-slate-100 rounded text-slate-400 hover:text-emerald-600 transition-colors dark:hover:bg-slate-800 dark:hover:text-emerald-400"><Edit2 size={14} /></button>
+                                                <button onClick={() => handleDeleteEntity(row, 'items')} className="p-1.5 hover:bg-slate-100 rounded text-slate-400 hover:text-red-500 transition-colors dark:hover:bg-slate-800 dark:hover:text-red-400"><Trash2 size={14} /></button>
                                             </div>
                                         </td>
                                     </tr>
                                 ))}
                                 {tab === 'depts' && departments.filter(r => showInactive || r.isActive !== false).map((row) => (
-                                    <tr key={row.id} className={cn("hover:bg-slate-50/50 transition-colors group", row.isActive === false && "opacity-60 opacity-60 grayscale-[0.5]")}>
-                                        <td className="px-6 py-4 text-[10px] font-mono text-slate-400">{row.id}</td>
+                                    <tr key={row.id} className={cn("hover:bg-slate-50/50 transition-colors group dark:hover:bg-slate-800/40", row.isActive === false && "opacity-60 grayscale-[0.5]")}>
+                                        <td className="px-6 py-4 text-[10px] font-mono text-slate-400 uppercase tracking-wider dark:text-slate-500">{row.id}</td>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-2">
-                                                <p className="font-bold text-slate-900 uppercase tracking-tight">{row.name}</p>
-                                                {row.isActive === false && <span className="bg-slate-200 text-slate-500 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase tracking-tighter">Inactive</span>}
+                                                <p className="font-bold text-slate-900 dark:text-white uppercase tracking-tight">{row.name}</p>
+                                                {row.isActive === false && <span className="bg-slate-200 text-slate-500 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase tracking-tighter dark:bg-slate-800 dark:text-slate-400">Inactive</span>}
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <button onClick={() => setEditingDept(row)} className="p-1.5 hover:bg-slate-100 rounded text-slate-400 hover:text-emerald-600 transition-colors"><Edit2 size={14} /></button>
-                                                <button onClick={() => handleDeleteEntity(row, 'depts')} className="p-1.5 hover:bg-slate-100 rounded text-slate-400 hover:text-red-500 transition-colors"><Trash2 size={14} /></button>
+                                                <button onClick={() => setEditingDept(row)} className="p-1.5 hover:bg-slate-100 rounded text-slate-400 hover:text-emerald-600 transition-colors dark:hover:bg-slate-800 dark:hover:text-emerald-400"><Edit2 size={14} /></button>
+                                                <button onClick={() => handleDeleteEntity(row, 'depts')} className="p-1.5 hover:bg-slate-100 rounded text-slate-400 hover:text-red-500 transition-colors dark:hover:bg-slate-800 dark:hover:text-red-400"><Trash2 size={14} /></button>
                                             </div>
                                         </td>
                                     </tr>
                                 ))}
                                 {tab === 'suppliers' && suppliers.filter(r => showInactive || r.isActive !== false).map((row) => (
-                                    <tr key={row.id} className={cn("hover:bg-slate-50/50 transition-colors group", row.isActive === false && "opacity-60 opacity-60 grayscale-[0.5]")}>
+                                    <tr key={row.id} className={cn("hover:bg-slate-50/50 transition-colors group dark:hover:bg-slate-800/40", row.isActive === false && "opacity-60 grayscale-[0.5]")}>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-2">
-                                                <p className="font-bold text-slate-900">{row.name}</p>
-                                                {row.isActive === false && <span className="bg-slate-200 text-slate-500 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase tracking-tighter">Inactive</span>}
+                                                <p className="font-bold text-slate-900 dark:text-white">{row.name}</p>
+                                                {row.isActive === false && <span className="bg-slate-200 text-slate-500 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase tracking-tighter dark:bg-slate-800 dark:text-slate-400">Inactive</span>}
                                             </div>
+                                            <p className="text-[10px] text-slate-400 font-mono tracking-tighter uppercase dark:text-slate-500">{row.id}</p>
                                         </td>
-                                        <td className="px-6 py-4 text-slate-500">{row.contact}</td>
+                                        <td className="px-6 py-4 text-slate-500 dark:text-slate-400">{row.contact}</td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <button onClick={() => setEditingSupplier(row)} className="p-1.5 hover:bg-slate-100 rounded text-slate-400 hover:text-emerald-600 transition-colors"><Edit2 size={14} /></button>
-                                                <button onClick={() => handleDeleteEntity(row, 'suppliers')} className="p-1.5 hover:bg-slate-100 rounded text-slate-400 hover:text-red-500 transition-colors"><Trash2 size={14} /></button>
+                                                <button onClick={() => setEditingSupplier(row)} className="p-1.5 hover:bg-slate-100 rounded text-slate-400 hover:text-emerald-600 transition-colors dark:hover:bg-slate-800 dark:hover:text-emerald-400"><Edit2 size={14} /></button>
+                                                <button onClick={() => handleDeleteEntity(row, 'suppliers')} className="p-1.5 hover:bg-slate-100 rounded text-slate-400 hover:text-red-500 transition-colors dark:hover:bg-slate-800 dark:hover:text-red-400"><Trash2 size={14} /></button>
                                             </div>
                                         </td>
                                     </tr>
                                 ))}
                                 {((tab === 'items' && items.length === 0) || (tab === 'depts' && departments.length === 0) || (tab === 'suppliers' && suppliers.length === 0)) && !loading && (
                                     <tr>
-                                        <td colSpan={10} className="px-6 py-12 text-center text-slate-400 italic">
+                                        <td colSpan={10} className="px-6 py-12 text-center text-slate-400 italic dark:text-slate-600">
                                             No {tab} found. Connect your Google Sheet or add entries.
                                         </td>
                                     </tr>
@@ -859,38 +861,38 @@ export const MastersView: React.FC = () => {
                             initial={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.95 }}
-                            className="bg-white rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl border border-slate-200"
+                            className="bg-white rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl border border-slate-200 dark:bg-slate-900 dark:border-slate-800"
                         >
-                            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50 dark:bg-slate-950/20 dark:border-slate-800">
                                 <div>
-                                    <h3 className="font-bold text-slate-900">Bulk Import Items</h3>
+                                    <h3 className="font-bold text-slate-900 dark:text-white">Bulk Import Items</h3>
                                     <div className="flex items-center gap-2 mt-1">
-                                        <label className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Opening Stock Date:</label>
-                                        <input type="date" className="px-2 py-1 border border-slate-200 rounded text-[10px] bg-white font-mono" value={openingStockDate} onChange={(e) => setOpeningStockDate(e.target.value)} />
+                                        <label className="text-[10px] text-slate-500 font-bold uppercase tracking-wider dark:text-slate-400">Opening Stock Date:</label>
+                                        <input type="date" className="px-2 py-1 border border-slate-200 rounded text-[10px] bg-white font-mono dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 text-slate-900" value={openingStockDate} onChange={(e) => setOpeningStockDate(e.target.value)} />
                                     </div>
-                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-1">Paste from Excel or Sheets (Tab Separated)</p>
+                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-1 dark:text-slate-500">Paste from Excel or Sheets (Tab Separated)</p>
                                 </div>
-                                <button onClick={() => setIsBulkImport(false)} className="text-slate-400 hover:text-slate-600 p-1"><X size={20} /></button>
+                                <button onClick={() => setIsBulkImport(false)} className="text-slate-400 hover:text-slate-600 p-1 dark:hover:text-slate-300"><X size={20} /></button>
                             </div>
                             <div className="p-6 space-y-4">
-                                <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl text-[10px] text-blue-700 font-medium whitespace-pre-wrap">
+                                <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl text-[10px] text-blue-700 font-medium whitespace-pre-wrap dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-900/50">
                                     Expected format (Tab Separated):<br />
                                     Item Name [TAB] Sections (IDs comma separated) [TAB] Unit [TAB] Category [TAB] Buy Price [TAB] Sell Price [TAB] Opening Stock [TAB] Min Par Level [TAB] Reorder Qty<br />
-                                    <span className="text-blue-500 font-normal">Example: Tomato [TAB] D01,D02 [TAB] kg [TAB] Raw [TAB] 50 [TAB] 0 [TAB] 10 [TAB] 5 [TAB] 20</span>
+                                    <span className="text-blue-500 font-normal dark:text-blue-500">Example: Tomato [TAB] D01,D02 [TAB] kg [TAB] Raw [TAB] 50 [TAB] 0 [TAB] 10 [TAB] 5 [TAB] 20</span>
                                 </div>
                                 <textarea 
-                                    className="w-full h-80 p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all resize-none"
+                                    className="w-full h-80 p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all resize-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200"
                                     placeholder="Paste your list here..."
                                     value={bulkText}
                                     onChange={(e) => setBulkText(e.target.value)}
                                 />
                             </div>
-                            <div className="p-6 bg-slate-50 border-t border-slate-100 flex gap-4">
-                                <button onClick={() => setIsBulkImport(false)} className="flex-1 py-2.5 text-sm font-bold text-slate-500">Cancel</button>
+                            <div className="p-6 bg-slate-50 border-t border-slate-100 flex gap-4 dark:bg-slate-950/20 dark:border-slate-800">
+                                <button onClick={() => setIsBulkImport(false)} className="flex-1 py-2.5 text-sm font-bold text-slate-500 dark:text-slate-400 dark:hover:text-slate-300 transition-colors">Cancel</button>
                                 <button 
                                     onClick={handleBulkImport}
                                     disabled={loading || !bulkText}
-                                    className="flex-[2] py-2.5 bg-emerald-600 text-white rounded-lg text-sm font-bold shadow-lg shadow-emerald-600/20 hover:bg-emerald-700 disabled:bg-slate-300 flex items-center justify-center gap-2"
+                                    className="flex-[2] py-2.5 bg-emerald-600 text-white rounded-lg text-sm font-bold shadow-lg shadow-emerald-600/20 hover:bg-emerald-700 disabled:bg-slate-300 dark:disabled:bg-slate-800 dark:disabled:text-slate-500 flex items-center justify-center gap-2"
                                 >
                                     {loading ? <Loader2 size={16} className="animate-spin" /> : "Process & Import"}
                                 </button>
@@ -905,23 +907,23 @@ export const MastersView: React.FC = () => {
                             initial={{ opacity: 0, scale: 0.95, y: 10 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                            className="bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-2xl border border-slate-200"
+                            className="bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-2xl border border-slate-200 dark:bg-slate-900 dark:border-slate-800"
                         >
-                            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-                                <h3 className="font-bold text-slate-900 tracking-tight">Configure {tab === 'items' ? 'Item' : tab === 'depts' ? 'Section' : 'Supplier'}</h3>
-                                <button onClick={() => setIsAdding(false)} className="text-slate-400 hover:text-slate-600 p-1"><X size={20} /></button>
+                            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50 dark:bg-slate-950/20 dark:border-slate-800">
+                                <h3 className="font-bold text-slate-900 tracking-tight dark:text-white">Configure {tab === 'items' ? 'Item' : tab === 'depts' ? 'Section' : 'Supplier'}</h3>
+                                <button onClick={() => setIsAdding(false)} className="text-slate-400 hover:text-slate-600 p-1 dark:hover:text-slate-300"><X size={20} /></button>
                             </div>
                             <div className="p-6 space-y-4">
                                 {tab === 'items' && (
                                     <>
                                         <div className="space-y-1.5">
-                                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Identification</label>
+                                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Identification</label>
                                             <div className="relative">
                                               <Package size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                                               <input 
                                                   type="text" 
                                                   placeholder="e.g. Basmati Rice (Premium)" 
-                                                  className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all"
+                                                  className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 dark:placeholder:text-slate-600"
                                                   value={newItem.name}
                                                   onChange={(e) => setNewItem({...newItem, name: e.target.value})}
                                               />
@@ -929,8 +931,8 @@ export const MastersView: React.FC = () => {
                                         </div>
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="space-y-1.5">
-                                                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Unit of measure</label>
-                                                <select className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all appearance-none"
+                                                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Unit of measure</label>
+                                                <select className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all appearance-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200"
                                                     value={newItem.unit}
                                                     onChange={(e) => setNewItem({...newItem, unit: e.target.value})}
                                                 >
@@ -938,8 +940,8 @@ export const MastersView: React.FC = () => {
                                                 </select>
                                             </div>
                                             <div className="space-y-1.5">
-                                                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Cost Center</label>
-                                                <select className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all appearance-none"
+                                                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Cost Center</label>
+                                                <select className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all appearance-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200"
                                                   value={newItem.category}
                                                   onChange={(e) => setNewItem({...newItem, category: e.target.value})}
                                                 >
@@ -949,10 +951,10 @@ export const MastersView: React.FC = () => {
                                         </div>
 
                                         <div className="space-y-1.5">
-                                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Applicable Sections (Departments)</label>
-                                            <div className="flex flex-wrap gap-2 p-3 bg-slate-50 border border-slate-200 rounded-lg min-h-[42px]">
+                                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Applicable Sections (Departments)</label>
+                                            <div className="flex flex-wrap gap-2 p-3 bg-slate-50 border border-slate-200 rounded-lg min-h-[42px] dark:bg-slate-800 dark:border-slate-700">
                                                 {allDepts.length === 0 ? (
-                                                    <p className="text-[10px] text-slate-400 italic">No sections defined. Go to "Sections" tab first.</p>
+                                                    <p className="text-[10px] text-slate-400 italic dark:text-slate-600">No sections defined. Go to "Sections" tab first.</p>
                                                 ) : (
                                                     allDepts.map(dept => {
                                                         const isSelected = newItem.deptIds.split(',').includes(dept.id);
@@ -971,7 +973,7 @@ export const MastersView: React.FC = () => {
                                                                     "px-3 py-1 rounded-full text-[10px] font-bold transition-all flex items-center gap-1",
                                                                     isSelected 
                                                                         ? "bg-emerald-600 text-white shadow-sm" 
-                                                                        : "bg-white text-slate-500 border border-slate-200 hover:border-emerald-300"
+                                                                        : "bg-white text-slate-500 border border-slate-200 hover:border-emerald-300 dark:bg-slate-900 dark:text-slate-400 dark:border-slate-700 dark:hover:border-emerald-500"
                                                                 )}
                                                             >
                                                                 {isSelected && <Check size={10} />}
@@ -985,17 +987,17 @@ export const MastersView: React.FC = () => {
 
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="space-y-1.5">
-                                                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Base Unit Rate</label>
+                                                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Base Unit Rate</label>
                                                 <div className="relative">
                                                   <Hash size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                                                  <input type="number" className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all" placeholder="Rs. 0" 
+                                                  <input type="number" className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200" placeholder="Rs. 0" 
                                                     value={newItem.buyPrice} onChange={(e) => setNewItem({...newItem, buyPrice: e.target.value})}
                                                   />
                                                 </div>
                                             </div>
                                             <div className="space-y-1.5">
-                                                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Initial Stock</label>
-                                                <input type="number" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all" placeholder="0.00" 
+                                                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Initial Stock</label>
+                                                <input type="number" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200" placeholder="0.00" 
                                                    value={newItem.openingStock} onChange={(e) => setNewItem({...newItem, openingStock: e.target.value})}
                                                 />
                                             </div>
@@ -1003,8 +1005,8 @@ export const MastersView: React.FC = () => {
                                         {Number(newItem.openingStock) > 0 && (
                                             <div className="grid grid-cols-2 gap-4">
                                                 <div className="space-y-1.5 col-span-2">
-                                                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Opening Stock Date</label>
-                                                    <input type="date" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all" 
+                                                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Opening Stock Date</label>
+                                                    <input type="date" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 text-slate-900" 
                                                        value={openingStockDate} onChange={(e) => setOpeningStockDate(e.target.value)}
                                                     />
                                                 </div>
@@ -1012,18 +1014,18 @@ export const MastersView: React.FC = () => {
                                         )}
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="space-y-1.5">
-                                                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Min Par Level</label>
-                                                <input type="number" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all" placeholder="0.00" 
+                                                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Min Par Level</label>
+                                                <input type="number" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200" placeholder="0.00" 
                                                    value={newItem.minParLevel} onChange={(e) => setNewItem({...newItem, minParLevel: e.target.value})}
                                                 />
-                                                <p className="text-[9px] text-slate-400 leading-none mt-1">Alert when stock falls below this</p>
+                                                <p className="text-[9px] text-slate-400 leading-none mt-1 dark:text-slate-500">Alert when stock falls below this</p>
                                             </div>
                                             <div className="space-y-1.5">
-                                                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Reorder Qty</label>
-                                                <input type="number" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all" placeholder="0.00" 
+                                                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Reorder Qty</label>
+                                                <input type="number" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200" placeholder="0.00" 
                                                    value={newItem.reorderQty} onChange={(e) => setNewItem({...newItem, reorderQty: e.target.value})}
                                                 />
-                                                <p className="text-[9px] text-slate-400 leading-none mt-1">Default quantity to purchase</p>
+                                                <p className="text-[9px] text-slate-400 leading-none mt-1 dark:text-slate-500">Default quantity to purchase</p>
                                             </div>
                                         </div>
                                     </>
@@ -1031,8 +1033,8 @@ export const MastersView: React.FC = () => {
                                 {tab === 'depts' && (
                                     <div className="space-y-4">
                                         <div className="space-y-1.5">
-                                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Section Name</label>
-                                            <input type="text" className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all placeholder:font-normal placeholder:text-slate-400" placeholder="e.g. Kitchen, Bar..." 
+                                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Section Name</label>
+                                            <input type="text" className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all placeholder:font-normal placeholder:text-slate-400 dark:bg-slate-800 dark:border-slate-700 dark:text-white dark:placeholder:text-slate-600" placeholder="e.g. Kitchen, Bar..." 
                                               value={newDept.name} onChange={(e) => setNewDept({...newDept, name: e.target.value})}
                                               autoFocus
                                             />
@@ -1042,25 +1044,25 @@ export const MastersView: React.FC = () => {
                                 {tab === 'suppliers' && (
                                     <div className="space-y-4">
                                         <div className="space-y-1.5">
-                                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Supplier Name</label>
-                                            <input type="text" className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all placeholder:font-normal placeholder:text-slate-400" placeholder="Alpha Distributors" 
+                                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Supplier Name</label>
+                                            <input type="text" className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all placeholder:font-normal placeholder:text-slate-400 dark:bg-slate-800 dark:border-slate-700 dark:text-white dark:placeholder:text-slate-600" placeholder="Alpha Distributors" 
                                               value={newSupplier.name} onChange={(e) => setNewSupplier({...newSupplier, name: e.target.value})}
                                               autoFocus
                                             />
                                         </div>
                                         <div className="space-y-1.5">
-                                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Contact Info</label>
-                                            <input type="text" className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all" placeholder="Phone, Email, or Address" 
+                                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Contact Info</label>
+                                            <input type="text" className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 dark:placeholder:text-slate-600" placeholder="Phone, Email, or Address" 
                                               value={newSupplier.contact} onChange={(e) => setNewSupplier({...newSupplier, contact: e.target.value})}
                                             />
                                         </div>
                                     </div>
                                 )}
                             </div>
-                            <div className="p-6 bg-slate-50 border-t border-slate-100 flex gap-4">
+                            <div className="p-6 bg-slate-50 border-t border-slate-100 flex gap-4 dark:bg-slate-950/20 dark:border-slate-800">
                                 <button
                                     onClick={() => setIsAdding(false)}
-                                    className="flex-1 py-2.5 text-sm font-bold text-slate-500 hover:text-slate-900 transition-colors"
+                                    className="flex-1 py-2.5 text-sm font-bold text-slate-500 hover:text-slate-900 transition-colors dark:text-slate-400 dark:hover:text-slate-200"
                                 >
                                     Discard
                                 </button>
@@ -1083,23 +1085,23 @@ export const MastersView: React.FC = () => {
                             initial={{ opacity: 0, scale: 0.95, y: 10 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                            className="bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-2xl border border-slate-200"
+                            className="bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-2xl border border-slate-200 dark:bg-slate-900 dark:border-slate-800"
                         >
-                            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-                                <h3 className="font-bold text-slate-900 tracking-tight">Edit {tab === 'items' ? 'Item' : tab === 'depts' ? 'Section' : 'Supplier'}</h3>
-                                <button onClick={() => { setEditingItem(null); setEditingDept(null); setEditingSupplier(null); }} className="text-slate-400 hover:text-slate-600 p-1"><X size={20} /></button>
+                            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50 dark:bg-slate-950/20 dark:border-slate-800">
+                                <h3 className="font-bold text-slate-900 tracking-tight dark:text-white">Edit {tab === 'items' ? 'Item' : tab === 'depts' ? 'Section' : 'Supplier'}</h3>
+                                <button onClick={() => { setEditingItem(null); setEditingDept(null); setEditingSupplier(null); }} className="text-slate-400 hover:text-slate-600 p-1 dark:hover:text-slate-300"><X size={20} /></button>
                             </div>
                             <div className="p-6 space-y-4">
                                 {tab === 'items' && editingItem && (
                                     <>
                                         <div className="space-y-1.5">
-                                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Identification</label>
+                                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Identification</label>
                                             <div className="relative">
                                               <Package size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                                               <input 
                                                   type="text" 
                                                   placeholder="e.g. Basmati Rice (Premium)" 
-                                                  className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all"
+                                                  className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 dark:placeholder:text-slate-600"
                                                   value={editingItem.name}
                                                   onChange={(e) => setEditingItem({...editingItem, name: e.target.value})}
                                               />
@@ -1107,8 +1109,8 @@ export const MastersView: React.FC = () => {
                                         </div>
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="space-y-1.5">
-                                                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Unit of measure</label>
-                                                <select className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all appearance-none"
+                                                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Unit of measure</label>
+                                                <select className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all appearance-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200"
                                                     value={editingItem.unit}
                                                     onChange={(e) => setEditingItem({...editingItem, unit: e.target.value})}
                                                 >
@@ -1116,8 +1118,8 @@ export const MastersView: React.FC = () => {
                                                 </select>
                                             </div>
                                             <div className="space-y-1.5">
-                                                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Cost Center</label>
-                                                <select className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all appearance-none"
+                                                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Cost Center</label>
+                                                <select className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all appearance-none dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200"
                                                   value={editingItem.category}
                                                   onChange={(e) => setEditingItem({...editingItem, category: e.target.value})}
                                                 >
@@ -1127,19 +1129,19 @@ export const MastersView: React.FC = () => {
                                         </div>
 
                                         <div className="space-y-1.5">
-                                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Applicable Sections (Departments)</label>
-                                            <div className="flex flex-wrap gap-2 p-3 bg-slate-50 border border-slate-200 rounded-lg min-h-[42px]">
+                                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Applicable Sections (Departments)</label>
+                                            <div className="flex flex-wrap gap-2 p-3 bg-slate-50 border border-slate-200 rounded-lg min-h-[42px] dark:bg-slate-800 dark:border-slate-700">
                                                 {allDepts.length === 0 ? (
-                                                    <p className="text-[10px] text-slate-400 italic">No sections defined.</p>
+                                                    <p className="text-[10px] text-slate-400 italic dark:text-slate-600">No sections defined. Go to "Sections" tab first.</p>
                                                 ) : (
                                                     allDepts.map(dept => {
-                                                        const isSelected = (editingItem.deptIds || '').split(',').includes(dept.id);
+                                                        const isSelected = editingItem.deptIds?.split(',').includes(dept.id);
                                                         return (
                                                             <button
                                                                 key={dept.id}
                                                                 type="button"
                                                                 onClick={() => {
-                                                                    const current = (editingItem.deptIds || '').split(',').filter(x => x.trim());
+                                                                    const current = editingItem.deptIds?.split(',').filter(x => x.trim()) || [];
                                                                     const next = isSelected 
                                                                         ? current.filter(x => x !== dept.id)
                                                                         : [...current, dept.id];
@@ -1148,8 +1150,8 @@ export const MastersView: React.FC = () => {
                                                                 className={cn(
                                                                     "px-3 py-1 rounded-full text-[10px] font-bold transition-all flex items-center gap-1",
                                                                     isSelected 
-                                                                        ? "bg-blue-600 text-white shadow-sm" 
-                                                                        : "bg-white text-slate-500 border border-slate-200 hover:border-blue-300"
+                                                                        ? "bg-emerald-600 text-white shadow-sm" 
+                                                                        : "bg-white text-slate-500 border border-slate-200 hover:border-emerald-300 dark:bg-slate-900 dark:text-slate-400 dark:border-slate-700 dark:hover:border-emerald-500"
                                                                 )}
                                                             >
                                                                 {isSelected && <Check size={10} />}
@@ -1163,75 +1165,108 @@ export const MastersView: React.FC = () => {
 
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="space-y-1.5">
-                                                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Base Unit Rate</label>
+                                                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Base Unit Rate</label>
                                                 <div className="relative">
                                                   <Hash size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                                                  <input type="number" className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all" placeholder="Rs. 0" 
+                                                  <input type="number" className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200" placeholder="Rs. 0" 
                                                     value={editingItem.buyPrice} onChange={(e) => setEditingItem({...editingItem, buyPrice: Number(e.target.value)})}
                                                   />
                                                 </div>
                                             </div>
+                                            <div className="space-y-1.5">
+                                                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Initial Stock</label>
+                                                <input type="number" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200" placeholder="0.00" 
+                                                   value={editingItem.openingStock} onChange={(e) => setEditingItem({...editingItem, openingStock: Number(e.target.value)})}
+                                                />
+                                            </div>
                                         </div>
+
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="space-y-1.5">
-                                                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Min Par Level</label>
-                                                <input type="number" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all" placeholder="0.00" 
+                                                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Min Par Level</label>
+                                                <input type="number" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200" placeholder="0.00" 
                                                    value={editingItem.minParLevel} onChange={(e) => setEditingItem({...editingItem, minParLevel: Number(e.target.value)})}
                                                 />
-                                                <p className="text-[9px] text-slate-400 leading-none mt-1">Alert when stock falls below this</p>
                                             </div>
                                             <div className="space-y-1.5">
-                                                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Reorder Qty</label>
-                                                <input type="number" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all" placeholder="0.00" 
+                                                <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Reorder Qty</label>
+                                                <input type="number" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200" placeholder="0.00" 
                                                    value={editingItem.reorderQty} onChange={(e) => setEditingItem({...editingItem, reorderQty: Number(e.target.value)})}
                                                 />
-                                                <p className="text-[9px] text-slate-400 leading-none mt-1">Default quantity to purchase</p>
                                             </div>
+                                        </div>
+                                        <div className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-lg dark:bg-slate-800 dark:border-slate-700">
+                                            <input 
+                                                type="checkbox" 
+                                                id="edit-item-active"
+                                                checked={editingItem.isActive !== false}
+                                                onChange={(e) => setEditingItem({...editingItem, isActive: e.target.checked})}
+                                                className="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500 dark:bg-slate-900 dark:border-slate-700"
+                                            />
+                                            <label htmlFor="edit-item-active" className="text-xs font-bold text-slate-700 dark:text-slate-300">Item is Active</label>
                                         </div>
                                     </>
                                 )}
                                 {tab === 'depts' && editingDept && (
                                     <div className="space-y-4">
                                         <div className="space-y-1.5">
-                                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Section Name</label>
-                                            <input type="text" className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all placeholder:font-normal placeholder:text-slate-400" placeholder="e.g. Kitchen, Bar..." 
+                                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Section Name</label>
+                                            <input type="text" className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all dark:bg-slate-800 dark:border-slate-700 dark:text-white" 
                                               value={editingDept.name} onChange={(e) => setEditingDept({...editingDept, name: e.target.value})}
-                                              autoFocus
                                             />
+                                        </div>
+                                        <div className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-lg dark:bg-slate-800 dark:border-slate-700">
+                                            <input 
+                                                type="checkbox" 
+                                                id="edit-dept-active"
+                                                checked={editingDept.isActive !== false}
+                                                onChange={(e) => setEditingDept({...editingDept, isActive: e.target.checked})}
+                                                className="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500 dark:bg-slate-900 dark:border-slate-700"
+                                            />
+                                            <label htmlFor="edit-dept-active" className="text-xs font-bold text-slate-700 dark:text-slate-300">Section is Active</label>
                                         </div>
                                     </div>
                                 )}
                                 {tab === 'suppliers' && editingSupplier && (
                                     <div className="space-y-4">
                                         <div className="space-y-1.5">
-                                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Supplier Name</label>
-                                            <input type="text" className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all placeholder:font-normal placeholder:text-slate-400" placeholder="Alpha Distributors" 
+                                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Supplier Name</label>
+                                            <input type="text" className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all dark:bg-slate-800 dark:border-slate-700 dark:text-white" 
                                               value={editingSupplier.name} onChange={(e) => setEditingSupplier({...editingSupplier, name: e.target.value})}
-                                              autoFocus
                                             />
                                         </div>
                                         <div className="space-y-1.5">
-                                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Contact Info</label>
-                                            <input type="text" className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all" placeholder="Phone, Email, or Address" 
+                                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Contact Info</label>
+                                            <input type="text" className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200" 
                                               value={editingSupplier.contact} onChange={(e) => setEditingSupplier({...editingSupplier, contact: e.target.value})}
                                             />
+                                        </div>
+                                        <div className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-lg dark:bg-slate-800 dark:border-slate-700">
+                                            <input 
+                                                type="checkbox" 
+                                                id="edit-sup-active"
+                                                checked={editingSupplier.isActive !== false}
+                                                onChange={(e) => setEditingSupplier({...editingSupplier, isActive: e.target.checked})}
+                                                className="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500 dark:bg-slate-900 dark:border-slate-700"
+                                            />
+                                            <label htmlFor="edit-sup-active" className="text-xs font-bold text-slate-700 dark:text-slate-300">Supplier is Active</label>
                                         </div>
                                     </div>
                                 )}
                             </div>
-                            <div className="p-6 bg-slate-50 border-t border-slate-100 flex gap-4">
+                            <div className="p-6 bg-slate-50 border-t border-slate-100 flex gap-4 dark:bg-slate-950/20 dark:border-slate-800">
                                 <button
                                     onClick={() => { setEditingItem(null); setEditingDept(null); setEditingSupplier(null); }}
-                                    className="flex-1 py-2.5 text-sm font-bold text-slate-500 hover:text-slate-900 transition-colors"
+                                    className="flex-1 py-2.5 text-sm font-bold text-slate-500 hover:text-slate-900 transition-colors dark:text-slate-400 dark:hover:text-slate-200"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     onClick={handleUpdateEntity}
                                     disabled={loading}
-                                    className="flex-1 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-bold shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all flex items-center justify-center gap-2"
+                                    className="flex-1 py-2.5 bg-emerald-600 text-white rounded-lg text-sm font-bold shadow-lg shadow-emerald-600/20 hover:bg-emerald-700 transition-all flex items-center justify-center gap-2"
                                 >
-                                    {loading ? <Loader2 size={16} className="animate-spin" /> : <ShieldCheck size={16}/>}
+                                    {loading ? <Loader2 size={16} className="animate-spin" /> : <Save size={16}/>}
                                     Update Entity
                                 </button>
                             </div>

@@ -100,11 +100,11 @@ export function InventoryView() {
           header: 'Item Details',
           cell: (item) => (
              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded bg-slate-100 flex items-center justify-center text-slate-400">
+                <div className="w-8 h-8 rounded bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400">
                    <Package size={14} />
                 </div>
                 <div>
-                  <p className="font-bold text-slate-800 tracking-tight leading-tight">{item.name}</p>
+                  <p className="font-bold text-slate-800 dark:text-slate-200 tracking-tight leading-tight">{item.name}</p>
                 </div>
              </div>
           ),
@@ -113,19 +113,19 @@ export function InventoryView() {
       {
           key: 'type',
           header: 'Department',
-          cell: (item) => <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-[10px] font-bold uppercase tracking-tight">{item.type}</span>,
+          cell: (item) => <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded text-[10px] font-bold uppercase tracking-tight">{item.type}</span>,
           sortable: true
       },
       {
           key: 'unit',
           header: 'Unit',
-          cell: (item) => <span className="text-slate-500 font-medium">{item.unit}</span>,
+          cell: (item) => <span className="text-slate-500 dark:text-slate-400 font-medium">{item.unit}</span>,
           sortable: true
       },
       {
           key: 'price',
           header: 'Unit Price',
-          cell: (item) => <span className="font-mono text-slate-600 tracking-tighter">Rs. {Number(item.price).toLocaleString()}</span>,
+          cell: (item) => <span className="font-mono text-slate-600 dark:text-slate-400 tracking-tighter">Rs. {Number(item.price).toLocaleString()}</span>,
           sortable: true
       },
       {
@@ -135,7 +135,7 @@ export function InventoryView() {
           cell: (item) => (
              <span className={cn(
                "font-bold font-mono text-sm tracking-tighter",
-               item.stock <= item.minParLevel ? "text-red-600" : "text-slate-900"
+               item.stock <= item.minParLevel ? "text-red-600 dark:text-red-400" : "text-slate-900 dark:text-white"
              )}>
                {item.stock.toFixed(2)}
              </span>
@@ -146,7 +146,7 @@ export function InventoryView() {
           key: 'value',
           header: 'Stock Value',
           align: 'right',
-          cell: (item) => <span className="font-bold text-slate-900 font-mono tracking-tighter">Rs. {item.value.toLocaleString()}</span>,
+          cell: (item) => <span className="font-bold text-slate-900 dark:text-white font-mono tracking-tighter">Rs. {item.value.toLocaleString()}</span>,
           sortable: true
       },
       {
@@ -163,17 +163,17 @@ export function InventoryView() {
           cell: (item) => (
               item.stock <= item.minParLevel ? (
                 <div className="flex flex-col gap-1">
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-tight bg-red-100 text-red-700 max-w-max">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-tight bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-400 max-w-max">
                     Low Stock
                   </span>
                   {item.reorderQty > 0 && (
-                    <span className="text-[10px] font-medium text-red-600 leading-tight">
+                    <span className="text-[10px] font-medium text-red-600 dark:text-red-500 leading-tight">
                       Order {item.reorderQty} {item.unit}
                     </span>
                   )}
                 </div>
               ) : (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-tight bg-emerald-100 text-emerald-700 max-w-max">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-tight bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 max-w-max">
                   Healthy
                 </span>
               )
@@ -185,16 +185,16 @@ export function InventoryView() {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-slate-900">Stock Inventory</h2>
-          <p className="text-sm text-slate-500 font-medium">Real-time balances across all departments.</p>
+          <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Stock Inventory</h2>
+          <p className="text-sm text-slate-500 font-medium dark:text-slate-400">Real-time balances across all departments.</p>
         </div>
         
         {/* Total Value Summary Card */}
         <div className="flex gap-4">
-          <div className="bg-slate-50 border border-slate-200 px-6 py-3 rounded-2xl flex flex-col shadow-sm">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">Total Items</span>
+          <div className="bg-slate-50 border border-slate-200 px-6 py-3 rounded-2xl flex flex-col shadow-sm dark:bg-slate-900 dark:border-slate-800">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-0.5 dark:text-slate-400">Total Items</span>
               <div className="flex items-baseline gap-1">
-                  <span className="text-2xl font-bold text-slate-900 tracking-tighter">
+                  <span className="text-2xl font-bold text-slate-900 tracking-tighter dark:text-white">
                       {items.length}
                   </span>
                   <span className="text-xs font-medium text-slate-400 ml-1">
@@ -202,11 +202,11 @@ export function InventoryView() {
                   </span>
               </div>
           </div>
-          <div className="bg-emerald-50 border border-emerald-200 px-6 py-3 rounded-2xl flex flex-col shadow-sm">
-              <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-0.5">Total Inventory Value</span>
+          <div className="bg-emerald-50 border border-emerald-200 px-6 py-3 rounded-2xl flex flex-col shadow-sm dark:bg-emerald-950/20 dark:border-emerald-900/30">
+              <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-0.5 dark:text-emerald-500">Total Inventory Value</span>
               <div className="flex items-baseline gap-1">
                   <span className="text-xs font-bold text-emerald-500">Rs.</span>
-                  <span className="text-2xl font-bold text-emerald-900 tracking-tighter">
+                  <span className="text-2xl font-bold text-emerald-900 tracking-tighter dark:text-emerald-100">
                       {items.reduce((sum, itm) => sum + itm.value, 0).toLocaleString()}
                   </span>
               </div>
@@ -214,7 +214,7 @@ export function InventoryView() {
         </div>
       </div>
 
-      <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200">
+      <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200 dark:bg-slate-900 dark:border-slate-800">
          <DataTable
              data={items}
              columns={columns}

@@ -53,6 +53,10 @@ A professional, high-performance inventory and stock management system designed 
 4. **Consumption**: Use the **Issue to Section** tool or **Bulk Issue** to move stock. The system will automatically pick the oldest stock batches first.
 5. **Corrections**: Use the **Reverse** button in any log to undo a mistake; the system identifies the specific cost batches to return.
 
+## 📙 Development Journey
+
+To read a detailed breakdown of how this application was built from scratch—including architectural choices, the FIFO engine strategy, UI considerations, and how we solved complex Google Sheets mapping and Tailwind styling bugs—please check out [DEVELOPMENT_JOURNEY.md](./DEVELOPMENT_JOURNEY.md).
+
 ## 📄 License
 
 MIT. Built for efficiency.

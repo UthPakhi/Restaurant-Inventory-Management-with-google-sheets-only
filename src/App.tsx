@@ -37,7 +37,20 @@ export default function App() {
   const [activeView, setActiveView] = useState<View>('summary');
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 1024);
   const [user, setUser] = useState<{ email: string; name: string } | null>(null);
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    const saved = localStorage.getItem('resto_theme');
+    return saved === 'dark';
+  });
+
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('resto_theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('resto_theme', 'light');
+    }
+  }, [isDarkMode]);
   const [isInitialized, setIsInitialized] = useState(false);
   const [appData, setAppData] = useState<{ tokens: GoogleTokens; spreadsheetId: string } | null>(null);
   const [branding, setBranding] = useState<{ name: string; logoUrl: string }>({ name: 'TC Inventory Management Pro', logoUrl: '' });
@@ -186,7 +199,7 @@ export default function App() {
   return (
     <div className={cn(
       "flex h-screen w-full bg-slate-50 text-slate-900 overflow-hidden font-sans transition-colors duration-300",
-      isDarkMode && "bg-slate-950 text-slate-100 dark"
+      "dark:bg-slate-950 dark:text-slate-100"
     )}>
       <Toaster position="top-right" richColors />
       {isSidebarOpen && (
@@ -280,27 +293,24 @@ export default function App() {
       {/* Main Content */}
       <main className="flex-1 flex flex-col h-full overflow-hidden">
         {/* Header */}
-        <header className={cn(
-          "h-16 px-6 flex items-center justify-between shrink-0 border-b border-slate-200 bg-white shadow-sm",
-          isDarkMode && "bg-slate-900 border-slate-800"
-        )}>
+        <header className="h-16 px-6 flex items-center justify-between shrink-0 border-b border-slate-200 bg-white shadow-sm dark:bg-slate-900 dark:border-slate-800">
           <div className="flex items-center gap-4">
             <button 
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="p-2 hover:bg-slate-100 rounded-lg"
+              className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
             >
-              <Menu size={20} className="text-slate-500" />
+              <Menu size={20} className="text-slate-500 dark:text-slate-400" />
             </button>
             <div>
-              <h1 className="text-lg font-bold tracking-tight capitalize leading-none mb-0.5">{activeView.replace('-', ' ')}</h1>
-              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Operations Hub v1.0</p>
+              <h1 className="text-lg font-bold tracking-tight capitalize leading-none mb-0.5 dark:text-white">{activeView.replace('-', ' ')}</h1>
+              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider dark:text-slate-400">Operations Hub v1.0</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 text-slate-900">
+          <div className="flex items-center gap-3">
              <button
                onClick={() => setIsDarkMode(!isDarkMode)}
-               className="p-2 rounded-lg bg-slate-50 border border-slate-100 hover:bg-slate-100 transition-all font-bold text-lg"
+               className="p-2 rounded-lg bg-slate-50 border border-slate-100 hover:bg-slate-100 dark:bg-slate-800 dark:border-slate-700 dark:hover:bg-slate-700 transition-all font-bold text-lg"
              >
                {isDarkMode ? "☀️" : "🌙"}
              </button>

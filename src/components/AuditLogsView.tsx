@@ -29,45 +29,45 @@ export const AuditLogsView: React.FC = () => {
         {
             key: 'timestamp',
             header: 'Timestamp',
-            cell: (log) => <span className="font-medium text-slate-600">{new Date(log.timestamp).toLocaleString()}</span>,
+            cell: (log) => <span className="font-medium text-slate-600 dark:text-slate-400">{new Date(log.timestamp).toLocaleString()}</span>,
             sortable: true
         },
         {
             key: 'userEmail',
             header: 'User Email',
-            cell: (log) => <span className="font-bold text-slate-900">{log.userEmail}</span>,
+            cell: (log) => <span className="font-bold text-slate-900 dark:text-slate-200">{log.userEmail}</span>,
             sortable: true
         },
         {
             key: 'action',
             header: 'Action',
-            cell: (log) => <span className="px-2 py-1 bg-slate-100 text-slate-600 rounded-md text-[10px] font-bold uppercase tracking-wider">{log.action}</span>,
+            cell: (log) => <span className="px-2 py-1 bg-slate-100 text-slate-600 rounded-md text-[10px] font-bold uppercase tracking-wider dark:bg-slate-800 dark:text-slate-400">{log.action}</span>,
             sortable: true
         },
         {
             key: 'sheetName',
             header: 'Sheet Activity',
-            cell: (log) => <span className="font-medium text-slate-600">{log.sheetName}</span>,
+            cell: (log) => <span className="font-medium text-slate-600 dark:text-slate-400">{log.sheetName}</span>,
             sortable: true
         },
         {
             key: 'details',
             header: 'Details',
-            cell: (log) => <span className="font-medium text-slate-500">{log.details}</span>
+            cell: (log) => <span className="font-medium text-slate-500 dark:text-slate-500">{log.details}</span>
         }
     ];
 
     return (
         <div className="space-y-6 pb-20">
             <div>
-                <h2 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+                <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
                     <History className="text-blue-500" />
                     Audit Logs
                 </h2>
-                <p className="text-sm font-medium text-slate-500">Track all sensitive actions, edits, and entries across the application.</p>
+                <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Track all sensitive actions, edits, and entries across the application.</p>
             </div>
 
-            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-6">
+            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-6 dark:bg-slate-900 dark:border-slate-800">
                 <DataTable 
                     data={logs} 
                     columns={columns} 

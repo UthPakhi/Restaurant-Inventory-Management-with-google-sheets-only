@@ -279,25 +279,25 @@ export const PurchasesView: React.FC = () => {
     };
 
     const columns: Column<Purchase>[] = [
-        { key: 'date', header: 'Date', cell: row => <span className="text-slate-500 font-mono text-xs">{row.date}</span>, sortable: true },
-        { key: 'invoice', header: 'Invoice', cell: row => <span className="text-slate-700 font-mono text-xs">{row.invoice}</span>, sortable: true },
-        { key: 'supplierId', header: 'Supplier', cell: row => <span className="font-semibold text-slate-700">{getSupplierName(row.supplierId)}</span>, sortable: true },
-        { key: 'itemId', header: 'Item', cell: row => <span className="font-bold text-slate-900">{getItemName(row.itemId)}</span>, sortable: true },
-        { key: 'qty', header: 'Qty', align: 'right', cell: row => <span className="font-mono text-slate-700">{row.qty}</span>, sortable: true },
-        { key: 'rate', header: 'Rate (Rs)', align: 'right', cell: row => <span className="font-mono text-slate-500">{Number(row.rate).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>, sortable: true },
-        { key: 'total', header: 'Total (Rs)', align: 'right', cell: row => <span className="font-mono font-bold text-emerald-700">{Number(row.total).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>, sortable: true }
+        { key: 'date', header: 'Date', cell: row => <span className="text-slate-500 dark:text-slate-400 font-mono text-xs">{row.date}</span>, sortable: true },
+        { key: 'invoice', header: 'Invoice', cell: row => <span className="text-slate-700 dark:text-slate-300 font-mono text-xs">{row.invoice}</span>, sortable: true },
+        { key: 'supplierId', header: 'Supplier', cell: row => <span className="font-semibold text-slate-700 dark:text-slate-200">{getSupplierName(row.supplierId)}</span>, sortable: true },
+        { key: 'itemId', header: 'Item', cell: row => <span className="font-bold text-slate-900 dark:text-white">{getItemName(row.itemId)}</span>, sortable: true },
+        { key: 'qty', header: 'Qty', align: 'right', cell: row => <span className="font-mono text-slate-700 dark:text-slate-300">{row.qty}</span>, sortable: true },
+        { key: 'rate', header: 'Rate (Rs)', align: 'right', cell: row => <span className="font-mono text-slate-500 dark:text-slate-400">{Number(row.rate).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>, sortable: true },
+        { key: 'total', header: 'Total (Rs)', align: 'right', cell: row => <span className="font-mono font-bold text-emerald-700 dark:text-emerald-400">{Number(row.total).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>, sortable: true }
     ];
 
     return (
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                  <h2 className="text-2xl font-bold tracking-tight">Purchase Ledger</h2>
-                  <p className="text-sm text-slate-500">Track incoming stock and procurement costs.</p>
+                  <h2 className="text-2xl font-bold tracking-tight dark:text-white">Purchase Ledger</h2>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">Track incoming stock and procurement costs.</p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium shadow-sm hover:bg-slate-50 transition-all">
-                    <Download size={14} className="text-slate-500" />
+                  <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium shadow-sm hover:bg-slate-50 transition-all dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800">
+                    <Download size={14} className="text-slate-500 dark:text-slate-400" />
                     Export
                   </button>
                   <button 
@@ -309,7 +309,7 @@ export const PurchasesView: React.FC = () => {
                 </div>
             </div>
 
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 dark:bg-slate-900 dark:border-slate-800">
                 <DataTable 
                     data={purchases} 
                     columns={columns} 
@@ -331,27 +331,27 @@ export const PurchasesView: React.FC = () => {
                             initial={{ opacity: 0, scale: 0.95, y: 10 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                            className="bg-white rounded-2xl w-full max-w-4xl overflow-hidden shadow-2xl border border-slate-200"
+                            className="bg-white rounded-2xl w-full max-w-4xl overflow-hidden shadow-2xl border border-slate-200 dark:bg-slate-900 dark:border-slate-800"
                         >
-                            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 dark:bg-slate-950/50 dark:border-slate-800">
                                 <div>
-                                  <h3 className="font-bold text-slate-900">Bulk Purchase Entry</h3>
-                                  <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Log up to 10 items per voucher</p>
+                                  <h3 className="font-bold text-slate-900 dark:text-white">Bulk Purchase Entry</h3>
+                                  <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider dark:text-slate-400">Log up to 10 items per voucher</p>
                                 </div>
-                                <button onClick={() => setIsAdding(false)} className="text-slate-400 hover:text-slate-600 p-1">
+                                <button onClick={() => setIsAdding(false)} className="text-slate-400 hover:text-slate-600 p-1 dark:hover:text-slate-300">
                                   <Plus className="rotate-45" size={24} />
                                 </button>
                             </div>
-                            <div className="px-6 pt-4 border-b border-slate-100 flex gap-4">
+                            <div className="px-6 pt-4 border-b border-slate-100 flex gap-4 dark:border-slate-800">
                                 <button 
                                     onClick={() => setActiveTab('form')}
-                                    className={cn("pb-3 text-sm font-bold border-b-2 transition-all", activeTab === 'form' ? "border-emerald-500 text-emerald-600" : "border-transparent text-slate-400 hover:text-slate-600")}
+                                    className={cn("pb-3 text-sm font-bold border-b-2 transition-all", activeTab === 'form' ? "border-emerald-500 text-emerald-600 dark:text-emerald-400" : "border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-300")}
                                 >
                                     Manual Entry
                                 </button>
                                 <button 
                                     onClick={() => setActiveTab('bulk')}
-                                    className={cn("pb-3 text-sm font-bold border-b-2 transition-all", activeTab === 'bulk' ? "border-emerald-500 text-emerald-600" : "border-transparent text-slate-400 hover:text-slate-600")}
+                                    className={cn("pb-3 text-sm font-bold border-b-2 transition-all", activeTab === 'bulk' ? "border-emerald-500 text-emerald-600 dark:text-emerald-400" : "border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-300")}
                                 >
                                     Bulk Import from Text
                                 </button>
@@ -361,19 +361,19 @@ export const PurchasesView: React.FC = () => {
                                     <div className="p-6 space-y-6 overflow-y-auto max-h-[70vh]">
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                             <div className="space-y-1.5">
-                                                <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Purchase Date</label>
+                                                <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider dark:text-slate-500">Purchase Date</label>
                                                 <div className="relative">
-                                                <Calendar size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                                                <input type="date" className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all" 
+                                                <Calendar size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                                <input type="date" className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200" 
                                                     value={form.date} onChange={e => setForm({...form, date: e.target.value})}
                                                 />
                                                 </div>
                                             </div>
                                             <div className="space-y-1.5">
-                                                <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Supplier</label>
+                                                <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider dark:text-slate-500">Supplier</label>
                                                 <div className="relative">
                                                 <User size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                                                <select className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none appearance-none bg-no-repeat transition-all"
+                                                <select className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none appearance-none bg-no-repeat transition-all dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200"
                                                     style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%23a1a1aa\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\' /%3E%3C/svg%3E")', backgroundPosition: 'right 0.75rem center', backgroundSize: '1rem' }}
                                                     value={form.supplierId} onChange={e => setForm({...form, supplierId: e.target.value})}
                                                 >
@@ -383,10 +383,10 @@ export const PurchasesView: React.FC = () => {
                                                 </div>
                                             </div>
                                             <div className="space-y-1.5">
-                                                <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Invoice / GRN #</label>
+                                                <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider dark:text-slate-500">Invoice / GRN #</label>
                                                 <div className="relative">
-                                                <Receipt size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                                                <input type="text" className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all" placeholder="ID-001"
+                                                <Receipt size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                                <input type="text" className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200" placeholder="ID-001"
                                                     value={form.invoice} onChange={e => setForm({...form, invoice: e.target.value})}
                                                 />
                                                 </div>
@@ -394,19 +394,19 @@ export const PurchasesView: React.FC = () => {
                                         </div>
 
                                         <div className="space-y-4">
-                                            <div className="flex justify-between items-center bg-slate-100 p-2 rounded-lg">
-                                                <label className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Purchase Items</label>
-                                                <button onClick={addLine} disabled={form.lines.length >= 10} className="text-xs font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1 bg-white px-3 py-1 rounded-md shadow-sm">
+                                            <div className="flex justify-between items-center bg-slate-100 p-2 rounded-lg dark:bg-slate-800">
+                                                <label className="text-[10px] uppercase font-bold text-slate-500 tracking-wider dark:text-slate-400">Purchase Items</label>
+                                                <button onClick={addLine} disabled={form.lines.length >= 10} className="text-xs font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1 bg-white px-3 py-1 rounded-md shadow-sm dark:bg-slate-900 dark:text-emerald-400 dark:hover:text-emerald-300">
                                                     <Plus size={14} /> Add Line
                                                 </button>
                                             </div>
                                             
                                             <div className="space-y-3">
                                                 {form.lines.map((line, idx) => (
-                                                    <div key={idx} className="grid grid-cols-12 gap-3 items-center animate-in slide-in-from-right-2 duration-200 bg-slate-50/50 p-3 rounded-xl border border-slate-100">
+                                                    <div key={idx} className="grid grid-cols-12 gap-3 items-center animate-in slide-in-from-right-2 duration-200 bg-slate-50/50 p-3 rounded-xl border border-slate-100 dark:bg-slate-800/30 dark:border-slate-800">
                                                         <div className="col-span-5 space-y-1">
-                                                            <label className="text-[8px] uppercase font-bold text-slate-400 ml-1">Item</label>
-                                                            <select className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all"
+                                                            <label className="text-[8px] uppercase font-bold text-slate-400 ml-1 dark:text-slate-500">Item</label>
+                                                            <select className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all dark:bg-slate-900 dark:border-slate-700 dark:text-slate-200"
                                                                 value={line.itemId} onChange={e => updateLine(idx, 'itemId', e.target.value)}
                                                             >
                                                                 <option value="">-- Select Item --</option>
@@ -414,36 +414,36 @@ export const PurchasesView: React.FC = () => {
                                                             </select>
                                                         </div>
                                                         <div className="col-span-2 space-y-1">
-                                                            <label className="text-[8px] uppercase font-bold text-slate-400 ml-1">Quantity</label>
+                                                            <label className="text-[8px] uppercase font-bold text-slate-400 ml-1 dark:text-slate-500">Quantity</label>
                                                             <input type="number" 
-                                                                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all"
+                                                                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all dark:bg-slate-900 dark:border-slate-700 dark:text-slate-200"
                                                                 placeholder="0.0"
                                                                 value={line.qty} onChange={e => updateLine(idx, 'qty', e.target.value)}
                                                             />
                                                             {line.itemId && (
-                                                                <p className="text-[8px] text-slate-400 italic ml-1">
+                                                                <p className="text-[8px] text-slate-400 italic ml-1 dark:text-slate-500">
                                                                     Current Stock: {(stockLevels[line.itemId] || 0).toFixed(2)}
                                                                 </p>
                                                             )}
                                                         </div>
                                                         <div className="col-span-2 space-y-1">
-                                                            <label className="text-[8px] uppercase font-bold text-slate-400 ml-1">Rate (Rs.)</label>
+                                                            <label className="text-[8px] uppercase font-bold text-slate-400 ml-1 dark:text-slate-500">Rate (Rs.)</label>
                                                             <input type="number" 
-                                                                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all"
+                                                                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all dark:bg-slate-900 dark:border-slate-700 dark:text-slate-200"
                                                                 placeholder="0"
                                                                 value={line.rate} onChange={e => updateLine(idx, 'rate', e.target.value)}
                                                             />
                                                             {line.itemId && getLastPrice(line.itemId) && (
                                                                 <div className="flex flex-col ml-1">
-                                                                    <p className="text-[8px] text-slate-400 italic">
+                                                                    <p className="text-[8px] text-slate-400 italic dark:text-slate-500">
                                                                         Last: Rs. {Number(getLastPrice(line.itemId)).toLocaleString()}
                                                                     </p>
                                                                 </div>
                                                             )}
                                                         </div>
                                                         <div className="col-span-2 space-y-1">
-                                                            <label className="text-[8px] uppercase font-bold text-slate-400 ml-1 text-emerald-600">Total (Rs.)</label>
-                                                            <div className="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-lg text-sm font-bold text-slate-700 min-h-[38px] flex items-center">
+                                                            <label className="text-[8px] uppercase font-bold text-slate-400 ml-1 text-emerald-600 dark:text-emerald-500">Total (Rs.)</label>
+                                                            <div className="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-lg text-sm font-bold text-slate-700 min-h-[38px] flex items-center dark:bg-slate-950 dark:border-slate-800 dark:text-slate-300">
                                                                 {line.qty && line.rate ? (Number(line.qty) * Number(line.rate)).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0.00'}
                                                             </div>
                                                         </div>
@@ -457,9 +457,9 @@ export const PurchasesView: React.FC = () => {
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="p-6 bg-white border-t border-slate-100 flex justify-between items-center">
-                                        <div className="text-sm font-bold text-slate-500 uppercase tracking-tight">
-                                            Total Value: <span className="text-emerald-600 font-mono tracking-tighter ml-2">
+                                    <div className="p-6 bg-white border-t border-slate-100 flex justify-between items-center dark:bg-slate-900 dark:border-slate-800">
+                                        <div className="text-sm font-bold text-slate-500 uppercase tracking-tight dark:text-slate-400">
+                                            Total Value: <span className="text-emerald-600 font-mono tracking-tighter ml-2 dark:text-emerald-400">
                                                 Rs. {form.lines.reduce((sum, l) => sum + (Number(l.qty) * Number(l.rate) || 0), 0).toLocaleString()}
                                             </span>
                                         </div>
@@ -476,125 +476,125 @@ export const PurchasesView: React.FC = () => {
                                     <div className="p-6 space-y-6 overflow-y-auto max-h-[70vh]">
                                         <div className="overflow-x-auto">
                                             <table className="w-full text-left border-collapse text-sm">
-                                                <thead className="bg-slate-50 text-[10px] uppercase tracking-wider text-slate-500 font-bold border-b border-slate-200">
-                                                    <tr>
-                                                        <th className="px-4 py-3 rounded-tl-lg">Date</th>
-                                                        <th className="px-4 py-3 border-x">Supplier</th>
-                                                        <th className="px-4 py-3">Item</th>
-                                                        <th className="px-4 py-3 text-right">Qty</th>
-                                                        <th className="px-4 py-3 text-right">Rate</th>
-                                                        <th className="px-4 py-3 text-right">Total</th>
-                                                        <th className="px-4 py-3 text-center">Warnings</th>
-                                                        <th className="px-4 py-3 w-10 border-l rounded-tr-lg"></th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="divide-y divide-slate-100 bg-white">
-                                                    {bulkPreview.map((line, idx) => {
-                                                        const missingItem = !line.itemId;
-                                                        const missingSupplier = !line.supplierId;
-                                                        const isZeroQty = parseFloat(line.qty) <= 0;
-                                                        const hasError = missingItem || missingSupplier || isZeroQty || line.isDuplicate;
-                                                        return (
-                                                            <tr key={line.id} className={cn(hasError && "bg-red-50/50")}>
-                                                                <td className="px-4 py-3 font-mono text-slate-600 whitespace-nowrap">{line.date}</td>
-                                                                <td className="px-4 py-3 font-semibold text-indigo-600 border-x">
-                                                                    {!missingSupplier ? line.supplierName : <span className="text-red-500 text-xs flex items-center gap-1"><AlertTriangle size={12}/> Match Not Found ({line.supplierName})</span>}
-                                                                </td>
-                                                                <td className="px-4 py-3 text-slate-900 font-medium">
-                                                                    {!missingItem ? line.itemName : <span className="text-red-500 text-xs flex items-center gap-1"><AlertTriangle size={12}/> Match Not Found ({line.itemName})</span>}
-                                                                </td>
-                                                                <td className="px-4 py-3 text-right text-slate-700 font-mono">
-                                                                    <input 
-                                                                        type="number" 
-                                                                        className={cn("w-20 px-2 py-1 text-right focus:outline-none focus:ring-1 focus:ring-inset font-mono", isZeroQty ? "text-red-600 focus:ring-red-500 bg-red-50/30" : "focus:ring-emerald-500")}
-                                                                        value={line.qty} 
-                                                                        onChange={e => {
-                                                                            const newPreview = [...bulkPreview];
-                                                                            newPreview[idx].qty = e.target.value;
-                                                                            setBulkPreview(newPreview);
-                                                                        }}
-                                                                    />
-                                                                </td>
-                                                                <td className="px-4 py-3 text-right text-slate-700 font-mono whitespace-nowrap">
-                                                                    <input 
-                                                                        type="number" 
-                                                                        className={cn("w-24 px-2 py-1 text-right focus:outline-none focus:ring-1 focus:ring-inset font-mono", isZeroQty ? "text-red-600 focus:ring-red-500 bg-red-50/30" : "focus:ring-emerald-500")}
-                                                                        value={line.rate} 
-                                                                        onChange={e => {
-                                                                            const newPreview = [...bulkPreview];
-                                                                            newPreview[idx].rate = e.target.value;
-                                                                            setBulkPreview(newPreview);
-                                                                        }}
-                                                                    />
-                                                                </td>
-                                                                <td className="px-4 py-3 text-right font-bold text-slate-900 font-mono whitespace-nowrap">
-                                                                    {(parseFloat(line.qty) * parseFloat(line.rate) || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits:2})}
-                                                                </td>
-                                                                <td className="px-2 py-3 text-center">
-                                                                    {line.isDuplicate && (
-                                                                        <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-amber-600 bg-amber-50 px-2 py-1 rounded-md border border-amber-200">
-                                                                            <AlertTriangle size={12} />
-                                                                            Duplicate Exists
-                                                                        </span>
-                                                                    )}
-                                                                </td>
-                                                                <td className="px-4 py-2 text-center border-l">
-                                                                    <button 
-                                                                        onClick={() => setBulkPreview(bulkPreview.filter(l => l.id !== line.id))}
-                                                                        className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors"
-                                                                        title="Remove Item"
-                                                                    >
-                                                                        <X size={16} />
-                                                                    </button>
-                                                                </td>
-                                                            </tr>
-                                                        );
-                                                    })}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-                                    <div className="p-6 bg-slate-50 border-t border-slate-200 flex justify-between items-center flex-wrap gap-4 rounded-b-xl">
-                                        <div className="flex gap-3">
-                                            <button onClick={() => setBulkPreview(null)} className="px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-200 rounded-lg transition-colors">
-                                                Cancel
-                                            </button>
-                                            <button 
-                                                onClick={submitBulkPreview}
-                                                disabled={loading || bulkPreview.length === 0 || bulkPreview.some(l => !l.itemId || !l.supplierId || parseFloat(l.qty) <= 0)}
-                                                className="px-6 py-2 bg-emerald-600 text-white text-sm font-bold rounded-lg shadow-lg shadow-emerald-500/20 hover:bg-emerald-700 transition-all disabled:opacity-50 flex items-center gap-2"
-                                            >
-                                                {loading ? <Loader2 size={16} className="animate-spin" /> : 'Confirm & Log Purchases'}
-                                            </button>
-                                        </div>
-                                    </div>
-                                </>
-                            ) : bulkSummary ? (
-                                <div className="p-12 flex flex-col items-center justify-center text-center space-y-6">
-                                    <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-2">
-                                        <CheckCircle2 size={40} />
-                                    </div>
-                                    <div>
-                                        <h3 className="text-2xl font-bold text-slate-900 mb-2">Import Complete</h3>
-                                        <p className="text-slate-500">Successfully logged {bulkSummary.successCount} purchases.</p>
-                                    </div>
-                                    <button onClick={() => setIsAdding(false)} className="px-8 py-3 bg-slate-900 text-white rounded-lg font-bold hover:bg-slate-800 transition-colors shadow-lg">
-                                        Done
-                                    </button>
-                                </div>
-                            ) : (
-                                <div className="p-6 space-y-6">
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-bold text-slate-700">Paste Data from Excel/Sheets</label>
-                                        <p className="text-xs text-slate-500">Format: Date (tab) Item (tab) Qty (tab) Rate (tab) Total (tab) Supplier</p>
-                                        <textarea
-                                            className="w-full h-64 p-4 text-sm font-mono bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500/20 focus:outline-none resize-none whitespace-pre"
-                                            placeholder="5/2/2026&#9;Tandoori Masala 1kg Shaan&#9;5&#9;1550&#9;7750&#9;A. Rehman KHI"
-                                            value={bulkText}
-                                            onChange={e => setBulkText(e.target.value)}
-                                        />
-                                    </div>
-                                    <div className="flex justify-end pt-4 border-t border-slate-100">
+                                                <thead className="bg-slate-50 text-[10px] uppercase tracking-wider text-slate-500 font-bold border-b border-slate-200 dark:bg-slate-950 dark:border-slate-800 dark:text-slate-400">
+                                                     <tr>
+                                                         <th className="px-4 py-3 rounded-tl-lg text-slate-500 dark:text-slate-400">Date</th>
+                                                         <th className="px-4 py-3 border-x dark:border-slate-800 dark:text-slate-400">Supplier</th>
+                                                         <th className="px-4 py-3 dark:text-slate-400">Item</th>
+                                                         <th className="px-4 py-3 text-right dark:text-slate-400">Qty</th>
+                                                         <th className="px-4 py-3 text-right dark:text-slate-400">Rate</th>
+                                                         <th className="px-4 py-3 text-right dark:text-slate-400">Total</th>
+                                                         <th className="px-4 py-3 text-center dark:text-slate-400">Warnings</th>
+                                                         <th className="px-4 py-3 w-10 border-l rounded-tr-lg dark:border-slate-800 dark:text-slate-400"></th>
+                                                     </tr>
+                                                 </thead>
+                                                 <tbody className="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-900">
+                                                     {bulkPreview.map((line, idx) => {
+                                                         const missingItem = !line.itemId;
+                                                         const missingSupplier = !line.supplierId;
+                                                         const isZeroQty = parseFloat(line.qty) <= 0;
+                                                         const hasError = missingItem || missingSupplier || isZeroQty || line.isDuplicate;
+                                                         return (
+                                                             <tr key={line.id} className={cn(hasError && "bg-red-50/50 dark:bg-red-950/10")}>
+                                                                 <td className="px-4 py-3 font-mono text-slate-600 whitespace-nowrap dark:text-slate-400">{line.date}</td>
+                                                                 <td className="px-4 py-3 font-semibold text-indigo-600 border-x dark:border-slate-800 dark:text-indigo-400">
+                                                                     {!missingSupplier ? line.supplierName : <span className="text-red-500 text-xs flex items-center gap-1 dark:text-red-400"><AlertTriangle size={12}/> Match Not Found ({line.supplierName})</span>}
+                                                                 </td>
+                                                                 <td className="px-4 py-3 text-slate-900 font-medium dark:text-white">
+                                                                     {!missingItem ? line.itemName : <span className="text-red-500 text-xs flex items-center gap-1 dark:text-red-400"><AlertTriangle size={12}/> Match Not Found ({line.itemName})</span>}
+                                                                 </td>
+                                                                 <td className="px-4 py-3 text-right text-slate-700 font-mono dark:text-slate-300">
+                                                                     <input 
+                                                                         type="number" 
+                                                                         className={cn("w-20 px-2 py-1 text-right focus:outline-none focus:ring-1 focus:ring-inset font-mono dark:bg-slate-800", isZeroQty ? "text-red-600 focus:ring-red-500 bg-red-50/30 dark:bg-red-950/40" : "focus:ring-emerald-500 dark:text-slate-200")}
+                                                                         value={line.qty} 
+                                                                         onChange={e => {
+                                                                             const newPreview = [...bulkPreview];
+                                                                             newPreview[idx].qty = e.target.value;
+                                                                             setBulkPreview(newPreview);
+                                                                         }}
+                                                                     />
+                                                                 </td>
+                                                                 <td className="px-4 py-3 text-right text-slate-700 font-mono whitespace-nowrap dark:text-slate-300">
+                                                                     <input 
+                                                                         type="number" 
+                                                                         className={cn("w-24 px-2 py-1 text-right focus:outline-none focus:ring-1 focus:ring-inset font-mono dark:bg-slate-800", isZeroQty ? "text-red-600 focus:ring-red-500 bg-red-50/30 dark:bg-red-950/40" : "focus:ring-emerald-500 dark:text-slate-200")}
+                                                                         value={line.rate} 
+                                                                         onChange={e => {
+                                                                             const newPreview = [...bulkPreview];
+                                                                             newPreview[idx].rate = e.target.value;
+                                                                             setBulkPreview(newPreview);
+                                                                         }}
+                                                                     />
+                                                                 </td>
+                                                                 <td className="px-4 py-3 text-right font-bold text-slate-900 font-mono whitespace-nowrap dark:text-white">
+                                                                     {(parseFloat(line.qty) * parseFloat(line.rate) || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits:2})}
+                                                                 </td>
+                                                                 <td className="px-2 py-3 text-center">
+                                                                     {line.isDuplicate && (
+                                                                         <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-amber-600 bg-amber-50 px-2 py-1 rounded-md border border-amber-200 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/30">
+                                                                             <AlertTriangle size={12} />
+                                                                             Duplicate Exists
+                                                                         </span>
+                                                                     )}
+                                                                 </td>
+                                                                 <td className="px-4 py-2 text-center border-l dark:border-slate-800">
+                                                                     <button 
+                                                                         onClick={() => setBulkPreview(bulkPreview.filter(l => l.id !== line.id))}
+                                                                         className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-md transition-colors"
+                                                                         title="Remove Item"
+                                                                     >
+                                                                         <X size={16} />
+                                                                     </button>
+                                                                 </td>
+                                                             </tr>
+                                                         );
+                                                     })}
+                                                 </tbody>
+                                             </table>
+                                         </div>
+                                     </div>
+                                     <div className="p-6 bg-slate-50 border-t border-slate-200 flex justify-between items-center flex-wrap gap-4 rounded-b-xl dark:bg-slate-950/30 dark:border-slate-800">
+                                         <div className="flex gap-3">
+                                             <button onClick={() => setBulkPreview(null)} className="px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-200 rounded-lg transition-colors dark:text-slate-400 dark:hover:bg-slate-800">
+                                                 Cancel
+                                             </button>
+                                             <button 
+                                                 onClick={submitBulkPreview}
+                                                 disabled={loading || bulkPreview.length === 0 || bulkPreview.some(l => !l.itemId || !l.supplierId || parseFloat(l.qty) <= 0)}
+                                                 className="px-6 py-2 bg-emerald-600 text-white text-sm font-bold rounded-lg shadow-lg shadow-emerald-500/20 hover:bg-emerald-700 transition-all disabled:opacity-50 flex items-center gap-2"
+                                             >
+                                                 {loading ? <Loader2 size={16} className="animate-spin" /> : 'Confirm & Log Purchases'}
+                                             </button>
+                                         </div>
+                                     </div>
+                                 </>
+                             ) : bulkSummary ? (
+                                 <div className="p-12 flex flex-col items-center justify-center text-center space-y-6 dark:bg-slate-900">
+                                     <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-2 dark:bg-emerald-950/30 dark:text-emerald-400">
+                                         <CheckCircle2 size={40} />
+                                     </div>
+                                     <div>
+                                         <h3 className="text-2xl font-bold text-slate-900 mb-2 dark:text-white">Import Complete</h3>
+                                         <p className="text-slate-500 dark:text-slate-400">Successfully logged {bulkSummary.successCount} purchases.</p>
+                                     </div>
+                                     <button onClick={() => setIsAdding(false)} className="px-8 py-3 bg-slate-900 text-white rounded-lg font-bold hover:bg-slate-800 transition-colors shadow-lg dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100">
+                                         Done
+                                     </button>
+                                 </div>
+                             ) : (
+                                 <div className="p-6 space-y-6">
+                                     <div className="space-y-2">
+                                         <label className="text-sm font-bold text-slate-700 dark:text-slate-300">Paste Data from Excel/Sheets</label>
+                                         <p className="text-xs text-slate-500 dark:text-slate-500">Format: Date (tab) Item (tab) Qty (tab) Rate (tab) Total (tab) Supplier</p>
+                                         <textarea
+                                             className="w-full h-64 p-4 text-sm font-mono bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500/20 focus:outline-none resize-none whitespace-pre dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200"
+                                             placeholder="5/2/2026&#9;Tandoori Masala 1kg Shaan&#9;5&#9;1550&#9;7750&#9;A. Rehman KHI"
+                                             value={bulkText}
+                                             onChange={e => setBulkText(e.target.value)}
+                                         />
+                                     </div>
+                                     <div className="flex justify-end pt-4 border-t border-slate-100 dark:border-slate-800">
                                         <button 
                                             onClick={handleBulkParse}
                                             disabled={!bulkText.trim()}

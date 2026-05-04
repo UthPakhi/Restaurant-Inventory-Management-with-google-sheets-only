@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Search, ChevronLeft, ChevronRight, ArrowUpDown, Loader2 } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, ArrowUpDown, Loader2, FileText, Download } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 export interface Column<T> {
@@ -22,6 +22,8 @@ interface DataTableProps<T> {
   pagination?: boolean;
   pageSizeStats?: number[];
   defaultPageSize?: number;
+  onExportPDF?: (filteredData: T[]) => void;
+  onExportExcel?: (filteredData: T[]) => void;
 }
 
 export function DataTable<T extends Record<string, any>>({
@@ -34,7 +36,9 @@ export function DataTable<T extends Record<string, any>>({
   emptyMessage = "No data found",
   pagination = true,
   pageSizeStats = [10, 25, 50, 100],
-  defaultPageSize = 25
+  defaultPageSize = 25,
+  onExportPDF,
+  onExportExcel
 }: DataTableProps<T>) {
   const [search, setSearch] = useState('');
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
@@ -106,20 +110,49 @@ export function DataTable<T extends Record<string, any>>({
 
   return (
     <div className="space-y-4">
-      {searchable && (
+      {(searchable || onExportPDF || onExportExcel) && (
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="relative max-w-sm w-full">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={16} />
-            <input
-              type="text"
-              placeholder="Search..."
-              className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors dark:bg-slate-900 dark:border-slate-800 dark:text-slate-200"
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value);
-                  setPage(1);
-                }}
-            />
+          <div className="flex items-center gap-4 flex-1">
+            {searchable && (
+              <div className="relative max-w-sm w-full">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={16} />
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors dark:bg-slate-900 dark:border-slate-800 dark:text-slate-200"
+                    value={search}
+                    onChange={(e) => {
+                      setSearch(e.target.value);
+                      setPage(1);
+                    }}
+                />
+              </div>
+            )}
+            
+            {(onExportPDF || onExportExcel) && (
+              <div className="flex gap-2">
+                {onExportPDF && (
+                  <button 
+                    onClick={() => onExportPDF(filteredData)}
+                    className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 hover:bg-slate-50 transition-colors dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800"
+                    title="Export to PDF"
+                  >
+                    <FileText size={16} className="text-red-500" />
+                    <span className="hidden sm:inline">PDF</span>
+                  </button>
+                )}
+                {onExportExcel && (
+                  <button 
+                    onClick={() => onExportExcel(filteredData)}
+                    className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 hover:bg-slate-50 transition-colors dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800"
+                    title="Export to Excel"
+                  >
+                    <Download size={16} className="text-emerald-500" />
+                    <span className="hidden sm:inline">Excel</span>
+                  </button>
+                )}
+              </div>
+            )}
           </div>
           {pagination && (
             <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">

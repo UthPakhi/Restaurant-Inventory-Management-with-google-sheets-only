@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, Search, Filter, Download, ArrowRightLeft, Utensils, Calendar, Package, Loader2, X, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Plus, Search, Filter, Download, FileText, ArrowRightLeft, Utensils, Calendar, Package, Loader2, X, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { sheetsService } from '../services/sheetsService';
 import { mapRowToItem, mapRowToDepartment, mapRowToIssue, mapRowToBatch } from '../services/dataMappers';
 import { Item, Department, Issue, Batch } from '../types';
@@ -9,7 +9,7 @@ import { cn, parseFinancialNumber } from '../lib/utils';
 import { useAppLookup } from '../context/AppContext';
 import { DataTable, Column } from './DataTable';
 import { normalize, fuzzyMatch } from '../lib/stringUtils';
-
+import { exportTableToPDF, exportTableToExcel } from '../lib/exportUtils';
 import { toast } from 'sonner';
 export const IssuesView: React.FC = () => {
     const [issues, setIssues] = useState<Issue[]>([]);
@@ -154,6 +154,18 @@ export const IssuesView: React.FC = () => {
                 itemName: getItemName(l.itemId),
                 deptName: getDeptName(form.deptId)
             }));
+            
+            // Optimistic update
+            const newIssues: Issue[] = issuesToPost.map((i, idx) => ({
+                id: `ISS_TMP_${Date.now()}_${idx}`,
+                date: i.date,
+                itemId: i.itemId,
+                qty: i.qty,
+                total: calculateFIFOTotal(i.itemId, i.qty),
+                rate: calculateFIFOTotal(i.itemId, i.qty) / i.qty,
+                deptId: i.deptId
+            }));
+            setIssues(prev => [...prev, ...newIssues]);
 
             const results = await sheetsService.bulkIssueFIFO(issuesToPost);
             
@@ -174,6 +186,7 @@ export const IssuesView: React.FC = () => {
         } catch (e: any) {
             console.error(e);
             toast.error(e.message || "Failed to record issue.");
+            await fetchData(); // Rollback optimistic update
         } finally {
             setLoading(false);
         }
@@ -273,6 +286,18 @@ export const IssuesView: React.FC = () => {
     const submitBulkPreview = async () => {
         setLoading(true);
         try {
+            // Optimistic updates
+            const newIssues: Issue[] = bulkPreview!.map((l: any, idx: number) => ({
+                id: `ISS_TMP_BULK_${Date.now()}_${idx}`,
+                date: l.date,
+                itemId: l.itemId,
+                qty: Number(l.qty),
+                total: calculateFIFOTotal(l.itemId, l.qty),
+                rate: calculateFIFOTotal(l.itemId, l.qty) / Number(l.qty),
+                deptId: l.deptId
+            }));
+            setIssues(prev => [...prev, ...newIssues]);
+
             const results = await sheetsService.bulkIssueFIFO(bulkPreview!);
             
             let totalCost = 0;
@@ -303,6 +328,7 @@ export const IssuesView: React.FC = () => {
         } catch (e: any) {
             console.error(e);
             toast.error(e.message || "Bulk import failed.");
+            await fetchData(); // Rollback optimistic update
         } finally {
             setLoading(false);
         }
@@ -324,12 +350,25 @@ export const IssuesView: React.FC = () => {
         setReversingIssue(null);
         
         try {
+            // Optimistic update
+            const newIssue: Issue = {
+                id: `REV_${issue.id}`,
+                date: issue.date,
+                itemId: issue.itemId,
+                qty: -issue.qty,
+                rate: issue.rate,
+                total: -issue.total,
+                deptId: issue.deptId
+            };
+            setIssues(prev => [newIssue, ...prev]);
+
             const res = await sheetsService.reverseIssue(issue);
             toast.success('Issue successfully reversed. Stock restored.');
             await fetchData();
         } catch (e: any) {
             console.error('Reversal failed:', e);
             toast.error(e.message || "Failed to reverse issue. Check your connection or sheet permissions.");
+            await fetchData(); // Rollback on error
         } finally {
             setLoading(false);
         }
@@ -418,9 +457,11 @@ export const IssuesView: React.FC = () => {
             key: 'actions',
             header: 'Actions',
             align: 'right',
-            cell: (row) => (
+            cell: (row) => {
+                const isReversed = issues.some(i => i.id === `REV_${row.id}`);
+                return (
                 <div className="flex justify-end">
-                    {row.qty > 0 && (
+                    {row.qty > 0 && !row.id.startsWith('REV_') && !isReversed && (
                         <button 
                             id={`reverse-issue-${row.id}`}
                             onClick={() => handleReverseIssue(row)}
@@ -429,8 +470,11 @@ export const IssuesView: React.FC = () => {
                             Reverse
                         </button>
                     )}
+                    {isReversed && (
+                        <span className="px-2 py-1 text-[10px] font-bold uppercase text-slate-400 dark:text-slate-500">Reversed</span>
+                    )}
                 </div>
-            )
+            )}
         }
     ];
 
@@ -480,10 +524,6 @@ export const IssuesView: React.FC = () => {
                       <button onClick={() => setViewMode('list')} className={cn("px-4 py-1.5 text-xs font-bold rounded-lg transition-all", viewMode === 'list' ? "bg-white text-emerald-600 shadow-sm dark:bg-slate-800 dark:text-emerald-400" : "text-slate-500 dark:text-slate-400")}>List View</button>
                       <button onClick={() => setViewMode('pivot')} className={cn("px-4 py-1.5 text-xs font-bold rounded-lg transition-all", viewMode === 'pivot' ? "bg-white text-emerald-600 shadow-sm dark:bg-slate-800 dark:text-emerald-400" : "text-slate-500 dark:text-slate-400")}>Pivot View</button>
                   </div>
-                  <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium shadow-sm hover:bg-slate-50 transition-all dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800">
-                    <Download size={14} className="text-slate-500 dark:text-slate-400" />
-                    Export
-                  </button>
                   <button 
                     onClick={() => setIsAdding(true)}
                     className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium shadow-md hover:bg-emerald-700 transition-all"
@@ -529,6 +569,28 @@ export const IssuesView: React.FC = () => {
                                    getItemName(row.itemId).toLowerCase().includes(q) ||
                                    getDeptName(row.deptId).toLowerCase().includes(q);
                         }}
+                        onExportPDF={(filteredData) => {
+                            const headers = ['Date', 'Department', 'Item', 'Qty Issued', 'Total Amount (Rs)'];
+                            const rows = filteredData.map(i => [
+                                i.date, 
+                                getDeptName(i.deptId), 
+                                getItemName(i.itemId), 
+                                i.qty, 
+                                i.total ? Number(i.total).toFixed(2) : '0.00'
+                            ]);
+                            exportTableToPDF(headers, rows, 'Consumption Log', 'consumption_log');
+                        }}
+                        onExportExcel={(filteredData) => {
+                            const headers = ['Date', 'Department', 'Item', 'Qty Issued', 'Total Amount (Rs)'];
+                            const rows = filteredData.map(i => [
+                                i.date, 
+                                getDeptName(i.deptId), 
+                                getItemName(i.itemId), 
+                                i.qty, 
+                                i.total ? Number(i.total) : 0
+                            ]);
+                            exportTableToExcel(headers, rows, 'Consumption', 'consumption_log');
+                        }}
                     />
                 ) : (
                     <DataTable 
@@ -536,6 +598,34 @@ export const IssuesView: React.FC = () => {
                         columns={pivotColumns}
                         loading={loading}
                         emptyMessage="No consumption logs found."
+                        onExportPDF={(filteredData) => {
+                            const headers = ['Date', 'Day', ...pivotData.cols, 'TOTAL'];
+                            const rows = filteredData.map(row => {
+                                const rowCells = [row.date, format(new Date(row.date), 'EEE')];
+                                pivotData.cols.forEach(col => {
+                                    const val = pivotData.data[row.date][col] || 0;
+                                    rowCells.push(val > 0 ? val.toFixed(2) : '-');
+                                });
+                                const rowTotal = pivotData.cols.reduce((sum, col) => sum + (pivotData.data[row.date][col] || 0), 0);
+                                rowCells.push(rowTotal.toFixed(2));
+                                return rowCells;
+                            });
+                            exportTableToPDF(headers, rows, 'Consumption Pivot', 'consumption_pivot');
+                        }}
+                        onExportExcel={(filteredData) => {
+                            const headers = ['Date', 'Day', ...pivotData.cols, 'TOTAL'];
+                            const rows = filteredData.map(row => {
+                                const rowCells = [row.date, format(new Date(row.date), 'EEE')];
+                                pivotData.cols.forEach(col => {
+                                    const val = pivotData.data[row.date][col] || 0;
+                                    rowCells.push(val > 0 ? val : 0);
+                                });
+                                const rowTotal = pivotData.cols.reduce((sum, col) => sum + (pivotData.data[row.date][col] || 0), 0);
+                                rowCells.push(rowTotal);
+                                return rowCells;
+                            });
+                            exportTableToExcel(headers, rows, 'Consumption Pivot', 'consumption_pivot');
+                        }}
                     />
                 )}
             </div>

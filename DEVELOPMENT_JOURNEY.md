@@ -58,6 +58,18 @@ Throughout the development lifecycle, we encountered and fixed several complex c
 - Developed a comprehensive Data Table (`DataTable.tsx`) wrapping features like global searching, pagination, and sticky headers.
 - Implemented Dark Mode capability.
 
+### Offline-First Architecture (PWA)
+- Integrated `vite-plugin-pwa` enabling Service Workers and establishing an Offline-First approach.
+- Intercepted Google Sheets data fetches and stored them resiliently inside IndexedDB, so the app remains perfectly usable even if the user loses connectivity on the main floor.
+
+### Export & Reporting
+- Added front-end reporting capabilities utilizing `jspdf` and `xlsx`.
+- Empowered users with 'One-Click Export' buttons inside `InventoryView`, `IssuesView`, `PurchasesView`, and `StoreLedgerView` to instantly generate and download formatted PDF invoices/reports and Excel spreadsheets directly in the browser.
+
+### Optimistic UI Updates
+- Re-engineered form submissions in `PurchasesView` and `IssuesView` to execute Optimistic UI Updates.
+- Data input natively renders to the table list identically to a successful sheet update, masking the standard Google Sheets API latency. Updates execute seamlessly in the background.
+
 ### Resolving Tailwind CSS v4 Dark Mode Issue
 - **The Problem:** The app's dark mode was failing to engage correctly when toggled.
 - **The Solution:** We updated the `index.css` to align with Tailwind v4's new architecture. We swapped the custom variant definition to appropriately target the dark mode class. We applied `@custom-variant dark (&:where(.dark, .dark *));` to ensure child elements accurately respect the `.dark` class scope.

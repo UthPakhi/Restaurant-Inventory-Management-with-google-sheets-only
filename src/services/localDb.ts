@@ -45,12 +45,13 @@ class LocalDB {
 
   async getTable(tableName: keyof LocalDBSchema): Promise<any[][] | undefined> {
     const db = await this.dbPromise;
-    return db.get(tableName, 'data');
+    // TypeScript is overly strict with mapped types and IDBPDatabase methods here
+    return db.get(tableName as any, 'data') as Promise<any[][] | undefined>;
   }
 
   async setTable(tableName: keyof LocalDBSchema, data: any[][]): Promise<void> {
     const db = await this.dbPromise;
-    await db.put(tableName, data, 'data');
+    await db.put(tableName as any, data, 'data');
   }
 }
 

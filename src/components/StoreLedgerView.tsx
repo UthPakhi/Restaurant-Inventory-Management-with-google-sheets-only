@@ -7,6 +7,7 @@ import { format, startOfMonth, endOfMonth, eachDayOfInterval, isBefore, isSameDa
 import { Loader2, Calendar, FileText, Download, Package } from 'lucide-react';
 import { cn, parseFinancialNumber } from '../lib/utils';
 import { useAppLookup } from '../context/AppContext';
+import { exportTableToPDF, exportTableToExcel } from '../lib/exportUtils';
 
 export const StoreLedgerView: React.FC = () => {
     const [batches, setBatches] = useState<Batch[]>([]);
@@ -181,9 +182,39 @@ export const StoreLedgerView: React.FC = () => {
                           <option key={opt} value={opt}>{format(parseISO(opt + '-01'), 'MMMM yyyy')}</option>
                       ))}
                   </select>
-                  <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium shadow-sm hover:bg-slate-50 transition-all dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700">
-                    <Download size={14} className="text-slate-500 dark:text-slate-400" />
-                    Export
+                  <button 
+                      className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium shadow-sm hover:bg-slate-50 transition-all dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700"
+                      onClick={() => {
+                          const headers = ['Date', 'Opening Balance', 'Purchased / Added', 'Used / Issued', 'Closing Balance'];
+                          const rows = ledgerData.ledgerDays.map((d:any) => [
+                              d.date, 
+                              d.openingBalance.toFixed(2), 
+                              d.purchased !== 0 ? d.purchased.toFixed(2) : '-', 
+                              d.used !== 0 ? d.used.toFixed(2) : '-', 
+                              d.closingBalance.toFixed(2)
+                          ]);
+                          exportTableToPDF(headers, rows, `Store Ledger - ${selectedMonth}`, 'store_ledger');
+                      }}
+                  >
+                    <FileText size={14} className="text-red-500" />
+                    <span className="hidden sm:inline">PDF</span>
+                  </button>
+                  <button 
+                      className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium shadow-sm hover:bg-slate-50 transition-all dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700"
+                      onClick={() => {
+                          const headers = ['Date', 'Opening Balance', 'Purchased / Added', 'Used / Issued', 'Closing Balance'];
+                          const rows = ledgerData.ledgerDays.map((d:any) => [
+                              d.date, 
+                              d.openingBalance, 
+                              d.purchased, 
+                              d.used, 
+                              d.closingBalance
+                          ]);
+                          exportTableToExcel(headers, rows, `Ledger`, 'store_ledger');
+                      }}
+                  >
+                    <Download size={14} className="text-emerald-500" />
+                    <span className="hidden sm:inline">Excel</span>
                   </button>
                 </div>
             </div>

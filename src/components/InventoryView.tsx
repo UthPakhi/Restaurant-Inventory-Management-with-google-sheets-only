@@ -6,6 +6,7 @@ import { cn } from '../lib/utils';
 import { Batch } from '../types';
 import { useAppLookup } from '../context/AppContext';
 import { DataTable, Column } from './DataTable';
+import { exportTableToPDF, exportTableToExcel } from '../lib/exportUtils';
 
 export interface InventoryItem {
     id: string;
@@ -221,6 +222,32 @@ export function InventoryView() {
              loading={loading}
              searchKeys={['name', 'type']}
              emptyMessage="No items found matching your criteria."
+             onExportPDF={(filteredData) => {
+                 const headers = ['Item', 'Department', 'Unit', 'Price', 'Stock', 'Value', 'Status'];
+                 const rows = filteredData.map(item => [
+                     item.name,
+                     item.type,
+                     item.unit,
+                     item.price.toFixed(2),
+                     item.stock.toFixed(2),
+                     item.value.toFixed(2),
+                     item.stock <= item.minParLevel ? 'Low Stock' : 'Healthy'
+                 ]);
+                 exportTableToPDF(headers, rows, 'Inventory Report', 'inventory_report');
+             }}
+             onExportExcel={(filteredData) => {
+                 const headers = ['Item', 'Department', 'Unit', 'Price', 'Stock', 'Value', 'Status'];
+                 const rows = filteredData.map(item => [
+                     item.name,
+                     item.type,
+                     item.unit,
+                     item.price,
+                     item.stock,
+                     item.value,
+                     item.stock <= item.minParLevel ? 'Low Stock' : 'Healthy'
+                 ]);
+                 exportTableToExcel(headers, rows, 'Inventory', 'inventory_report');
+             }}
          />
       </div>
     </div>

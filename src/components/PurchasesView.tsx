@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Loader2, Package, User, Calendar, Receipt, Download, X, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Plus, Loader2, Package, User, Calendar, Receipt, Download, FileText, X, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { sheetsService } from '../services/sheetsService';
 import { mapRowToItem, mapRowToSupplier, mapRowToPurchase, mapRowToBatch } from '../services/dataMappers';
 import { Item, Supplier, Purchase, Batch } from '../types';
@@ -9,7 +9,7 @@ import { cn, parseFinancialNumber } from '../lib/utils';
 import { useAppLookup } from '../context/AppContext';
 import { DataTable, Column } from './DataTable';
 import { fuzzyMatch } from '../lib/stringUtils';
-
+import { exportTableToPDF, exportTableToExcel } from '../lib/exportUtils';
 import { toast } from 'sonner';
 export const PurchasesView: React.FC = () => {
     const [purchases, setPurchases] = useState<Purchase[]>([]);
@@ -190,6 +190,7 @@ export const PurchasesView: React.FC = () => {
             let successCount = 0;
             let totalCost = 0;
             const bySupplier: Record<string, number> = {};
+            const optimisticPurchases: Purchase[] = [];
 
             toImport.forEach((line, idx) => {
                 const qty = Number(line.qty);
@@ -204,11 +205,25 @@ export const PurchasesView: React.FC = () => {
                 pValues.push([purchaseId, line.date, line.itemId, qty, rate, total, line.supplierId, invoice]);
                 bValues.push([batchId, line.itemId, line.date, qty, qty, rate, 'Purchase']);
                 
+                optimisticPurchases.push({
+                    id: purchaseId,
+                    date: line.date,
+                    itemId: line.itemId,
+                    qty,
+                    rate,
+                    total,
+                    supplierId: line.supplierId,
+                    invoice
+                });
+
                 successCount++;
                 totalCost += total;
                 const sName = getSupplierName(line.supplierId);
                 bySupplier[sName] = (bySupplier[sName] || 0) + total;
             });
+
+            // Optimistic update
+            setPurchases(prev => [...prev, ...optimisticPurchases]);
 
             if (pValues.length > 0) {
                 await Promise.all([
@@ -243,6 +258,7 @@ export const PurchasesView: React.FC = () => {
             const pValues: any[][] = [];
             const bValues: any[][] = [];
             const baseTs = Date.now();
+            const optimisticPurchases: Purchase[] = [];
 
             validLines.forEach((line, idx) => {
                 const qty = Number(line.qty);
@@ -253,8 +269,22 @@ export const PurchasesView: React.FC = () => {
                 
                 pValues.push([purchaseId, form.date, line.itemId, qty, rate, total, form.supplierId, form.invoice]);
                 bValues.push([batchId, line.itemId, form.date, qty, qty, rate, 'Purchase']);
+                
+                optimisticPurchases.push({
+                    id: purchaseId,
+                    date: form.date,
+                    itemId: line.itemId,
+                    qty,
+                    rate,
+                    total,
+                    supplierId: form.supplierId,
+                    invoice: form.invoice
+                });
             });
             
+            // Optimistic update
+            setPurchases(prev => [...prev, ...optimisticPurchases]);
+
             // 1. Record purchases
             await sheetsService.append('Purchases!A1', pValues);
             
@@ -296,10 +326,6 @@ export const PurchasesView: React.FC = () => {
                   <p className="text-sm text-slate-500 dark:text-slate-400">Track incoming stock and procurement costs.</p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium shadow-sm hover:bg-slate-50 transition-all dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800">
-                    <Download size={14} className="text-slate-500 dark:text-slate-400" />
-                    Export
-                  </button>
                   <button 
                     onClick={handleOpenAdd}
                     className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium shadow-md hover:bg-emerald-700 transition-all"
@@ -320,6 +346,16 @@ export const PurchasesView: React.FC = () => {
                                getItemName(row.itemId).toLowerCase().includes(q) ||
                                getSupplierName(row.supplierId).toLowerCase().includes(q) ||
                                String(row.invoice).toLowerCase().includes(q);
+                    }}
+                    onExportPDF={(filteredData) => {
+                        const headers = ['Date', 'Invoice', 'Supplier', 'Item', 'Qty', 'Rate', 'Total'];
+                        const rows = filteredData.map(p => [p.date, p.invoice, getSupplierName(p.supplierId), getItemName(p.itemId), p.qty, Number(p.rate).toFixed(2), Number(p.total).toFixed(2)]);
+                        exportTableToPDF(headers, rows, 'Purchases Ledger', 'purchases');
+                    }}
+                    onExportExcel={(filteredData) => {
+                        const headers = ['Date', 'Invoice', 'Supplier', 'Item', 'Qty', 'Rate', 'Total'];
+                        const rows = filteredData.map(p => [p.date, p.invoice, getSupplierName(p.supplierId), getItemName(p.itemId), p.qty, Number(p.rate), Number(p.total)]);
+                        exportTableToExcel(headers, rows, 'Purchases', 'purchases');
                     }}
                 />
             </div>

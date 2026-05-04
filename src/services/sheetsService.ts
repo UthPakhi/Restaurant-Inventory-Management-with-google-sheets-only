@@ -493,7 +493,7 @@ export class SheetsService {
 
     const ts = Date.now();
     const batchId = `B_REV_${ts}`;
-    const revIssueId = `REV_${ts}`;
+    const revIssueId = `REV_${id}`;
     const email = this.currentUserEmail || 'Unknown';
 
     // 1. Create a new batch to restore the stock at the same rate
@@ -502,8 +502,10 @@ export class SheetsService {
     // 2. Append a negative issue to cancel out the consumption
     const negativeIssue = [revIssueId, date, deptId, itemId, -qty, rate, email];
 
-    await this.append('Batches!A:G', [newBatch]);
-    await this.append('Issues!A:G', [negativeIssue]);
+    await Promise.all([
+        this.append('Batches!A:G', [newBatch]),
+        this.append('Issues!A:G', [negativeIssue])
+    ]);
 
     await this.logAudit(email, 'REVERSE_ISSUE', 'Issues', `Reversed issue ${id} for item ${itemId}, restored ${qty} to stock at rate ${rate}.`);
     

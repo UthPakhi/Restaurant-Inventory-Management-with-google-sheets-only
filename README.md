@@ -4,6 +4,9 @@ A professional, high-performance inventory and stock management system designed 
 
 ## ✨ Key Features
 
+- **Offline-First Mode (PWA)**: App works offline, caching data locally via IndexedDB.
+- **Reporting & Exports**: One-click PDF & Excel exports for tables and ledgers.
+- **Optimistic UI Updates**: Table rows appear instantly before the API call finishes.
 - **FIFO Inventory Engine**: Automatic First-In, First-Out cost and stock tracking.
 - **Multi-Section Support**: Manage transfers to different departments (Kitchen, Bar, Pizza, etc.).
 - **Bulk Import Mastery**: Power-user tools for bulk issuing and bulk purchase importing via copy-paste.

@@ -19,7 +19,7 @@ This document outlines the strategic progression of the TC Inventory Management 
     4. **Intercept Reads:** Modify `sheetsService.ts` to fetch from `localDb` first, then seamlessly background-sync the latest data from Google Sheets into the local store.
     5. **Register Worker:** Import and register the service worker in `src/main.tsx` or `src/App.tsx` using `virtual:pwa-register`.
 
-- [ ] **PDF & Excel Report Exports**
+- [x] **PDF & Excel Report Exports**
   - *Implementation:* Integrate `jspdf`, `jspdf-autotable`, and `xlsx` for generating Store Ledgers, Issue Logs, and Current Inventory snapshots directly in the browser without server overhead. Ensure exports maintain current filtering/sorting.
   - *🤖 LLM Execution Plan:*
     1. **Install Dependencies:** Add `jspdf`, `jspdf-autotable`, and `xlsx`.
@@ -38,7 +38,7 @@ This document outlines the strategic progression of the TC Inventory Management 
     5. **View Integration:** Add a "Scan" icon/button in `IssuesView.tsx` or `PurchasesView.tsx` near the item dropdown.
     6. **Auto-Fill Logic:** Upon a successful scan, parse the string, search `state.masters.items` for a matching `barcode`, and pre-fill the form fields.
 
-- [ ] **Optimistic UI Updates**
+- [x] **Optimistic UI Updates**
   - *Implementation:* Bypass the Google Sheets API latency. Ensure all UI writes optimistic-render the table row locally before the API resolves, rolling back gracefully and showing an error toast if the API throws a network error.
   - *🤖 LLM Execution Plan:*
     1. **Modify Dispatchers:** Update state-mutating actions in `AppContext.tsx` so that React state is updated synchronously *before* the API call finishes.

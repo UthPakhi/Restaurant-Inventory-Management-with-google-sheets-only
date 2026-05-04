@@ -8,11 +8,12 @@ import { format } from 'date-fns';
 import { cn, parseFinancialNumber } from '../lib/utils';
 import { useAppLookup } from '../context/AppContext';
 import { DataTable, Column } from './DataTable';
+import { normalize, fuzzyMatch } from '../lib/stringUtils';
 
 import { toast } from 'sonner';
 export const IssuesView: React.FC = () => {
     const [issues, setIssues] = useState<Issue[]>([]);
-    const { items, departments: depts, loadingStaticData } = useAppLookup();
+    const { items, departments: depts, activeItems, activeDepartments, loadingStaticData } = useAppLookup();
     const [loading, setLoading] = useState(true);
     const [isAdding, setIsAdding] = useState(false);
     const [activeTab, setActiveTab] = useState<'form' | 'bulk'>('form');
@@ -113,7 +114,7 @@ export const IssuesView: React.FC = () => {
         return total;
     };
 
-    const filteredItems = items.filter(i => {
+    const filteredItems = activeItems.filter(i => {
         if (!form.deptId) return true;
         const itemDeptIds = String(i.deptIds || '').split(',').map(s => s.trim()).filter(Boolean);
         return itemDeptIds.length === 0 || itemDeptIds.includes(form.deptId) || itemDeptIds.includes('all');
@@ -183,11 +184,6 @@ export const IssuesView: React.FC = () => {
         const validLines = [];
         const errors = [];
 
-        // Helper to normalize strings for matching (lowercase, trim, collapse spaces)
-        const normalize = (s: string) => String(s || '').trim().toLowerCase().replace(/\s+/g, ' ');
-        // Even more aggressive normalization (alphanumeric only) as a fallback
-        const superNormalize = (s: string) => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-
         for (let i = 0; i < lines.length; i++) {
             const lineClean = lines[i].replace(/\r/g, ''); // Handle Windows line endings
             const row = lineClean.split('\t');
@@ -197,23 +193,16 @@ export const IssuesView: React.FC = () => {
             }
             const [dateStr, deptNameStr, itemNameStr, qtyStr] = row;
             
-            const normDeptInput = normalize(deptNameStr);
-            const foundDept = depts.find(d => normalize(d.name) === normDeptInput || superNormalize(d.name) === superNormalize(deptNameStr));
+            const foundDept = depts.find(d => fuzzyMatch(d.name, deptNameStr));
             if (!foundDept) {
                 errors.push(`Row ${i + 1}: Section "${deptNameStr.trim()}" not found.`);
                 continue;
             }
 
             const normItemInput = normalize(itemNameStr);
-            const superNormItemInput = superNormalize(itemNameStr);
             
-            // Try exact match first, then superNormalize match
-            const foundItem = items.find(itm => {
-                const nName = normalize(itm.name);
-                if (nName === normItemInput) return true;
-                if (superNormalize(itm.name) === superNormItemInput) return true;
-                return false;
-            });
+            // Try fuzzy match
+            const foundItem = items.find(itm => fuzzyMatch(itm.name, itemNameStr));
             
             if (!foundItem) {
                 // If it still fails, let's look for partial matches to help the user
@@ -659,7 +648,7 @@ export const IssuesView: React.FC = () => {
                                                       value={form.deptId} onChange={e => setForm({...form, deptId: e.target.value})}
                                                   >
                                                       <option value="">-- Select Section --</option>
-                                                      {depts.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                                                      {activeDepartments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                                                   </select>
                                                 </div>
                                             </div>

@@ -29,6 +29,7 @@ export const MastersView: React.FC = () => {
     const [editingDept, setEditingDept] = useState<Department | null>(null);
     const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
 
+    const [showInactive, setShowInactive] = useState(false);
     const [restaurantName, setRestaurantName] = useState('RestoManage');
     const [logoUrl, setLogoUrl] = useState('');
 
@@ -36,14 +37,14 @@ export const MastersView: React.FC = () => {
         setLoading(true);
         try {
             if (tab === 'items') {
-                const rows = await sheetsService.read('Masters_Items!A2:J');
-                setItems((rows || []).map((row, i) => ({...mapRowToItem(row), rowIndex: i + 2})));
+                const rows = await sheetsService.read('Masters_Items!A2:K');
+                setItems((rows || []).filter(r => r[0]).map((row, i) => ({...mapRowToItem(row), rowIndex: i + 2})));
             } else if (tab === 'depts') {
-                const rows = await sheetsService.read('Masters_Depts!A2:B');
-                setDepartments((rows || []).map((row, i) => ({...mapRowToDepartment(row), rowIndex: i + 2})));
+                const rows = await sheetsService.read('Masters_Depts!A2:C');
+                setDepartments((rows || []).filter(r => r[0]).map((row, i) => ({...mapRowToDepartment(row), rowIndex: i + 2})));
             } else if (tab === 'suppliers') {
-                const rows = await sheetsService.read('Masters_Suppliers!A2:C');
-                setSuppliers((rows || []).map((row, i) => ({...mapRowToSupplier(row), rowIndex: i + 2})));
+                const rows = await sheetsService.read('Masters_Suppliers!A2:D');
+                setSuppliers((rows || []).filter(r => r[0]).map((row, i) => ({...mapRowToSupplier(row), rowIndex: i + 2})));
             } else if (tab === 'settings') {
                 try {
                     const rows = await sheetsService.read('AppSettings!A:B');
@@ -101,8 +102,8 @@ export const MastersView: React.FC = () => {
 
                     const id = `ITM_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
                     
-                    // Schema: [id, name, deptIds, unit, buyPrice, sellPrice, category, openingStock, minParLevel, reorderQty]
-                    items.push([id, name, deptIds, unit, buyPrice, sellPrice, category, qty, minPar, reorder]);
+                    // Schema: [id, name, deptIds, unit, buyPrice, sellPrice, category, openingStock, minParLevel, reorderQty, Status]
+                    items.push([id, name, deptIds, unit, buyPrice, sellPrice, category, qty, minPar, reorder, 'Yes']);
                     
                     if (qty > 0) {
                         // Schema: [Batch_ID, Item_ID, Date, Qty_Original, Qty_Remaining, Unit_Cost, Source]
@@ -116,12 +117,14 @@ export const MastersView: React.FC = () => {
             }
 
             if (items.length > 0) {
-                const resItems = await sheetsService.append('Masters_Items', items);
-                console.log('Items append result:', resItems);
+                // Sequential chunking for large imports
+                const chunkSize = 100;
+                for (let i = 0; i < items.length; i += chunkSize) {
+                    await sheetsService.append('Masters_Items', items.slice(i, i + chunkSize));
+                }
                 
-                if (batches.length > 0) {
-                    const resBatches = await sheetsService.append('Batches', batches);
-                    console.log('Batches append result:', resBatches);
+                for (let i = 0; i < batches.length; i += chunkSize) {
+                    await sheetsService.append('Batches', batches.slice(i, i + chunkSize));
                 }
                 
                 toast.success(`Successfully imported ${items.length} items and created ${batches.length} stock batches.`);
@@ -406,7 +409,7 @@ export const MastersView: React.FC = () => {
             if (tab === 'items') {
                 if (!newItem.name) return;
                 const id = `ITM_${Date.now()}`;
-                const values = [[id, newItem.name, newItem.deptIds, newItem.unit, newItem.buyPrice, newItem.sellPrice, newItem.category, newItem.openingStock, newItem.minParLevel, newItem.reorderQty]];
+                const values = [[id, newItem.name, newItem.deptIds, newItem.unit, newItem.buyPrice, newItem.sellPrice, newItem.category, newItem.openingStock, newItem.minParLevel, newItem.reorderQty, 'Yes']];
                 await sheetsService.append('Masters_Items', values);
                 
                 const qty = parseFloat(newItem.openingStock);
@@ -419,13 +422,13 @@ export const MastersView: React.FC = () => {
             } else if (tab === 'depts') {
                 if (!newDept.name) return;
                 const id = `DPT_${Date.now()}`;
-                const values = [[id, newDept.name]];
+                const values = [[id, newDept.name, 'Yes']];
                 await sheetsService.append('Masters_Depts', values);
                 setNewDept({ name: '' });
             } else if (tab === 'suppliers') {
                 if (!newSupplier.name) return;
                 const id = `SUP_${Date.now()}`;
-                const values = [[id, newSupplier.name, newSupplier.contact]];
+                const values = [[id, newSupplier.name, newSupplier.contact, 'Yes']];
                 await sheetsService.append('Masters_Suppliers', values);
                 setNewSupplier({ name: '', contact: '' });
             }
@@ -538,18 +541,18 @@ export const MastersView: React.FC = () => {
         try {
             if (tab === 'items' && editingItem) {
                 if (!editingItem.name) return;
-                const cellRange = `Masters_Items!A${editingItem.rowIndex}:J${editingItem.rowIndex}`;
-                await sheetsService.update(cellRange, [mapItemToRow(editingItem)]);
+                const cellRange = `Masters_Items!A${editingItem.rowIndex}:K${editingItem.rowIndex}`;
+                await sheetsService.update(cellRange, [mapItemToRow({ ...editingItem, isActive: editingItem.isActive ?? true })]);
                 setEditingItem(null);
             } else if (tab === 'depts' && editingDept) {
                 if (!editingDept.name) return;
-                const cellRange = `Masters_Depts!A${editingDept.rowIndex}:B${editingDept.rowIndex}`;
-                await sheetsService.update(cellRange, [[editingDept.id, editingDept.name]]);
+                const cellRange = `Masters_Depts!A${editingDept.rowIndex}:C${editingDept.rowIndex}`;
+                await sheetsService.update(cellRange, [[editingDept.id, editingDept.name, (editingDept.isActive ?? true) ? 'Yes' : 'No']]);
                 setEditingDept(null);
             } else if (tab === 'suppliers' && editingSupplier) {
                 if (!editingSupplier.name) return;
-                const cellRange = `Masters_Suppliers!A${editingSupplier.rowIndex}:C${editingSupplier.rowIndex}`;
-                await sheetsService.update(cellRange, [[editingSupplier.id, editingSupplier.name, editingSupplier.contact || '']]);
+                const cellRange = `Masters_Suppliers!A${editingSupplier.rowIndex}:D${editingSupplier.rowIndex}`;
+                await sheetsService.update(cellRange, [[editingSupplier.id, editingSupplier.name, editingSupplier.contact || '', (editingSupplier.isActive ?? true) ? 'Yes' : 'No']]);
                 setEditingSupplier(null);
             }
             await fetchData();
@@ -564,25 +567,28 @@ export const MastersView: React.FC = () => {
     };
 
     const handleDeleteEntity = async (row: any, type: string) => {
-        if (!confirm("Are you sure you want to delete this? This action cannot be undone and may break references.")) return;
+        if (!confirm("Are you sure you want to deactivate this? It will no longer appear in dropdowns but historical records will be preserved.")) return;
         setLoading(true);
         try {
             let cellRange = '';
+            let values: any[][] = [];
             if (type === 'items') {
-                cellRange = `Masters_Items!A${row.rowIndex}:J${row.rowIndex}`;
+                cellRange = `Masters_Items!A${row.rowIndex}:K${row.rowIndex}`;
+                values = [mapItemToRow({ ...row, isActive: false })];
             } else if (type === 'depts') {
-                cellRange = `Masters_Depts!A${row.rowIndex}:B${row.rowIndex}`;
+                cellRange = `Masters_Depts!A${row.rowIndex}:C${row.rowIndex}`;
+                values = [[row.id, row.name, 'No']];
             } else if (type === 'suppliers') {
-                cellRange = `Masters_Suppliers!A${row.rowIndex}:C${row.rowIndex}`;
+                cellRange = `Masters_Suppliers!A${row.rowIndex}:D${row.rowIndex}`;
+                values = [[row.id, row.name, row.contact || '', 'No']];
             }
-            // Overwriting with empty row instead of true delete (to maintain structure)
-            await sheetsService.update(cellRange, [['', '', '', '', '', '', '', '', '', '']]);
+            await sheetsService.update(cellRange, values);
             await fetchData();
             await refreshStaticData();
-            toast.success('Successfully deleted.');
+            toast.success('Successfully deactivated.');
         } catch (e: any) {
             console.error(e);
-            toast.error("Failed to delete: " + e.message);
+            toast.error("Failed to deactivate: " + e.message);
         } finally {
             setLoading(false);
         }
@@ -694,6 +700,13 @@ export const MastersView: React.FC = () => {
                         <input type="text" placeholder={`Search ${tab}...`} className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20" />
                     </div>
                     <div className="flex gap-2">
+                        <button 
+                            onClick={() => setShowInactive(!showInactive)}
+                            className={cn("px-4 py-2 border rounded-lg text-sm font-medium transition-all flex items-center gap-2", 
+                                showInactive ? "bg-slate-800 text-white border-slate-800" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50")}
+                        >
+                            {showInactive ? "Hide Inactive" : "Show Inactive"}
+                        </button>
                         {tab === 'items' && (
                             <>
                                 <button 
@@ -756,10 +769,13 @@ export const MastersView: React.FC = () => {
                                 </tr>
                             </thead>
                             <tbody className="text-xs divide-y divide-slate-100">
-                                {tab === 'items' && items.map((row) => (
-                                    <tr key={row.id} className="hover:bg-slate-50/50 transition-colors group">
+                                {tab === 'items' && items.filter(r => showInactive || r.isActive !== false).map((row) => (
+                                    <tr key={row.id} className={cn("hover:bg-slate-50/50 transition-colors group", row.isActive === false && "opacity-60 grayscale-[0.5]")}>
                                         <td className="px-6 py-4">
-                                            <p className="font-bold text-slate-900 leading-tight mb-0.5">{row.name}</p>
+                                            <div className="flex items-center gap-2">
+                                                <p className="font-bold text-slate-900 leading-tight">{row.name}</p>
+                                                {row.isActive === false && <span className="bg-slate-200 text-slate-500 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase tracking-tighter">Inactive</span>}
+                                            </div>
                                             <p className="text-[10px] text-slate-400 font-mono tracking-tighter uppercase">{row.id}</p>
                                         </td>
                                         <td className="px-6 py-4 text-slate-500 font-medium">{row.unit}</td>
@@ -788,10 +804,15 @@ export const MastersView: React.FC = () => {
                                         </td>
                                     </tr>
                                 ))}
-                                {tab === 'depts' && departments.map((row) => (
-                                    <tr key={row.id} className="hover:bg-slate-50/50 transition-colors group">
+                                {tab === 'depts' && departments.filter(r => showInactive || r.isActive !== false).map((row) => (
+                                    <tr key={row.id} className={cn("hover:bg-slate-50/50 transition-colors group", row.isActive === false && "opacity-60 opacity-60 grayscale-[0.5]")}>
                                         <td className="px-6 py-4 text-[10px] font-mono text-slate-400">{row.id}</td>
-                                        <td className="px-6 py-4 font-bold text-slate-900 uppercase tracking-tight">{row.name}</td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-2">
+                                                <p className="font-bold text-slate-900 uppercase tracking-tight">{row.name}</p>
+                                                {row.isActive === false && <span className="bg-slate-200 text-slate-500 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase tracking-tighter">Inactive</span>}
+                                            </div>
+                                        </td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <button onClick={() => setEditingDept(row)} className="p-1.5 hover:bg-slate-100 rounded text-slate-400 hover:text-emerald-600 transition-colors"><Edit2 size={14} /></button>
@@ -800,9 +821,14 @@ export const MastersView: React.FC = () => {
                                         </td>
                                     </tr>
                                 ))}
-                                {tab === 'suppliers' && suppliers.map((row) => (
-                                    <tr key={row.id} className="hover:bg-slate-50/50 transition-colors group">
-                                        <td className="px-6 py-4 font-bold text-slate-900">{row.name}</td>
+                                {tab === 'suppliers' && suppliers.filter(r => showInactive || r.isActive !== false).map((row) => (
+                                    <tr key={row.id} className={cn("hover:bg-slate-50/50 transition-colors group", row.isActive === false && "opacity-60 opacity-60 grayscale-[0.5]")}>
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-2">
+                                                <p className="font-bold text-slate-900">{row.name}</p>
+                                                {row.isActive === false && <span className="bg-slate-200 text-slate-500 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase tracking-tighter">Inactive</span>}
+                                            </div>
+                                        </td>
                                         <td className="px-6 py-4 text-slate-500">{row.contact}</td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">

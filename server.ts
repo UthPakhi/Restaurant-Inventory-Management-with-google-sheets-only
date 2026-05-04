@@ -10,6 +10,27 @@ dotenv.config();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Simple in-memory lock map for spreadsheets to prevent race conditions
+const spreadsheetLocks: Record<string, Promise<void>> = {};
+
+async function acquireLock(spreadsheetId: string) {
+    if (!spreadsheetId) return () => {};
+    
+    const currentLock = spreadsheetLocks[spreadsheetId] || Promise.resolve();
+    let resolveLock: () => void;
+    
+    const newLock = new Promise<void>((resolve) => {
+        resolveLock = resolve;
+    });
+    
+    spreadsheetLocks[spreadsheetId] = newLock;
+    await currentLock;
+    
+    return () => {
+        resolveLock();
+    };
+}
+
 async function startServer() {
   const app = express();
   const PORT = 3000;
@@ -158,9 +179,10 @@ async function startServer() {
   // 5. Appending / Reading data proxies would go here
   app.post("/api/sheets/append", async (req, res) => {
       const { tokens, spreadsheetId, range, values } = req.body;
-      oauth2Client.setCredentials(tokens);
-      const sheets = google.sheets({ version: "v4", auth: oauth2Client });
+      const release = await acquireLock(spreadsheetId);
       try {
+          oauth2Client.setCredentials(tokens);
+          const sheets = google.sheets({ version: "v4", auth: oauth2Client });
           const response = await sheets.spreadsheets.values.append({
               spreadsheetId,
               range,
@@ -170,6 +192,8 @@ async function startServer() {
           res.json(response.data);
       } catch (error: any) {
           res.status(500).json({ error: error.message });
+      } finally {
+          release();
       }
   });
 
@@ -190,9 +214,10 @@ async function startServer() {
 
   app.post("/api/sheets/update", async (req, res) => {
       const { tokens, spreadsheetId, range, values } = req.body;
-      oauth2Client.setCredentials(tokens);
-      const sheets = google.sheets({ version: "v4", auth: oauth2Client });
+      const release = await acquireLock(spreadsheetId);
       try {
+          oauth2Client.setCredentials(tokens);
+          const sheets = google.sheets({ version: "v4", auth: oauth2Client });
           const response = await sheets.spreadsheets.values.update({
               spreadsheetId,
               range,
@@ -202,14 +227,34 @@ async function startServer() {
           res.json(response.data);
       } catch (error: any) {
           res.status(500).json({ error: error.message });
+      } finally {
+          release();
+      }
+  });
+
+  app.post("/api/sheets/metadata", async (req, res) => {
+      const { tokens, spreadsheetId } = req.body;
+      oauth2Client.setCredentials(tokens);
+      const sheets = google.sheets({ version: "v4", auth: oauth2Client });
+      try {
+          const response = await sheets.spreadsheets.get({ spreadsheetId });
+          const sheetsData = response.data.sheets?.map(s => ({
+              title: s.properties?.title,
+              rowCount: s.properties?.gridProperties?.rowCount,
+              lastRow: 0 // Placeholder, we'll infer from data if needed
+          }));
+          res.json(sheetsData);
+      } catch (error: any) {
+          res.status(500).json({ error: error.message });
       }
   });
 
   app.post("/api/sheets/valuesBatchUpdate", async (req, res) => {
       const { tokens, spreadsheetId, data } = req.body;
-      oauth2Client.setCredentials(tokens);
-      const sheets = google.sheets({ version: "v4", auth: oauth2Client });
+      const release = await acquireLock(spreadsheetId);
       try {
+          oauth2Client.setCredentials(tokens);
+          const sheets = google.sheets({ version: "v4", auth: oauth2Client });
           const response = await sheets.spreadsheets.values.batchUpdate({
               spreadsheetId,
               requestBody: {
@@ -220,6 +265,8 @@ async function startServer() {
           res.json(response.data);
       } catch (error: any) {
           res.status(500).json({ error: error.message });
+      } finally {
+          release();
       }
   });
 

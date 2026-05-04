@@ -20,7 +20,7 @@ export const mapRowToItem = (row: any[]): Item => ({
     openingStock: parseFinancialNumber(row[7]),
     minParLevel: parseFinancialNumber(row[8]),
     reorderQty: parseFinancialNumber(row[9]),
-    isActive: true, // missing from original so defaulting
+    isActive: row[10] !== 'No',
 });
 
 export const mapItemToRow = (item: Item): any[] => [
@@ -33,18 +33,21 @@ export const mapItemToRow = (item: Item): any[] => [
     item.category,
     item.openingStock,
     item.minParLevel,
-    item.reorderQty
+    item.reorderQty,
+    item.isActive === false ? 'No' : 'Yes'
 ];
 
 export const mapRowToDepartment = (row: any[]): Department => ({
     id: row[0] || '',
-    name: row[1] || ''
+    name: row[1] || '',
+    isActive: row[2] !== 'No'
 });
 
 export const mapRowToSupplier = (row: any[]): Supplier => ({
     id: row[0] || '',
     name: row[1] || '',
-    contact: row[2] || ''
+    contact: row[2] || '',
+    isActive: row[3] !== 'No'
 });
 
 // Purchases: ["ID", "Date", "Item_ID", "Qty", "Rate", "Total", "Supplier_ID", "Invoice_No", "UserEmail"]

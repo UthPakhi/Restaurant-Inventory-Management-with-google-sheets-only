@@ -16,13 +16,15 @@ export interface Item {
 export interface Department {
   id: string;
   name: string;
+  isActive?: boolean;
   rowIndex?: number;
 }
 
 export interface Supplier {
   id: string;
   name: string;
-  contact?: string; // Noticed Contact in Masters_Suppliers schema
+  contact?: string; 
+  isActive?: boolean;
   rowIndex?: number;
 }
 

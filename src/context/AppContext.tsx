@@ -5,8 +5,11 @@ import { Item, Department, Supplier } from '../types';
 
 interface AppContextProps {
   items: Item[];
+  activeItems: Item[];
   departments: Department[];
+  activeDepartments: Department[];
   suppliers: Supplier[];
+  activeSuppliers: Supplier[];
   loadingStaticData: boolean;
   refreshStaticData: () => Promise<void>;
 }
@@ -49,8 +52,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   return (
     <AppContext.Provider value={{
       items,
+      activeItems: items.filter(i => i.isActive !== false),
       departments,
+      activeDepartments: departments.filter(d => d.isActive !== false),
       suppliers,
+      activeSuppliers: suppliers.filter(s => s.isActive !== false),
       loadingStaticData,
       refreshStaticData: fetchStaticData
     }}>

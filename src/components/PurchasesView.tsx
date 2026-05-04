@@ -8,11 +8,12 @@ import { format } from 'date-fns';
 import { cn, parseFinancialNumber } from '../lib/utils';
 import { useAppLookup } from '../context/AppContext';
 import { DataTable, Column } from './DataTable';
+import { fuzzyMatch } from '../lib/stringUtils';
 
 import { toast } from 'sonner';
 export const PurchasesView: React.FC = () => {
     const [purchases, setPurchases] = useState<Purchase[]>([]);
-    const { items, suppliers, loadingStaticData } = useAppLookup();
+    const { items, suppliers, activeItems, activeSuppliers, loadingStaticData } = useAppLookup();
     const [loading, setLoading] = useState(true);
     const [isAdding, setIsAdding] = useState(false);
     const [activeTab, setActiveTab] = useState<'form' | 'bulk'>('form');
@@ -145,8 +146,8 @@ export const PurchasesView: React.FC = () => {
                 }
             } catch (e) {}
 
-            const foundItem = items.find(i => String(i.name).toLowerCase() === itemName.toLowerCase());
-            const foundSupplier = suppliers.find(s => String(s.name).toLowerCase() === supplierName.toLowerCase());
+            const foundItem = items.find(i => fuzzyMatch(i.name, itemName));
+            const foundSupplier = suppliers.find(s => fuzzyMatch(s.name, supplierName));
             
             const supplierId = foundSupplier ? foundSupplier.id : '';
             const itemId = foundItem ? foundItem.id : '';
@@ -210,8 +211,10 @@ export const PurchasesView: React.FC = () => {
             });
 
             if (pValues.length > 0) {
-                await sheetsService.append('Purchases!A1', pValues);
-                await sheetsService.append('Batches!A1', bValues);
+                await Promise.all([
+                    sheetsService.append('Purchases!A1', pValues),
+                    sheetsService.append('Batches!A1', bValues)
+                ]);
                 await sheetsService.logAudit(sheetsService.currentUserEmail, 'CREATE_PURCHASES_BULK', 'Purchases', `Bulk added ${successCount} item(s) to stock.`);
             }
 
@@ -375,7 +378,7 @@ export const PurchasesView: React.FC = () => {
                                                     value={form.supplierId} onChange={e => setForm({...form, supplierId: e.target.value})}
                                                 >
                                                     <option value="">-- Choose Supplier --</option>
-                                                    {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                                    {activeSuppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                                                 </select>
                                                 </div>
                                             </div>
@@ -407,7 +410,7 @@ export const PurchasesView: React.FC = () => {
                                                                 value={line.itemId} onChange={e => updateLine(idx, 'itemId', e.target.value)}
                                                             >
                                                                 <option value="">-- Select Item --</option>
-                                                                {items.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
+                                                                {activeItems.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
                                                             </select>
                                                         </div>
                                                         <div className="col-span-2 space-y-1">

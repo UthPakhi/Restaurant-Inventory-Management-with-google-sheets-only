@@ -1,6 +1,7 @@
 /**
  * Service to interact with Google Sheets via the backend proxy.
  */
+import { calculateFIFO, Batch } from '../lib/fifoEngine';
 
 export interface GoogleTokens {
   access_token?: string;
@@ -137,9 +138,9 @@ export class SheetsService {
 
   private async setupHeaders() {
       const headers = [
-          { range: "Masters_Items!A1:J1", values: [["ID", "Name", "Dept_IDs", "Unit", "BuyPrice", "SellPrice", "Category", "OpeningStock", "MinParLevel", "ReorderQty"]] },
-          { range: "Masters_Depts!A1:B1", values: [["ID", "Name"]] },
-          { range: "Masters_Suppliers!A1:C1", values: [["ID", "Name", "Contact"]] },
+          { range: "Masters_Items!A1:K1", values: [["ID", "Name", "Dept_IDs", "Unit", "BuyPrice", "SellPrice", "Category", "OpeningStock", "MinParLevel", "ReorderQty", "Status"]] },
+          { range: "Masters_Depts!A1:C1", values: [["ID", "Name", "Status"]] },
+          { range: "Masters_Suppliers!A1:D1", values: [["ID", "Name", "Contact", "Status"]] },
           { range: "Purchases!A1:I1", values: [["ID", "Date", "Item_ID", "Qty", "Rate", "Total", "Supplier_ID", "Invoice_No", "UserEmail"]] },
           { range: "Issues!A1:G1", values: [["ID", "Date", "Dept_ID", "Item_ID", "Qty", "Rate", "UserEmail"]] },
           { range: "Batches!A1:G1", values: [["Batch_ID", "Item_ID", "Date", "Qty_Original", "Qty_Remaining", "Unit_Cost", "Source"]] },
@@ -365,49 +366,32 @@ export class SheetsService {
     const batchUpdates: { range: string, values: any[][] }[] = [];
 
     // Track state of batches in memory as we process each issue
-    const localBatches = [...allBatches];
+    const localBatches: (Batch & { rowIndex: number })[] = [...allBatches];
 
     for (const issueReq of issues) {
-        const { itemId, qty: qtyRequested, date, deptId, itemName, deptName } = issueReq;
-        
-        // Filter and sort for FIFO
-        const itemBatches = localBatches
-            .filter(b => b.itemId === itemId && b.remainingQty > 0)
-            .sort((a, b) => {
-                const dateA = a.date ? new Date(a.date).getTime() : 0;
-                const dateB = b.date ? new Date(b.date).getTime() : 0;
-                if (dateA !== dateB) return (isNaN(dateA) ? 0 : dateA) - (isNaN(dateB) ? 0 : dateB);
-                const isOpA = a.id.startsWith('B_OPEN_') || a.source === 'Opening';
-                const isOpB = b.id.startsWith('B_OPEN_') || b.source === 'Opening';
-                if (isOpA && !isOpB) return -1;
-                if (!isOpA && isOpB) return 1;
-                return 0;
-            });
+        const result = calculateFIFO(issueReq, localBatches);
 
-        const totalAvailable = itemBatches.reduce((sum, b) => sum + b.remainingQty, 0);
-        if (totalAvailable < qtyRequested) {
-            results.push({ success: false, error: `Insufficient stock for ${itemName || itemId}`, itemId });
+        if (!result.success) {
+            results.push({ success: false, error: result.error, itemId: issueReq.itemId });
             continue;
         }
 
-        let remainingToIssue = qtyRequested;
-        let totalCost = 0;
-
-        for (const batch of itemBatches) {
-            if (remainingToIssue <= 0) break;
-            const consumedFromThisBatch = Math.min(batch.remainingQty, remainingToIssue);
-            batch.remainingQty -= consumedFromThisBatch;
-            totalCost += consumedFromThisBatch * batch.cost;
-            remainingToIssue -= consumedFromThisBatch;
+        // Apply changes to localBatches for the next issue in the same bulk request
+        if (result.consumedBatches) {
+            result.consumedBatches.forEach(cb => {
+                const batch = localBatches.find(b => b.rowIndex === cb.rowIndex);
+                if (batch) batch.remainingQty = cb.newRemaining;
+            });
         }
 
-        const avgRate = totalCost / qtyRequested;
-        const issueId = `ISS_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+        const issueId = result.issueId!;
+        const avgRate = result.avgRate!;
+        const totalCost = result.totalCost!;
         
-        issueRows.push([issueId, date, deptId, itemId, qtyRequested, avgRate, this.currentUserEmail]);
-        auditRows.push([new Date().toISOString(), this.currentUserEmail, 'ISSUE_STOCK', 'Issues', `Issued ${qtyRequested} of item ${itemName || itemId} to dept ${deptName || deptId}`]);
+        issueRows.push([issueId, issueReq.date, issueReq.deptId, issueReq.itemId, issueReq.qty, avgRate, this.currentUserEmail]);
+        auditRows.push([new Date().toISOString(), this.currentUserEmail, 'ISSUE_STOCK', 'Issues', `Issued ${issueReq.qty} of item ${issueReq.itemName || issueReq.itemId} to dept ${issueReq.deptName || issueReq.deptId}`]);
         
-        results.push({ success: true, issueId, avgRate, totalCost, itemName, deptName });
+        results.push({ ...result, success: true });
     }
 
     // 2. Consolidate batch updates - find batches that were actually modified
@@ -448,8 +432,8 @@ export class SheetsService {
     };
 
     // 1. Fetch batches for this item
-    const allBatches = await this.read('Batches!A2:G');
-    const itemBatches = allBatches
+    const allBatchesRaw = await this.read('Batches!A2:G');
+    const allBatches: (Batch & { rowIndex: number })[] = allBatchesRaw
         .map((row, index) => ({ 
             id: String(row[0] || ''),
             itemId: row[1] ? String(row[1]).trim() : '',
@@ -458,69 +442,30 @@ export class SheetsService {
             remainingQty: parseNum(row[4]),
             cost: parseNum(row[5]),
             source: row[6],
-            rowIndex: index + 2 // A2 is row 2
-        }))
-        .filter(b => b.itemId === itemId && b.remainingQty > 0)
-        .sort((a, b) => {
-            const dateA = a.date ? new Date(a.date).getTime() : 0;
-            const dateB = b.date ? new Date(b.date).getTime() : 0;
-            
-            if (dateA !== dateB) {
-                const valA = isNaN(dateA) ? 0 : dateA;
-                const valB = isNaN(dateB) ? 0 : dateB;
-                return valA - valB;
-            }
+            rowIndex: index + 2 
+        }));
 
-            // If same date, prioritize Opening stock
-            const isOpA = a.id.startsWith('B_OPEN_') || a.source === 'Opening';
-            const isOpB = b.id.startsWith('B_OPEN_') || b.source === 'Opening';
-            if (isOpA && !isOpB) return -1;
-            if (!isOpA && isOpB) return 1;
+    const result = calculateFIFO({ itemId, qty: qtyRequested, date, deptId, itemName, deptName }, allBatches);
 
-            return 0;
-        });
-
-    const totalAvailable = itemBatches.reduce((sum, b) => sum + b.remainingQty, 0);
-    if (totalAvailable < qtyRequested) {
-        const displayItem = itemName || itemId;
-        throw new Error(`Insufficient stock for item ${displayItem}. Available: ${totalAvailable.toFixed(2)}, Requested: ${qtyRequested}`);
+    if (!result.success) {
+        throw new Error(result.error);
     }
 
-    let remainingToIssue = qtyRequested;
-    let totalCost = 0;
-    const batchUpdates: { range: string, values: any[][] }[] = [];
-
-    for (const batch of itemBatches) {
-        if (remainingToIssue <= 0) break;
-
-        const consumedFromThisBatch = Math.min(batch.remainingQty, remainingToIssue);
-        const newRemaining = batch.remainingQty - consumedFromThisBatch;
-        
-        totalCost += consumedFromThisBatch * batch.cost;
-        remainingToIssue -= consumedFromThisBatch;
-
-        // Prepare update for this batch
-        batchUpdates.push({
-            range: `Batches!E${batch.rowIndex}:E${batch.rowIndex}`,
-            values: [[newRemaining]]
-        });
-    }
-
-    const avgRate = totalCost / qtyRequested;
+    const { avgRate, totalCost, consumedBatches, issueId } = result;
 
     // 2. Perform updates to batches
-    for (const update of batchUpdates) {
-        await this.update(update.range, update.values);
+    for (const cb of consumedBatches) {
+        await this.update(`Batches!E${cb.rowIndex}:E${cb.rowIndex}`, [[cb.newRemaining]]);
     }
 
     // 3. Record the issue
-    const issueId = `ISS_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
-    await this.append('Issues!A:G', [[issueId, date, deptId, itemId, qtyRequested, avgRate, this.currentUserEmail]]);
+    const id = issueId!;
+    await this.append('Issues!A:G', [[id, date, deptId, itemId, qtyRequested, avgRate, this.currentUserEmail]]);
     const displayItem = itemName || itemId;
     const displayDept = deptName || deptId;
     await this.logAudit(this.currentUserEmail, 'ISSUE_STOCK', 'Issues', `Issued ${qtyRequested} of item ${displayItem} to dept ${displayDept}`);
 
-    return { issueId, avgRate, totalCost };
+    return { issueId: id, avgRate, totalCost };
   }
 
   async reverseIssue(issue: any): Promise<any> {

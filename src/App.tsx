@@ -40,8 +40,26 @@ export default function App() {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
   const [appData, setAppData] = useState<{ tokens: GoogleTokens; spreadsheetId: string } | null>(null);
-  const [branding, setBranding] = useState<{ name: string; logoUrl: string }>({ name: 'RestoManage', logoUrl: '' });
+  const [branding, setBranding] = useState<{ name: string; logoUrl: string }>({ name: 'TC Inventory Management Pro', logoUrl: '' });
   const { refreshStaticData } = useAppLookup();
+
+  // Update document title and favicon when branding changes
+  useEffect(() => {
+    if (branding.name) {
+      document.title = branding.name;
+    }
+    
+    // Update favicon if logoUrl exists
+    if (branding.logoUrl) {
+      let link: HTMLLinkElement | null = document.querySelector("link[rel*='icon']");
+      if (!link) {
+        link = document.createElement('link');
+        link.rel = 'icon';
+        document.getElementsByTagName('head')[0].appendChild(link);
+      }
+      link.href = branding.logoUrl;
+    }
+  }, [branding]);
 
   // Initialize from LocalStorage
   const loadBrandingData = async (spreadsheetId: string) => {

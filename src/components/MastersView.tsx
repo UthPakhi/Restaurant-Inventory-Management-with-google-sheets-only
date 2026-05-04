@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Edit2, Search, X, Loader2, Package, Hash, User, ShieldCheck, Save, Store, Image as ImageIcon, Camera } from 'lucide-react';
+import { Plus, Trash2, Edit2, Search, X, Loader2, Package, Hash, User, ShieldCheck, Save, Store, Image as ImageIcon, Camera, Check } from 'lucide-react';
 import { format } from 'date-fns';
 import { sheetsService } from '../services/sheetsService';
 import { mapRowToItem, mapRowToDepartment, mapRowToSupplier, mapItemToRow } from '../services/dataMappers';
@@ -10,7 +10,7 @@ import { useAppLookup } from '../context/AppContext';
 
 import { toast } from 'sonner';
 export const MastersView: React.FC = () => {
-    const { refreshStaticData } = useAppLookup();
+    const { refreshStaticData, departments: allDepts } = useAppLookup();
     const [tab, setTab] = useState<'items' | 'depts' | 'suppliers' | 'settings'>('items');
     const [items, setItems] = useState<Item[]>([]);
     const [departments, setDepartments] = useState<Department[]>([]);
@@ -86,22 +86,23 @@ export const MastersView: React.FC = () => {
                     // Skip header if present or empty name
                     if (!name || name.toLowerCase() === 'item name') return;
                     
-                    if (parts.length < 3) {
-                       validationErrors.push(`Row ${index + 1} (${name}) missing unit or category.`);
+                    if (parts.length < 4) {
+                       validationErrors.push(`Row ${index + 1} (${name}) missing enough columns. Expected at least Name, Sections, Unit, Category.`);
                     }
 
-                    const unit = parts[1]?.trim() || 'pcs';
-                    const category = parts[2]?.trim() || 'Raw';
-                    const buyPrice = Number((parts[3] || '0').toString().replace(/,/g, '')) || 0;
-                    const sellPrice = Number((parts[4] || '0').toString().replace(/,/g, '')) || 0;
-                    const qty = Number((parts[5] || '0').toString().replace(/,/g, '')) || 0;
-                    const minPar = Number((parts[6] || '0').toString().replace(/,/g, '')) || 0;
-                    const reorder = Number((parts[7] || '0').toString().replace(/,/g, '')) || 0;
+                    const deptIds = parts[1]?.trim() || '';
+                    const unit = parts[2]?.trim() || 'pcs';
+                    const category = parts[3]?.trim() || 'Raw';
+                    const buyPrice = Number((parts[4] || '0').toString().replace(/,/g, '')) || 0;
+                    const sellPrice = Number((parts[5] || '0').toString().replace(/,/g, '')) || 0;
+                    const qty = Number((parts[6] || '0').toString().replace(/,/g, '')) || 0;
+                    const minPar = Number((parts[7] || '0').toString().replace(/,/g, '')) || 0;
+                    const reorder = Number((parts[8] || '0').toString().replace(/,/g, '')) || 0;
 
                     const id = `ITM_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
                     
                     // Schema: [id, name, deptIds, unit, buyPrice, sellPrice, category, openingStock, minParLevel, reorderQty]
-                    items.push([id, name, '', unit, buyPrice, sellPrice, category, qty, minPar, reorder]);
+                    items.push([id, name, deptIds, unit, buyPrice, sellPrice, category, qty, minPar, reorder]);
                     
                     if (qty > 0) {
                         // Schema: [Batch_ID, Item_ID, Date, Qty_Original, Qty_Remaining, Unit_Cost, Source]
@@ -739,6 +740,7 @@ export const MastersView: React.FC = () => {
                                         <th className="px-6 py-3">Item Detail</th>
                                         <th className="px-6 py-3">Unit</th>
                                         <th className="px-6 py-3">Category</th>
+                                        <th className="px-6 py-3">Section(s)</th>
                                         <th className="px-6 py-3 text-right">Default Rate</th>
                                         <th className="px-6 py-3 text-right">Stock</th>
                                     </>}
@@ -763,6 +765,18 @@ export const MastersView: React.FC = () => {
                                         <td className="px-6 py-4 text-slate-500 font-medium">{row.unit}</td>
                                         <td className="px-6 py-4">
                                             <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-[10px] font-bold uppercase tracking-tight">{row.category}</span>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex flex-wrap gap-1">
+                                                {row.deptIds ? row.deptIds.split(',').map(dId => {
+                                                    const d = allDepts.find(ad => ad.id === dId.trim());
+                                                    return d ? (
+                                                        <span key={dId} className="px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded-[4px] text-[10px] font-bold border border-blue-100">
+                                                            {d.name}
+                                                        </span>
+                                                    ) : null;
+                                                }) : <span className="text-[10px] text-slate-300 italic">None</span>}
+                                            </div>
                                         </td>
                                         <td className="px-6 py-4 text-right font-mono font-bold text-slate-600">Rs. {row.buyPrice}</td>
                                         <td className="px-6 py-4 text-right font-mono font-bold text-slate-900">{row.openingStock}</td>
@@ -835,8 +849,8 @@ export const MastersView: React.FC = () => {
                             <div className="p-6 space-y-4">
                                 <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl text-[10px] text-blue-700 font-medium whitespace-pre-wrap">
                                     Expected format (Tab Separated):<br />
-                                    Item Name [TAB] Unit [TAB] Category [TAB] Buy Price [TAB] Sell Price [TAB] Opening Stock [TAB] Min Par Level [TAB] Reorder Qty<br />
-                                    <span className="text-blue-500 font-normal">Example: Tomato [TAB] kg [TAB] Raw [TAB] 50 [TAB] 0 [TAB] 10 [TAB] 5 [TAB] 20</span>
+                                    Item Name [TAB] Sections (IDs comma separated) [TAB] Unit [TAB] Category [TAB] Buy Price [TAB] Sell Price [TAB] Opening Stock [TAB] Min Par Level [TAB] Reorder Qty<br />
+                                    <span className="text-blue-500 font-normal">Example: Tomato [TAB] D01,D02 [TAB] kg [TAB] Raw [TAB] 50 [TAB] 0 [TAB] 10 [TAB] 5 [TAB] 20</span>
                                 </div>
                                 <textarea 
                                     className="w-full h-80 p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all resize-none"
@@ -907,6 +921,42 @@ export const MastersView: React.FC = () => {
                                                 </select>
                                             </div>
                                         </div>
+
+                                        <div className="space-y-1.5">
+                                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Applicable Sections (Departments)</label>
+                                            <div className="flex flex-wrap gap-2 p-3 bg-slate-50 border border-slate-200 rounded-lg min-h-[42px]">
+                                                {allDepts.length === 0 ? (
+                                                    <p className="text-[10px] text-slate-400 italic">No sections defined. Go to "Sections" tab first.</p>
+                                                ) : (
+                                                    allDepts.map(dept => {
+                                                        const isSelected = newItem.deptIds.split(',').includes(dept.id);
+                                                        return (
+                                                            <button
+                                                                key={dept.id}
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    const current = newItem.deptIds.split(',').filter(x => x.trim());
+                                                                    const next = isSelected 
+                                                                        ? current.filter(x => x !== dept.id)
+                                                                        : [...current, dept.id];
+                                                                    setNewItem({...newItem, deptIds: next.join(',')});
+                                                                }}
+                                                                className={cn(
+                                                                    "px-3 py-1 rounded-full text-[10px] font-bold transition-all flex items-center gap-1",
+                                                                    isSelected 
+                                                                        ? "bg-emerald-600 text-white shadow-sm" 
+                                                                        : "bg-white text-slate-500 border border-slate-200 hover:border-emerald-300"
+                                                                )}
+                                                            >
+                                                                {isSelected && <Check size={10} />}
+                                                                {dept.name}
+                                                            </button>
+                                                        );
+                                                    })
+                                                )}
+                                            </div>
+                                        </div>
+
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="space-y-1.5">
                                                 <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Base Unit Rate</label>
@@ -1049,6 +1099,42 @@ export const MastersView: React.FC = () => {
                                                 </select>
                                             </div>
                                         </div>
+
+                                        <div className="space-y-1.5">
+                                            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Applicable Sections (Departments)</label>
+                                            <div className="flex flex-wrap gap-2 p-3 bg-slate-50 border border-slate-200 rounded-lg min-h-[42px]">
+                                                {allDepts.length === 0 ? (
+                                                    <p className="text-[10px] text-slate-400 italic">No sections defined.</p>
+                                                ) : (
+                                                    allDepts.map(dept => {
+                                                        const isSelected = (editingItem.deptIds || '').split(',').includes(dept.id);
+                                                        return (
+                                                            <button
+                                                                key={dept.id}
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    const current = (editingItem.deptIds || '').split(',').filter(x => x.trim());
+                                                                    const next = isSelected 
+                                                                        ? current.filter(x => x !== dept.id)
+                                                                        : [...current, dept.id];
+                                                                    setEditingItem({...editingItem, deptIds: next.join(',')});
+                                                                }}
+                                                                className={cn(
+                                                                    "px-3 py-1 rounded-full text-[10px] font-bold transition-all flex items-center gap-1",
+                                                                    isSelected 
+                                                                        ? "bg-blue-600 text-white shadow-sm" 
+                                                                        : "bg-white text-slate-500 border border-slate-200 hover:border-blue-300"
+                                                                )}
+                                                            >
+                                                                {isSelected && <Check size={10} />}
+                                                                {dept.name}
+                                                            </button>
+                                                        );
+                                                    })
+                                                )}
+                                            </div>
+                                        </div>
+
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="space-y-1.5">
                                                 <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Base Unit Rate</label>

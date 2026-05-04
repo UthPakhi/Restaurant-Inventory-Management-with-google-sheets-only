@@ -82,9 +82,23 @@ export const IssuesView: React.FC = () => {
         const qtyToIssue = parseFloat(String(qtyStr)) || 0;
         if (qtyToIssue <= 0 || !itemId) return 0;
         
-        const itemBatches = batches
+        const itemBatches = [...batches]
             .filter(b => b.itemId === itemId && Number(b.remainingQty) > 0)
-            .sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+            .sort((a, b) => {
+                // Robust date parsing for FIFO sorting
+                const dateA = a.date ? new Date(a.date).getTime() : 0;
+                const dateB = b.date ? new Date(b.date).getTime() : 0;
+                
+                if (dateA !== dateB) return (isNaN(dateA) ? 0 : dateA) - (isNaN(dateB) ? 0 : dateB);
+                
+                // If dates are same, prioritize Opening sources
+                const isOpA = a.source === 'Opening' || a.id?.startsWith('B_OPEN_');
+                const isOpB = b.source === 'Opening' || b.id?.startsWith('B_OPEN_');
+                if (isOpA && !isOpB) return -1;
+                if (!isOpA && isOpB) return 1;
+                
+                return 0;
+            });
             
         let remQty = qtyToIssue;
         let total = 0;
@@ -131,11 +145,22 @@ export const IssuesView: React.FC = () => {
         
         setLoading(true);
         try {
-            for (const line of validLines) {
-                const qty = Number(line.qty);
-                const itemName = getItemName(line.itemId);
-                const deptName = getDeptName(form.deptId);
-                await sheetsService.issueFIFO(line.itemId, qty, form.date, form.deptId, itemName, deptName);
+            const issuesToPost = validLines.map(l => ({
+                itemId: l.itemId,
+                qty: Number(l.qty),
+                date: form.date,
+                deptId: form.deptId,
+                itemName: getItemName(l.itemId),
+                deptName: getDeptName(form.deptId)
+            }));
+
+            const results = await sheetsService.bulkIssueFIFO(issuesToPost);
+            
+            const failed = results.filter((r: any) => !r.success);
+            if (failed.length > 0) {
+                toast.error(`Failed to post ${failed.length} items. Check stock levels.`);
+            } else {
+                toast.success(`Successfully posted ${results.length} items`);
             }
             
             setIsAdding(false);
@@ -147,7 +172,7 @@ export const IssuesView: React.FC = () => {
             fetchData();
         } catch (e: any) {
             console.error(e);
-            toast.error(e.message || "Failed to record issue. Check stock availability.");
+            toast.error(e.message || "Failed to record issue.");
         } finally {
             setLoading(false);
         }
@@ -158,37 +183,66 @@ export const IssuesView: React.FC = () => {
         const validLines = [];
         const errors = [];
 
+        // Helper to normalize strings for matching (lowercase, trim, collapse spaces)
+        const normalize = (s: string) => String(s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+        // Even more aggressive normalization (alphanumeric only) as a fallback
+        const superNormalize = (s: string) => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
         for (let i = 0; i < lines.length; i++) {
-            const row = lines[i].split('\t');
+            const lineClean = lines[i].replace(/\r/g, ''); // Handle Windows line endings
+            const row = lineClean.split('\t');
             if (row.length < 4) {
-                errors.push(`Row ${i + 1}: Invalid format (expected 4 columns)`);
+                errors.push(`Row ${i + 1}: Invalid format. Expected 4 columns (Date, Section, Item, Qty). Found ${row.length}.`);
                 continue;
             }
             const [dateStr, deptNameStr, itemNameStr, qtyStr] = row;
             
-            const foundDept = depts.find(d => String(d.name).trim().toLowerCase() === String(deptNameStr).trim().toLowerCase());
+            const normDeptInput = normalize(deptNameStr);
+            const foundDept = depts.find(d => normalize(d.name) === normDeptInput || superNormalize(d.name) === superNormalize(deptNameStr));
             if (!foundDept) {
-                errors.push(`Row ${i + 1}: Unknown Section "${deptNameStr}"`);
+                errors.push(`Row ${i + 1}: Section "${deptNameStr.trim()}" not found.`);
                 continue;
             }
 
-            const foundItem = items.find(itm => String(itm.name).trim().toLowerCase() === String(itemNameStr).trim().toLowerCase());
+            const normItemInput = normalize(itemNameStr);
+            const superNormItemInput = superNormalize(itemNameStr);
+            
+            // Try exact match first, then superNormalize match
+            const foundItem = items.find(itm => {
+                const nName = normalize(itm.name);
+                if (nName === normItemInput) return true;
+                if (superNormalize(itm.name) === superNormItemInput) return true;
+                return false;
+            });
+            
             if (!foundItem) {
-                errors.push(`Row ${i + 1}: Unknown Item "${itemNameStr}"`);
+                // If it still fails, let's look for partial matches to help the user
+                const partialMatches = items
+                    .filter(itm => normalize(itm.name).includes(normItemInput) || normItemInput.includes(normalize(itm.name)))
+                    .slice(0, 3)
+                    .map(itm => itm.name);
+
+                let errMsg = `Row ${i + 1}: Item "${itemNameStr.trim()}" not found.`;
+                if (partialMatches.length > 0) {
+                    errMsg += ` (Did you mean: ${partialMatches.join(', ')}?)`;
+                }
+                errors.push(errMsg);
                 continue;
             }
 
-            const qty = parseFloat(qtyStr);
+            const qty = parseFloat(qtyStr.trim().replace(/,/g, ''));
             if (isNaN(qty) || qty <= 0) {
-                errors.push(`Row ${i + 1}: Invalid Quantity "${qtyStr}"`);
+                errors.push(`Row ${i + 1}: Invalid Quantity "${qtyStr.trim()}"`);
                 continue;
             }
             
             let formattedDate;
             try {
-                formattedDate = format(new Date(dateStr), 'yyyy-MM-dd');
+                const parsedDate = new Date(dateStr.trim());
+                if (isNaN(parsedDate.getTime())) throw new Error();
+                formattedDate = format(parsedDate, 'yyyy-MM-dd');
             } catch {
-                errors.push(`Row ${i + 1}: Invalid Date "${dateStr}"`);
+                errors.push(`Row ${i + 1}: Invalid Date format "${dateStr.trim()}". Use YYYY-MM-DD or MM/DD/YYYY.`);
                 continue;
             }
 
@@ -205,43 +259,64 @@ export const IssuesView: React.FC = () => {
         }
 
         if (errors.length > 0) {
-            toast.error(`Found ${errors.length} errors. Please fix them.`);
+            // Log full errors to console for debugging
+            console.error("Bulk Issue Errors:", errors);
+            toast.error(
+                <div className="space-y-1">
+                    <p className="font-bold">Import failed for {errors.length} items:</p>
+                    <ul className="text-[10px] list-disc list-inside max-h-32 overflow-auto">
+                        {errors.map((e, idx) => <li key={idx}>{e}</li>)}
+                    </ul>
+                </div>, 
+                { duration: 6000 }
+            );
         }
         
         if (validLines.length > 0) {
             setBulkPreview(validLines);
+            setIsAdding(false);
+            if (errors.length === 0) {
+                toast.success(`Successfully parsed ${validLines.length} items`);
+            }
         }
     };
 
     const submitBulkPreview = async () => {
         setLoading(true);
-        let totalCost = 0;
-        const bySection: Record<string, number> = {};
-        let successCount = 0;
-        const failedLines = [];
-        
-        for (const line of bulkPreview!) {
-            if (line.qty <= 0) continue;
-            try {
-               const res = await sheetsService.issueFIFO(line.itemId, line.qty, line.date, line.deptId, line.itemName, line.deptName);
-               totalCost += res.totalCost;
-               bySection[line.deptName] = (bySection[line.deptName] || 0) + res.totalCost;
-               successCount++;
-            } catch(e: any) {
-               failedLines.push({...line, error: e.message || "Unknown error"});
-            }
+        try {
+            const results = await sheetsService.bulkIssueFIFO(bulkPreview!);
+            
+            let totalCost = 0;
+            const bySection: Record<string, number> = {};
+            let successCount = 0;
+            const failedLines = [];
+
+            results.forEach((res: any, idx: number) => {
+                const line = bulkPreview![idx];
+                if (res.success) {
+                    totalCost += res.totalCost;
+                    bySection[line.deptName] = (bySection[line.deptName] || 0) + res.totalCost;
+                    successCount++;
+                } else {
+                    failedLines.push({ ...line, error: res.error });
+                }
+            });
+
+            setBulkPreview(null);
+            setBulkSummary({
+                successCount,
+                failedLines,
+                totalCost,
+                bySection
+            });
+            setBulkText('');
+            fetchData();
+        } catch (e: any) {
+            console.error(e);
+            toast.error(e.message || "Bulk import failed.");
+        } finally {
+            setLoading(false);
         }
-        
-        setLoading(false);
-        setBulkPreview(null);
-        setBulkSummary({
-            successCount,
-            failedLines,
-            totalCost,
-            bySection
-        });
-        setBulkText('');
-        fetchData();
     };
 
     const handleReverseIssue = async (issue: Issue) => {
@@ -670,10 +745,10 @@ export const IssuesView: React.FC = () => {
                                     <div className="p-6 bg-slate-50 border-t border-slate-100">
                                         <button
                                             onClick={handleBulkParse} 
-                                            disabled={loading || !bulkText.trim()}
+                                            disabled={loading || loadingStaticData || !bulkText.trim()}
                                             className="w-full py-3 bg-emerald-600 text-white rounded-lg font-bold shadow-lg shadow-emerald-600/20 flex items-center justify-center transition-all hover:bg-emerald-700 disabled:bg-slate-400"
                                         >
-                                            {loading ? <Loader2 size={20} className="animate-spin" /> : `Process Bulk Import`}
+                                            {loading || loadingStaticData ? <Loader2 size={20} className="animate-spin" /> : `Process Bulk Import`}
                                         </button>
                                     </div>
                                 </>
@@ -683,7 +758,7 @@ export const IssuesView: React.FC = () => {
                 )}
                 
                 {bulkPreview && (
-                    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-[150] p-4">
                         <motion.div 
                             initial={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}
@@ -774,7 +849,13 @@ export const IssuesView: React.FC = () => {
                                     })()}
                                 </div>
                                 <div className="flex gap-3">
-                                    <button onClick={() => setBulkPreview(null)} className="px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-200 rounded-lg transition-colors">
+                                    <button 
+                                        onClick={() => {
+                                            setBulkPreview(null);
+                                            setIsAdding(true);
+                                        }} 
+                                        className="px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-200 rounded-lg transition-colors"
+                                    >
                                         Cancel
                                     </button>
                                     <button 
@@ -797,7 +878,7 @@ export const IssuesView: React.FC = () => {
                 )}
 
                 {bulkSummary && (
-                    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-[150] p-4">
                         <motion.div 
                             initial={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}

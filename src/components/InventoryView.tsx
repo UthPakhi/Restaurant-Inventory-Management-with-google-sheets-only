@@ -190,14 +190,27 @@ export function InventoryView() {
         </div>
         
         {/* Total Value Summary Card */}
-        <div className="bg-emerald-50 border border-emerald-200 px-6 py-3 rounded-2xl flex flex-col shadow-sm">
-            <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-0.5">Total Inventory Value</span>
-            <div className="flex items-baseline gap-1">
-                <span className="text-xs font-bold text-emerald-500">Rs.</span>
-                <span className="text-2xl font-bold text-emerald-900 tracking-tighter">
-                    {items.reduce((sum, itm) => sum + itm.value, 0).toLocaleString()}
-                </span>
-            </div>
+        <div className="flex gap-4">
+          <div className="bg-slate-50 border border-slate-200 px-6 py-3 rounded-2xl flex flex-col shadow-sm">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">Total Items</span>
+              <div className="flex items-baseline gap-1">
+                  <span className="text-2xl font-bold text-slate-900 tracking-tighter">
+                      {items.length}
+                  </span>
+                  <span className="text-xs font-medium text-slate-400 ml-1">
+                      ({items.filter(itm => itm.stock > 0).length} In Stock)
+                  </span>
+              </div>
+          </div>
+          <div className="bg-emerald-50 border border-emerald-200 px-6 py-3 rounded-2xl flex flex-col shadow-sm">
+              <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-0.5">Total Inventory Value</span>
+              <div className="flex items-baseline gap-1">
+                  <span className="text-xs font-bold text-emerald-500">Rs.</span>
+                  <span className="text-2xl font-bold text-emerald-900 tracking-tighter">
+                      {items.reduce((sum, itm) => sum + itm.value, 0).toLocaleString()}
+                  </span>
+              </div>
+          </div>
         </div>
       </div>
 

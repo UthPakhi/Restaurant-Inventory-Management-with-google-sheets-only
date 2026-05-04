@@ -325,6 +325,16 @@ export const SummaryView: React.FC = () => {
     const costStats = getFoodCostStats();
     const inventoryValue = getInventoryValue();
 
+    // Calculate item counts
+    const stockMap = new Map<string, number>();
+    batches.forEach(b => {
+        const itemId = String(b.itemId);
+        const rem = Number(b.remainingQty) || 0;
+        stockMap.set(itemId, (stockMap.get(itemId) || 0) + rem);
+    });
+    const totalItemsCount = items.length;
+    const itemsInStockCount = items.filter(itm => (stockMap.get(String(itm.id)) || 0) > 0).length;
+
     return (
         <div className="space-y-6 pb-20">
             {/* Header & Filters */}
@@ -380,7 +390,8 @@ export const SummaryView: React.FC = () => {
                 {[
                     { label: 'Total Food Cost', value: `Rs. ${costStats.totalCost.toLocaleString()}`, icon: Activity, color: 'text-rose-600', sub: 'Store + Fresh' },
                     { label: 'Total Inventory Value', value: `Rs. ${inventoryValue.toLocaleString()}`, icon: Package, color: 'text-emerald-600', sub: 'Locked stock capital' },
-                    { label: 'Fresh vs Store', value: `${costStats.storeIssues ? ((costStats.freshPurchase / costStats.storeIssues) * 100).toFixed(0) : 0}%`, icon: Layers, color: 'text-amber-600', sub: 'Fresh daily ratio' },
+                    { label: 'Total Items', value: totalItemsCount, icon: Layers, color: 'text-blue-600', sub: `${itemsInStockCount} Currently in Stock` },
+                    { label: 'Fresh vs Store', value: `${costStats.storeIssues ? ((costStats.freshPurchase / costStats.storeIssues) * 100).toFixed(0) : 0}%`, icon: ShoppingCart, color: 'text-amber-600', sub: 'Fresh daily ratio' },
                 ].map((kpi, i) => (
                     <div key={i} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
                         <div className="flex justify-between items-start mb-2">

@@ -77,10 +77,10 @@ export const mapPurchaseToRow = (purchase: Purchase): any[] => [
 
 // Issues: ["ID", "Date", "Dept_ID", "Item_ID", "Qty", "Rate", "UserEmail"]
 export const mapRowToIssue = (row: any[]): Issue => ({
-    id: row[0] || '',
-    date: row[1] || '',
-    deptId: row[2] || '',
-    itemId: row[3] || '',
+    id: String(row[0] || '').trim(),
+    date: String(row[1] || '').trim(),
+    deptId: String(row[2] || '').trim(),
+    itemId: String(row[3] || '').trim(),
     qty: parseFinancialNumber(row[4]),
     rate: parseFinancialNumber(row[5]),
     total: parseFinancialNumber(row[4]) * parseFinancialNumber(row[5]), // Calculated if needed, or row[5] is already something else

@@ -458,7 +458,7 @@ export const IssuesView: React.FC = () => {
             header: 'Actions',
             align: 'right',
             cell: (row) => {
-                const isReversed = issues.some(i => i.id === `REV_${row.id}`);
+                const isReversed = issues.some(i => i.id === `REV_${row.id}`) || batches.some(b => b.source === `Reversal of ${row.id}`);
                 return (
                 <div className="flex justify-end">
                     {row.qty > 0 && !row.id.startsWith('REV_') && !isReversed && (

@@ -128,8 +128,8 @@ export const PurchasesView: React.FC = () => {
             
             const dateStr = parts[0];
             const itemName = parts[1];
-            const qty = parts[2];
-            const rate = parts[3];
+            const qty = parts[2] ? parts[2].replace(/,/g, '') : '0';
+            const rate = parts[3] ? parts[3].replace(/,/g, '') : '0';
             let supplierName = '';
             
             if (parts.length >= 6) {
@@ -144,7 +144,9 @@ export const PurchasesView: React.FC = () => {
                 if (!isNaN(d.getTime())) {
                     formattedDate = format(d, 'yyyy-MM-dd');
                 }
-            } catch (e) {}
+            } catch (e) {
+                console.error("Invalid date parsed", e);
+            }
 
             const foundItem = items.find(i => fuzzyMatch(i.name, itemName));
             const foundSupplier = suppliers.find(s => fuzzyMatch(s.name, supplierName));

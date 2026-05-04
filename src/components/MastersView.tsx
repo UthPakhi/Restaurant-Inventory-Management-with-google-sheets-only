@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Edit2, Search, X, Loader2, Package, Hash, User, ShieldCheck, Save, Store, Image as ImageIcon, Camera, Check } from 'lucide-react';
+import { Plus, Trash2, Edit2, Search, X, Loader2, Package, Hash, User, ShieldCheck, Save, Store, Image as ImageIcon, Camera, Check, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
 import { sheetsService } from '../services/sheetsService';
 import { mapRowToItem, mapRowToDepartment, mapRowToSupplier, mapItemToRow } from '../services/dataMappers';
@@ -481,6 +481,33 @@ export const MastersView: React.FC = () => {
         }
     };
 
+    const handleFactoryReset = async () => {
+        if (!window.confirm("WARNING: This will permanently wipe all items, suppliers, transactions, and settings (except basic AppSettings) from your Google Sheet. It will then reconstruct the base headers. This cannot be undone. Are you absolutely sure?")) return;
+        
+        // Double check
+        const confirmText = window.prompt("Type 'RESET' to confirm.");
+        if (confirmText !== 'RESET') {
+            toast.error("Reset cancelled.");
+            return;
+        }
+
+        setLoading(true);
+        try {
+            await sheetsService.performFactoryReset();
+            // Refetch App Settings just to re-apply any state
+            await fetchData();
+            toast.success("System has been factory reset successfully.");
+            
+            // Re-initialize sheet structure to ensure headers are correctly placed on the now-empty sheets
+            await sheetsService.initializeSheetStructure();
+            
+        } catch(e: any) {
+            toast.error("Failed to reset: " + e.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
@@ -689,6 +716,27 @@ export const MastersView: React.FC = () => {
                       {loading ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
                       {loading ? 'Saving...' : 'Save Settings'}
                     </button>
+                  </div>
+
+                  {/* Danger Zone */}
+                  <div className="pt-8 mt-8 border-t border-slate-100 dark:border-slate-800">
+                    <h3 className="text-lg font-bold text-rose-600 flex items-center gap-2 mb-4">
+                      <AlertTriangle size={20} />
+                      Danger Zone
+                    </h3>
+                    <div className="p-5 border border-rose-100 bg-rose-50 rounded-xl flex items-center justify-between dark:border-rose-900/50 dark:bg-rose-950/20">
+                        <div>
+                          <h4 className="font-bold text-rose-900 dark:text-rose-400">Factory Reset</h4>
+                          <p className="text-sm text-rose-700 mt-1 dark:text-rose-500">Permanently delete all inventory data, items, suppliers, issues, and ledgers in the selected Google Sheet. This keeps your logo and restaurant name intact. Cannot be undone.</p>
+                        </div>
+                        <button 
+                          disabled={loading}
+                          onClick={handleFactoryReset}
+                          className="shrink-0 px-6 py-3 bg-white text-rose-600 rounded-lg font-bold text-sm shadow-sm border border-rose-200 hover:bg-rose-50 transition-all dark:bg-slate-900 dark:border-rose-900 dark:text-rose-500 dark:hover:bg-rose-950"
+                        >
+                          Reset System Data
+                        </button>
+                    </div>
                   </div>
                 </div>
             )}

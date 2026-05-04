@@ -176,6 +176,24 @@ async function startServer() {
     }
   });
 
+  app.post("/api/sheets/batchClear", async (req, res) => {
+      const { tokens, spreadsheetId, ranges } = req.body;
+      const release = await acquireLock(spreadsheetId);
+      try {
+          oauth2Client.setCredentials(tokens);
+          const sheets = google.sheets({ version: "v4", auth: oauth2Client });
+          const response = await sheets.spreadsheets.values.batchClear({
+              spreadsheetId,
+              requestBody: { ranges }
+          });
+          res.json(response.data);
+      } catch (error: any) {
+          res.status(500).json({ error: error.message });
+      } finally {
+          release();
+      }
+  });
+
   // 5. Appending / Reading data proxies would go here
   app.post("/api/sheets/append", async (req, res) => {
       const { tokens, spreadsheetId, range, values } = req.body;

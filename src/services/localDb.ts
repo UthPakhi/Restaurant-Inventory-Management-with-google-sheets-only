@@ -53,6 +53,20 @@ class LocalDB {
     const db = await this.dbPromise;
     await db.put(tableName as any, data, 'data');
   }
+
+  async clearAll(): Promise<void> {
+      const db = await this.dbPromise;
+      const tx = db.transaction(['masters_items', 'masters_depts', 'masters_suppliers', 'purchases', 'issues', 'batches'], 'readwrite');
+      await Promise.all([
+          tx.objectStore('masters_items').clear(),
+          tx.objectStore('masters_depts').clear(),
+          tx.objectStore('masters_suppliers').clear(),
+          tx.objectStore('purchases').clear(),
+          tx.objectStore('issues').clear(),
+          tx.objectStore('batches').clear(),
+          tx.done
+      ]);
+  }
 }
 
 export const localDb = new LocalDB();

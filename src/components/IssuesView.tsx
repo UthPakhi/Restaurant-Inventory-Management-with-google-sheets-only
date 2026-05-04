@@ -395,7 +395,7 @@ export const IssuesView: React.FC = () => {
         {
             key: 'itemId',
             header: 'Item',
-            cell: (row) => <span className="font-bold text-slate-900">{getItemName(row.itemId)}</span>,
+            cell: (row) => <span className="font-bold text-slate-900 dark:text-white">{getItemName(row.itemId)}</span>,
             sortable: true
         },
         {

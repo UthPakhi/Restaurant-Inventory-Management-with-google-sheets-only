@@ -49,15 +49,19 @@ export const StoreLedgerView: React.FC = () => {
         // Calculate initial balance (all transactions before monthStart)
         batches.forEach(b => {
              if (selectedItem !== 'all' && b.itemId !== selectedItem) return;
-             const bDate = b.date ? new Date(b.date) : new Date(0);
-             if (isBefore(bDate, monthStart)) {
+             if (b.id?.startsWith('B_REV_') || b.source?.startsWith('Reversal')) return;
+             const bDate = b.date ? startOfDay(new Date(b.date)) : new Date(0);
+             
+             // INCLUDE "Opening" batches that are on or before the monthStart in the initial balance
+             const isOpening = b.source === 'Opening' || b.id?.startsWith('B_OPEN_');
+             if (isBefore(bDate, monthStart) || (isSameDay(bDate, monthStart) && isOpening)) {
                  initialBalance += selectedItem !== 'all' ? Number(b.originalQty) : Number(b.originalQty) * Number(b.rate);
              }
         });
 
         issues.forEach(i => {
              if (selectedItem !== 'all' && i.itemId !== selectedItem) return;
-             const iDate = i.date ? new Date(i.date) : new Date(0);
+             const iDate = i.date ? startOfDay(new Date(i.date)) : new Date(0);
              if (isBefore(iDate, monthStart)) {
                  initialBalance -= selectedItem !== 'all' ? Number(i.qty) : Number(i.qty) * Number(i.rate || 0); // Assuming rate might be missing in older issues
              }
@@ -73,8 +77,14 @@ export const StoreLedgerView: React.FC = () => {
 
             batches.forEach(b => {
                 if (selectedItem !== 'all' && b.itemId !== selectedItem) return;
+                if (b.id?.startsWith('B_REV_') || b.source?.startsWith('Reversal')) return;
                 const bDate = b.date ? startOfDay(new Date(b.date)) : new Date(0);
+                
                 if (isSameDay(bDate, day)) {
+                    // EXCLUDE Opening batches from dailyPurchased if they were already included in the initialBalance for the first day
+                    const isOpening = b.source === 'Opening' || b.id?.startsWith('B_OPEN_');
+                    if (isSameDay(day, monthStart) && isOpening) return;
+                    
                     dailyPurchased += selectedItem !== 'all' ? Number(b.originalQty) : Number(b.originalQty) * Number(b.rate);
                 }
             });
@@ -223,10 +233,10 @@ export const StoreLedgerView: React.FC = () => {
                                             {day.openingBalance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                                         </td>
                                         <td className="px-6 py-4 text-right font-mono text-emerald-600 font-medium whitespace-nowrap">
-                                            {day.purchased > 0 ? `+ ${day.purchased.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}` : '-'}
+                                            {day.purchased !== 0 ? `${day.purchased > 0 ? '+' : '-'} ${Math.abs(day.purchased).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}` : '-'}
                                         </td>
-                                        <td className="px-6 py-4 text-right font-mono text-rose-600 font-medium whitespace-nowrap">
-                                            {day.used > 0 ? `- ${day.used.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}` : '-'}
+                                        <td className={cn("px-6 py-4 text-right font-mono font-medium whitespace-nowrap", day.used < 0 ? "text-emerald-600" : "text-rose-600")}>
+                                            {day.used !== 0 ? `${day.used > 0 ? '-' : '+'} ${Math.abs(day.used).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}` : '-'}
                                         </td>
                                         <td className="px-6 py-4 text-right font-mono text-slate-900 font-bold whitespace-nowrap tracking-tight">
                                             {day.closingBalance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}

@@ -117,10 +117,15 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="w-full mb-6 p-4 bg-red-50 text-red-600 text-xs font-medium rounded-xl border border-red-100 flex items-center gap-3"
+            className="w-full mb-6 p-4 bg-red-50 text-red-600 text-xs font-medium rounded-xl border border-red-100 flex flex-col gap-2"
           >
-            <Shield size={16} />
-            {error}
+            <div className="flex items-center gap-3">
+              <Shield size={16} />
+              <span className="flex-1">{error}</span>
+            </div>
+            <div className="pl-7 text-[10px] text-red-500/80">
+              Getting 'redirect_uri_mismatch'? Make sure the URL in your Google Cloud Console matches your current domain. Check GOOGLE_OAUTH_SETUP.md for instructions.
+            </div>
           </motion.div>
         )}
 

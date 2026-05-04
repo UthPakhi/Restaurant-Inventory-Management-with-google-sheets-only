@@ -29,8 +29,8 @@ export const IssuesView: React.FC = () => {
     });
 
     const [stockLevels, setStockLevels] = useState<{ [key: string]: number }>({});
-
     const [batches, setBatches] = useState<Batch[]>([]);
+    const [reversingIssue, setReversingIssue] = useState<Issue | null>(null);
 
     const fetchData = async () => {
         if (loadingStaticData) return;
@@ -249,15 +249,23 @@ export const IssuesView: React.FC = () => {
             toast.error("This transaction is already a reversal.");
             return;
         }
-        if (!confirm('Are you sure you want to reverse this issue? This will restore stock to inventory.')) return;
+        setReversingIssue(issue);
+    };
+
+    const confirmReversal = async () => {
+        if (!reversingIssue) return;
+        
         setLoading(true);
+        const issue = reversingIssue;
+        setReversingIssue(null);
+        
         try {
-            await sheetsService.reverseIssue(issue);
-            toast.success('Issue successfully reversed.');
-            fetchData();
+            const res = await sheetsService.reverseIssue(issue);
+            toast.success('Issue successfully reversed. Stock restored.');
+            await fetchData();
         } catch (e: any) {
-            console.error(e);
-            toast.error(e.message || "Failed to reverse issue.");
+            console.error('Reversal failed:', e);
+            toast.error(e.message || "Failed to reverse issue. Check your connection or sheet permissions.");
         } finally {
             setLoading(false);
         }
@@ -469,6 +477,58 @@ export const IssuesView: React.FC = () => {
             </div>
 
             <AnimatePresence>
+                {reversingIssue && (
+                    <div className="fixed inset-0 z-[110] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4">
+                        <motion.div 
+                            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            className="bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-2xl border border-slate-200"
+                        >
+                            <div className="p-6 text-center space-y-4">
+                                <div className="w-16 h-16 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <ArrowRightLeft size={32} />
+                                </div>
+                                <h3 className="text-xl font-bold text-slate-900">Confirm Reversal</h3>
+                                <div className="bg-slate-50 p-4 rounded-xl text-left border border-slate-100 space-y-2">
+                                   <div className="flex justify-between text-xs">
+                                       <span className="text-slate-500">Item:</span>
+                                       <span className="font-bold text-slate-900">{getItemName(reversingIssue.itemId)}</span>
+                                   </div>
+                                   <div className="flex justify-between text-xs">
+                                       <span className="text-slate-500">Quantity:</span>
+                                       <span className="font-bold text-slate-900">{reversingIssue.qty} {items.find(i => i.id === reversingIssue.itemId)?.unit}</span>
+                                   </div>
+                                   <div className="flex justify-between text-xs">
+                                       <span className="text-slate-500">Department:</span>
+                                       <span className="font-bold text-slate-900">{getDeptName(reversingIssue.deptId)}</span>
+                                   </div>
+                                   <div className="flex justify-between text-xs pt-2 border-t border-slate-200">
+                                       <span className="text-slate-500 font-bold">Total Amount:</span>
+                                       <span className="font-bold text-rose-600">Rs {Number(reversingIssue.total).toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
+                                   </div>
+                                </div>
+                                <p className="text-sm text-slate-500">
+                                    This will create a restoration entry in inventory and a negative consumption log to balance the records.
+                                </p>
+                            </div>
+                            <div className="p-6 bg-slate-50 flex gap-3 border-t border-slate-100">
+                                <button 
+                                    onClick={() => setReversingIssue(null)}
+                                    className="flex-1 py-3 px-4 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 transition-all"
+                                >
+                                    Cancel
+                                </button>
+                                <button 
+                                    onClick={confirmReversal}
+                                    className="flex-1 py-3 px-4 bg-rose-600 text-white rounded-xl font-bold shadow-lg shadow-rose-600/20 hover:bg-rose-700 transition-all flex items-center justify-center gap-2"
+                                >
+                                    {loading ? <Loader2 size={18} className="animate-spin" /> : 'Confirm Reverse'}
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+
                 {isAdding && (
                     <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-6">
                         <motion.div 

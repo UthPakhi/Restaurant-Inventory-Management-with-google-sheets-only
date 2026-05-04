@@ -15,7 +15,7 @@ export class SheetsService {
   private spreadsheetId: string | null = null;
   public isDemoMode: boolean = false;
   private demoData: Record<string, any[][]> = {};
-  public currentUserEmail: string = 'Unknown';
+  public currentUserEmail: string = '';
 
   constructor(tokens?: GoogleTokens, spreadsheetId?: string) {
     if (tokens) this.tokens = tokens;
@@ -386,23 +386,25 @@ export class SheetsService {
   }
 
   async reverseIssue(issue: any): Promise<any> {
+    console.log('Attempting to reverse issue:', issue);
     const { id, itemId, qty, rate, deptId, date } = issue;
     if (qty <= 0) throw new Error("Cannot reverse a reversal or zero quantity.");
 
     const ts = Date.now();
     const batchId = `B_REV_${ts}`;
     const revIssueId = `REV_${ts}`;
+    const email = this.currentUserEmail || 'Unknown';
 
     // 1. Create a new batch to restore the stock at the same rate
-    const newBatch = [batchId, itemId, date, qty, qty, rate, 'Reversal'];
+    const newBatch = [batchId, itemId, date, qty, qty, rate, `Reversal of ${id}`];
 
     // 2. Append a negative issue to cancel out the consumption
-    const negativeIssue = [revIssueId, date, deptId, itemId, -qty, rate, this.currentUserEmail];
+    const negativeIssue = [revIssueId, date, deptId, itemId, -qty, rate, email];
 
     await this.append('Batches!A:G', [newBatch]);
     await this.append('Issues!A:G', [negativeIssue]);
 
-    await this.logAudit(this.currentUserEmail, 'REVERSE_ISSUE', 'Issues', `Reversed issue ${id} for item ${itemId}, restored ${qty} to stock at rate ${rate}.`);
+    await this.logAudit(email, 'REVERSE_ISSUE', 'Issues', `Reversed issue ${id} for item ${itemId}, restored ${qty} to stock at rate ${rate}.`);
     
     return { success: true };
   }

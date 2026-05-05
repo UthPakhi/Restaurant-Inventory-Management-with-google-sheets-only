@@ -34,11 +34,11 @@ const getRedirectUri = (req: express.Request) => {
   return `${protocol}://${host}/api/auth/callback`;
 };
 
-app.get(["/health", "/api/health"], (req, res) => {
+app.get("/api/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
-app.get(["/auth/google/url", "/api/auth/google/url"], (req, res) => {
+app.get("/api/auth/google/url", (req, res) => {
   const scopes = [
     "https://www.googleapis.com/auth/userinfo.profile",
     "https://www.googleapis.com/auth/userinfo.email",
@@ -59,7 +59,7 @@ app.get(["/auth/google/url", "/api/auth/google/url"], (req, res) => {
   res.json({ url });
 });
 
-app.get(["/api/auth/callback", "/api/auth/callback/", "/auth/callback", "/auth/callback/"], async (req, res) => {
+app.get(["/api/auth/callback", "/api/auth/callback/"], async (req, res) => {
   const { code, state } = req.query;
 
   try {
@@ -82,33 +82,17 @@ app.get(["/api/auth/callback", "/api/auth/callback/", "/auth/callback", "/auth/c
       <html>
         <body>
           <script>
-            const tokens = ${JSON.stringify(tokens)};
-            // Attempt 1: window.opener (standard)
-            try {
-              if (window.opener) {
-                window.opener.postMessage({ type: 'GOOGLE_AUTH_SUCCESS', tokens }, '*');
-              }
-            } catch(e) {}
-            
-            // Attempt 2: BroadcastChannel (handles COOP)
-            try {
-              const bc = new BroadcastChannel('google_auth_channel');
-              bc.postMessage({ type: 'GOOGLE_AUTH_SUCCESS', tokens });
-            } catch (e) {}
-
-            // Attempt 3: LocalStorage (fallback for older browsers/strict isolate)
-            try {
-              window.localStorage.setItem('GOOGLE_AUTH_TOKENS', JSON.stringify(tokens));
-            } catch (e) {}
-
-            window.close();
-            
-            // If window won't close, redirect to main page after a moment
-            setTimeout(() => {
+            if (window.opener) {
+              window.opener.postMessage({ 
+                type: 'GOOGLE_AUTH_SUCCESS', 
+                tokens: ${JSON.stringify(tokens)} 
+              }, '*');
+              window.close();
+            } else {
               window.location.href = '/';
-            }, 500);
+            }
           </script>
-          <p>Authentication successful. You can close this window now.</p>
+          <p>Authentication successful. You can close this window.</p>
         </body>
       </html>
     `);
@@ -118,7 +102,7 @@ app.get(["/api/auth/callback", "/api/auth/callback/", "/auth/callback", "/auth/c
   }
 });
 
-app.post(["/api/sheets/create", "/sheets/create"], async (req, res) => {
+app.post("/api/sheets/create", async (req, res) => {
   const { tokens, name } = req.body;
   if (!tokens) return res.status(401).json({ error: "Missing tokens" });
 
@@ -137,7 +121,7 @@ app.post(["/api/sheets/create", "/sheets/create"], async (req, res) => {
   }
 });
 
-app.post(["/api/sheets/batchUpdate", "/sheets/batchUpdate"], async (req, res) => {
+app.post("/api/sheets/batchUpdate", async (req, res) => {
   const { tokens, spreadsheetId, requests } = req.body;
   oauth2Client.setCredentials(tokens);
   const sheets = google.sheets({ version: "v4", auth: oauth2Client });
@@ -153,7 +137,7 @@ app.post(["/api/sheets/batchUpdate", "/sheets/batchUpdate"], async (req, res) =>
   }
 });
 
-app.post(["/api/sheets/append", "/sheets/append"], async (req, res) => {
+app.post("/api/sheets/append", async (req, res) => {
     const { tokens, spreadsheetId, range, values } = req.body;
     oauth2Client.setCredentials(tokens);
     const sheets = google.sheets({ version: "v4", auth: oauth2Client });
@@ -170,7 +154,7 @@ app.post(["/api/sheets/append", "/sheets/append"], async (req, res) => {
     }
 });
 
-app.post(["/api/sheets/read", "/sheets/read"], async (req, res) => {
+app.post("/api/sheets/read", async (req, res) => {
     const { tokens, spreadsheetId, range } = req.body;
     oauth2Client.setCredentials(tokens);
     const sheets = google.sheets({ version: "v4", auth: oauth2Client });
@@ -185,7 +169,7 @@ app.post(["/api/sheets/read", "/sheets/read"], async (req, res) => {
     }
 });
 
-app.post(["/api/sheets/update", "/sheets/update"], async (req, res) => {
+app.post("/api/sheets/update", async (req, res) => {
     const { tokens, spreadsheetId, range, values } = req.body;
     oauth2Client.setCredentials(tokens);
     const sheets = google.sheets({ version: "v4", auth: oauth2Client });
@@ -202,7 +186,7 @@ app.post(["/api/sheets/update", "/sheets/update"], async (req, res) => {
     }
 });
 
-app.post(["/api/sheets/valuesBatchUpdate", "/sheets/valuesBatchUpdate"], async (req, res) => {
+app.post("/api/sheets/valuesBatchUpdate", async (req, res) => {
     const { tokens, spreadsheetId, data } = req.body;
     oauth2Client.setCredentials(tokens);
     const sheets = google.sheets({ version: "v4", auth: oauth2Client });
@@ -220,7 +204,7 @@ app.post(["/api/sheets/valuesBatchUpdate", "/sheets/valuesBatchUpdate"], async (
     }
 });
 
-app.post(["/api/sheets/batchClear", "/sheets/batchClear"], async (req, res) => {
+app.post("/api/sheets/batchClear", async (req, res) => {
     const { tokens, spreadsheetId, ranges } = req.body;
     oauth2Client.setCredentials(tokens);
     const sheets = google.sheets({ version: "v4", auth: oauth2Client });
@@ -235,7 +219,7 @@ app.post(["/api/sheets/batchClear", "/sheets/batchClear"], async (req, res) => {
     }
 });
 
-app.post(["/api/auth/me", "/auth/me"], async (req, res) => {
+app.post("/api/auth/me", async (req, res) => {
   const { tokens } = req.body;
   if (!tokens) return res.status(401).json({ error: "Missing tokens" });
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Edit2, Search, X, Loader2, Package, Hash, User, ShieldCheck, Save, Store, Image as ImageIcon, Camera, Check, AlertTriangle } from 'lucide-react';
+import { Plus, Edit2, Search, X, Loader2, Package, Hash, User, ShieldCheck, Save, Store, Image as ImageIcon, Camera, Check, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
 import { sheetsService } from '../services/sheetsService';
 import { mapRowToItem, mapRowToDepartment, mapRowToSupplier, mapItemToRow } from '../services/dataMappers';
@@ -37,6 +37,9 @@ export const MastersView: React.FC = () => {
     // Reset Modal State
     const [showResetModal, setShowResetModal] = useState(false);
     const [resetConfirmText, setResetConfirmText] = useState('');
+
+    // Additional Confirmation States
+    const [showSeedModal, setShowSeedModal] = useState(false);
 
     const fetchData = async () => {
         setLoading(true);
@@ -164,12 +167,8 @@ export const MastersView: React.FC = () => {
     };
 
     const handleSeedDemo = async () => {
-        if (items.length > 0) {
-            if (!confirm("Your database already has items! Seeding will duplicate them. Are you REALLY sure you want to run this?")) return;
-        } else {
-            if (!confirm("This will seed all 190 items with their department mappings and initial stock. Continue?")) return;
-        }
         setLoading(true);
+        setShowSeedModal(false);
         try {
             // Seed Depts
             const depts = [
@@ -596,34 +595,6 @@ export const MastersView: React.FC = () => {
         }
     };
 
-    const handleDeleteEntity = async (row: any, type: string) => {
-        if (!confirm("Are you sure you want to deactivate this? It will no longer appear in dropdowns but historical records will be preserved.")) return;
-        setLoading(true);
-        try {
-            let cellRange = '';
-            let values: any[][] = [];
-            if (type === 'items') {
-                cellRange = `Masters_Items!A${row.rowIndex}:K${row.rowIndex}`;
-                values = [mapItemToRow({ ...row, isActive: false })];
-            } else if (type === 'depts') {
-                cellRange = `Masters_Depts!A${row.rowIndex}:C${row.rowIndex}`;
-                values = [[row.id, row.name, 'No']];
-            } else if (type === 'suppliers') {
-                cellRange = `Masters_Suppliers!A${row.rowIndex}:D${row.rowIndex}`;
-                values = [[row.id, row.name, row.contact || '', 'No']];
-            }
-            await sheetsService.update(cellRange, values);
-            await fetchData();
-            await refreshStaticData();
-            toast.success('Successfully deactivated.');
-        } catch (e: any) {
-            console.error(e);
-            toast.error("Failed to deactivate: " + e.message);
-        } finally {
-            setLoading(false);
-        }
-    };
-
     return (
         <div className="space-y-6 text-slate-900 dark:text-slate-100">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -776,7 +747,7 @@ export const MastersView: React.FC = () => {
                                     Repair Structure
                                 </button>
                                 <button 
-                                    onClick={handleSeedDemo}
+                                    onClick={() => setShowSeedModal(true)}
                                     className="px-4 py-2 border border-slate-200 bg-white text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-50 transition-all dark:bg-slate-900 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
                                 >
                                     Seed Demo Data
@@ -857,7 +828,6 @@ export const MastersView: React.FC = () => {
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <button onClick={() => setEditingItem(row)} className="p-1.5 hover:bg-slate-100 rounded text-slate-400 hover:text-emerald-600 transition-colors dark:hover:bg-slate-800 dark:hover:text-emerald-400"><Edit2 size={14} /></button>
-                                                <button onClick={() => handleDeleteEntity(row, 'items')} className="p-1.5 hover:bg-slate-100 rounded text-slate-400 hover:text-red-500 transition-colors dark:hover:bg-slate-800 dark:hover:text-red-400"><Trash2 size={14} /></button>
                                             </div>
                                         </td>
                                     </tr>
@@ -874,7 +844,6 @@ export const MastersView: React.FC = () => {
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <button onClick={() => setEditingDept(row)} className="p-1.5 hover:bg-slate-100 rounded text-slate-400 hover:text-emerald-600 transition-colors dark:hover:bg-slate-800 dark:hover:text-emerald-400"><Edit2 size={14} /></button>
-                                                <button onClick={() => handleDeleteEntity(row, 'depts')} className="p-1.5 hover:bg-slate-100 rounded text-slate-400 hover:text-red-500 transition-colors dark:hover:bg-slate-800 dark:hover:text-red-400"><Trash2 size={14} /></button>
                                             </div>
                                         </td>
                                     </tr>
@@ -892,7 +861,6 @@ export const MastersView: React.FC = () => {
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <button onClick={() => setEditingSupplier(row)} className="p-1.5 hover:bg-slate-100 rounded text-slate-400 hover:text-emerald-600 transition-colors dark:hover:bg-slate-800 dark:hover:text-emerald-400"><Edit2 size={14} /></button>
-                                                <button onClick={() => handleDeleteEntity(row, 'suppliers')} className="p-1.5 hover:bg-slate-100 rounded text-slate-400 hover:text-red-500 transition-colors dark:hover:bg-slate-800 dark:hover:text-red-400"><Trash2 size={14} /></button>
                                             </div>
                                         </td>
                                     </tr>
@@ -1325,6 +1293,46 @@ export const MastersView: React.FC = () => {
                                 >
                                     {loading ? <Loader2 size={16} className="animate-spin" /> : <Save size={16}/>}
                                     Update Entity
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+                {showSeedModal && (
+                    <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-6">
+                        <motion.div 
+                            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                            className="bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-2xl border border-slate-200 dark:bg-slate-900 dark:border-slate-800"
+                        >
+                            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-emerald-50 dark:bg-emerald-950/20 dark:border-slate-800">
+                                <h3 className="font-bold text-emerald-900 tracking-tight dark:text-emerald-400">
+                                    Confirm Demo Data Seeding
+                                </h3>
+                                <button onClick={() => setShowSeedModal(false)} className="text-emerald-400 hover:text-emerald-600 p-1 dark:hover:text-emerald-300"><X size={20} /></button>
+                            </div>
+                            <div className="p-6 space-y-4">
+                                <p className="text-sm text-slate-700 dark:text-slate-300">
+                                    {items.length > 0 
+                                      ? "Your database already has items! Seeding will duplicate them. Are you REALLY sure you want to run this?" 
+                                      : "This will seed all 190 items with their department mappings and initial stock. Continue?"}
+                                </p>
+                            </div>
+                            <div className="p-6 bg-slate-50 border-t border-slate-100 flex gap-4 dark:bg-slate-950/20 dark:border-slate-800">
+                                <button
+                                    onClick={() => setShowSeedModal(false)}
+                                    className="flex-1 py-2.5 text-sm font-bold text-slate-500 hover:text-slate-900 transition-colors dark:text-slate-400 dark:hover:text-slate-200"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleSeedDemo}
+                                    disabled={loading}
+                                    className="flex-1 py-2.5 bg-emerald-600 text-white rounded-lg text-sm font-bold shadow-lg shadow-emerald-600/20 hover:bg-emerald-700 transition-all flex items-center justify-center gap-2"
+                                >
+                                    {loading ? <Loader2 size={16} className="animate-spin" /> : <Check size={16}/>}
+                                    Yes, Seed Data
                                 </button>
                             </div>
                         </motion.div>

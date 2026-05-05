@@ -24,7 +24,7 @@ export interface InventoryItem {
 export function InventoryView() {
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<InventoryItem[]>([]);
-  const { items: rawItems, loadingStaticData } = useAppLookup();
+  const { activeItems: rawItems, loadingStaticData } = useAppLookup();
 
   const fetchData = async () => {
     if (loadingStaticData) return;

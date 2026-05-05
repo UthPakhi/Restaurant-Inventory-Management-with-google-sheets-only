@@ -42,7 +42,7 @@ import { useAppLookup } from '../context/AppContext';
 
 import { toast } from 'sonner';
 export const SummaryView: React.FC = () => {
-    const { items, departments: depts, loadingStaticData } = useAppLookup();
+    const { activeItems: items, departments: depts, loadingStaticData } = useAppLookup();
     const [loading, setLoading] = useState(true);
     const [issues, setIssues] = useState<Issue[]>([]);
     const [dailyLogs, setDailyLogs] = useState<DailyConsumption[]>([]);

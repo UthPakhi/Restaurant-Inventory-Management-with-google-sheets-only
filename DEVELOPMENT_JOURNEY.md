@@ -82,6 +82,13 @@ Throughout the development lifecycle, we encountered and fixed several complex c
 - **The Problem:** When processing multiple issues in a single bulk operation, subsequent issues were not accounting for the inventory decrements made by earlier items in the exact same batch run, causing overall total values to ignore the decrement.
 - **The Solution:** Patched the `bulkIssueFIFO` processing in `sheetsService.ts`. Instead of a shallow reference, the internal function now constructs a deep isolated copy (`allBatches.map(b => ({...b}))`) arrays, mathematically consuming the state iteration-by-iteration, so the nth bulk item accurately calculates against the live remaining quantity of the batch dynamically.
 
+### UX Improvments
+- **Masters Module Filtering:** The Master entities search functionality incorrectly missed records. We've enhanced text filters enabling intuitive active/inactive state screening alongside resilient standard partial match queries avoiding blank screens. 
+- **Consumption Context:** In the Consumption Log module, managers lacked exact metrics on the unit issuance rate. We dynamically extracted the average mathematically calculated FIFO rate from `calculateFIFOTotal` extending the columns layout to show individual item issuance rates securely. Added a powerful macro view `Item Wise` breakdown aggregating all issues per-item into summary statistics calculating total amounts and volume percentages automatically.
+- **Iframe Safe Modals:** Migrated away from native `window.confirm()` browser dialogues replacing them with robust inline Modal React components due to strict browser iframe limitations on alerts/confirms.
+- **Data Safety:** Removed raw delete buttons entirely from the Masters configurations to prevent catastrophic accidental cascading deletions, ensuring users rely on the soft-delete `Mark Inactive` toggle which safely filters historic items out of the visible stock counts and reports. 
+- **State Filtering Integrity:** Patched a core networking bug `sheetsService.ts` where Google Sheets API reads truncated the column retrieval limit specifically stopping at `A2:J`, causing the critical `isActive` flag (Column K) to be truncated. Realigned all column boundary sizes (Items: `A2:K`, Depts: `A2:C`, Suppliers: `A2:D`), successfully bridging the `isActive=false` network payload and propagating updates precisely into Total Items and Inventory Stock lists globally.
+
 ## 6. Stability & Testing
 - Embedded vitest to unit test our `fifoEngine.test.ts`, checking that calculating cost batches works mathematically properly.
 - Tested edge cases: zero quantity issues, issues exceeding capacity, backwards-dated purchases.

@@ -38,7 +38,7 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
-app.get(["/api/auth/google/url", "/auth/google/url"], (req, res) => {
+app.get(["/api/auth/google/url", "/auth/google/url", "/google/url", "*/google/url"], (req, res) => {
   const scopes = [
     "https://www.googleapis.com/auth/userinfo.profile",
     "https://www.googleapis.com/auth/userinfo.email",

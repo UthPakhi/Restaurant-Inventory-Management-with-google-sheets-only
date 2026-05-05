@@ -30,6 +30,8 @@ import { useAppLookup } from './context/AppContext';
 
 import { Toaster } from 'sonner';
 
+import { Analytics } from "@vercel/analytics/react";
+
 // Types
 type View = 'summary' | 'inventory' | 'purchases' | 'issues' | 'cashflow' | 'sales' | 'masters' | 'settings' | 'audit' | 'ledger';
 
@@ -201,6 +203,7 @@ export default function App() {
       "flex h-screen w-full bg-slate-50 text-slate-900 overflow-hidden font-sans transition-colors duration-300",
       "dark:bg-slate-950 dark:text-slate-100"
     )}>
+      <Analytics />
       <Toaster position="top-right" richColors />
       {isSidebarOpen && (
         <div 

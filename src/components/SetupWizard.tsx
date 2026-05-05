@@ -14,43 +14,56 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
   const [existingIdInput, setExistingIdInput] = useState('');
 
   useEffect(() => {
-    const handleOauthResult = async () => {
-      const savedResult = localStorage.getItem('resto_oauth_result');
-      if (savedResult) {
-        localStorage.removeItem('resto_oauth_result');
-        try {
-          setLoading(true);
-          const eventData = JSON.parse(savedResult);
-          if (eventData.type === 'GOOGLE_AUTH_SUCCESS') {
-            const tokens = eventData.tokens;
-            sheetsService.setTokens(tokens);
-            
-            const isJoinExisting = eventData.state?.isJoinExisting;
-            let existingSpreadsheetId = eventData.state?.spreadsheetId;
+    const handleOauthResult = async (savedResult: string) => {
+      try {
+        setLoading(true);
+        const eventData = JSON.parse(savedResult);
+        if (eventData.type === 'GOOGLE_AUTH_SUCCESS') {
+          const tokens = eventData.tokens;
+          sheetsService.setTokens(tokens);
+          
+          const isJoinExisting = eventData.state?.isJoinExisting;
+          let existingSpreadsheetId = eventData.state?.spreadsheetId;
 
-            if (isJoinExisting && existingSpreadsheetId) {
-                sheetsService.setSpreadsheetId(existingSpreadsheetId);
-                try {
-                  await sheetsService.read("Masters_Items!A1:A1");
-                } catch (e: any) {
-                  throw new Error("Unable to access spreadsheet. Ensure you have the correct URL and the owner has shared it with your Google Account.");
-                }
-                await sheetsService.initializeSheetStructure();
-                onComplete({ tokens, spreadsheetId: existingSpreadsheetId });
-            } else if (!isJoinExisting) {
-                const result = await sheetsService.createSpreadsheet("Restaurant Management Sheet");
-                await sheetsService.initializeSheetStructure();
-                onComplete({ tokens, spreadsheetId: result.spreadsheetId });
-            }
+          if (isJoinExisting && existingSpreadsheetId) {
+              sheetsService.setSpreadsheetId(existingSpreadsheetId);
+              try {
+                await sheetsService.read("Masters_Items!A1:A1");
+              } catch (e: any) {
+                throw new Error("Unable to access spreadsheet. Ensure you have the correct URL and the owner has shared it with your Google Account.");
+              }
+              await sheetsService.initializeSheetStructure();
+              onComplete({ tokens, spreadsheetId: existingSpreadsheetId });
+          } else if (!isJoinExisting) {
+              const result = await sheetsService.createSpreadsheet("Restaurant Management Sheet");
+              await sheetsService.initializeSheetStructure();
+              onComplete({ tokens, spreadsheetId: result.spreadsheetId });
           }
-        } catch (e: any) {
-          setError(e.message);
-        } finally {
-          setLoading(false);
         }
+      } catch (e: any) {
+        setError(e.message);
+      } finally {
+        setLoading(false);
       }
     };
-    handleOauthResult();
+
+    // Check mount
+    const savedResult = localStorage.getItem('resto_oauth_result');
+    if (savedResult) {
+      localStorage.removeItem('resto_oauth_result');
+      handleOauthResult(savedResult);
+    }
+    
+    // Check storage event (for cross-window/fallback)
+    const handleStorageEvent = (e: StorageEvent) => {
+        if (e.key === 'resto_oauth_result' && e.newValue) {
+            localStorage.removeItem('resto_oauth_result');
+            handleOauthResult(e.newValue);
+        }
+    };
+    
+    window.addEventListener('storage', handleStorageEvent);
+    return () => window.removeEventListener('storage', handleStorageEvent);
   }, [onComplete]);
 
   const startAuth = async () => {

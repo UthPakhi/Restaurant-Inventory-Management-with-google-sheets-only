@@ -98,16 +98,29 @@ app.get(["/api/auth/callback", "/api/auth/callback/"], async (req, res) => {
             };
             
             try {
+              // Always write to localStorage so the main window can pick it up via storage event
+              localStorage.setItem('resto_oauth_result', JSON.stringify(authResult));
+              
+              // Try to postMessage as primary method
               if (window.opener && !window.opener.closed) {
                 window.opener.postMessage(authResult, '*');
-                window.close();
-              } else {
-                localStorage.setItem('resto_oauth_result', JSON.stringify(authResult));
-                window.location.href = '/';
               }
+              
+              // Always attempt to close the popup
+              window.close();
+              
+              // Keep a fallback redirect in case window.close() is blocked
+              setTimeout(() => {
+                if (!window.closed) {
+                  window.location.href = '/';
+                }
+              }, 1500);
             } catch (e) {
                 localStorage.setItem('resto_oauth_result', JSON.stringify(authResult));
-                window.location.href = '/';
+                window.close();
+                setTimeout(() => {
+                  window.location.href = '/';
+                }, 1500);
             }
           </script>
           <p>Authentication successful. You will be redirected shortly.</p>

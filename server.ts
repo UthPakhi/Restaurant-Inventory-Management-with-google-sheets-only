@@ -132,16 +132,25 @@ async function startServer() {
                 state: ${JSON.stringify(authState)}
               };
               try {
+                localStorage.setItem('resto_oauth_result', JSON.stringify(authResult));
+                
                 if (window.opener && !window.opener.closed) {
                   window.opener.postMessage(authResult, '*');
-                  window.close();
-                } else {
-                  localStorage.setItem('resto_oauth_result', JSON.stringify(authResult));
-                  window.location.href = '/';
                 }
+                
+                window.close();
+                
+                setTimeout(() => {
+                  if (!window.closed) {
+                    window.location.href = '/';
+                  }
+                }, 1500);
               } catch (e) {
                   localStorage.setItem('resto_oauth_result', JSON.stringify(authResult));
-                  window.location.href = '/';
+                  window.close();
+                  setTimeout(() => {
+                    window.location.href = '/';
+                  }, 1500);
               }
             </script>
             <p>Authentication successful. You will be redirected shortly.</p>

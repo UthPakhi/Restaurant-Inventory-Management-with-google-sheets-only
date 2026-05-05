@@ -82,17 +82,33 @@ app.get(["/api/auth/callback", "/api/auth/callback/", "/auth/callback", "/auth/c
       <html>
         <body>
           <script>
-            if (window.opener) {
-              window.opener.postMessage({ 
-                type: 'GOOGLE_AUTH_SUCCESS', 
-                tokens: ${JSON.stringify(tokens)} 
-              }, '*');
-              window.close();
-            } else {
+            const tokens = ${JSON.stringify(tokens)};
+            // Attempt 1: window.opener (standard)
+            try {
+              if (window.opener) {
+                window.opener.postMessage({ type: 'GOOGLE_AUTH_SUCCESS', tokens }, '*');
+              }
+            } catch(e) {}
+            
+            // Attempt 2: BroadcastChannel (handles COOP)
+            try {
+              const bc = new BroadcastChannel('google_auth_channel');
+              bc.postMessage({ type: 'GOOGLE_AUTH_SUCCESS', tokens });
+            } catch (e) {}
+
+            // Attempt 3: LocalStorage (fallback for older browsers/strict isolate)
+            try {
+              window.localStorage.setItem('GOOGLE_AUTH_TOKENS', JSON.stringify(tokens));
+            } catch (e) {}
+
+            window.close();
+            
+            // If window won't close, redirect to main page after a moment
+            setTimeout(() => {
               window.location.href = '/';
-            }
+            }, 500);
           </script>
-          <p>Authentication successful. You can close this window.</p>
+          <p>Authentication successful. You can close this window now.</p>
         </body>
       </html>
     `);

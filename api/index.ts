@@ -82,15 +82,37 @@ app.get(["/api/auth/callback", "/api/auth/callback/"], async (req, res) => {
       <html>
         <body>
           <script>
+            console.log("[Auth Callback] Script started executing.");
+            console.log("[Auth Callback] tokens received:", ${JSON.stringify(tokens ? "Tokens present" : "No tokens")});
+            console.log("[Auth Callback] Trying window.opener: ", !!window.opener);
             if (window.opener) {
-              window.opener.postMessage({ 
-                type: 'GOOGLE_AUTH_SUCCESS', 
-                tokens: ${JSON.stringify(tokens)} 
-              }, '*');
-              window.close();
+              try {
+                console.log("[Auth Callback] Posting message to window.opener...");
+                window.opener.postMessage({ 
+                  type: 'GOOGLE_AUTH_SUCCESS', 
+                  tokens: ${JSON.stringify(tokens)} 
+                }, '*');
+                console.log("[Auth Callback] Message posted to window.opener successfully.");
+              } catch (e) {
+                console.error("[Auth Callback] Failed to postMessage to opener:", e);
+              }
+              
+              try {
+                console.log("[Auth Callback] Attempting to close window...");
+                window.close();
+                console.log("[Auth Callback] window.close() called.");
+              } catch (e) {
+                console.error("[Auth Callback] Failed to close window:", e);
+              }
             } else {
-              window.location.href = '/';
+              console.log("[Auth Callback] No window.opener found. Redirecting to '/'...");
+              try {
+                window.location.href = '/';
+              } catch (e) {
+                console.error("[Auth Callback] Failed to redirect:", e);
+              }
             }
+            console.log("[Auth Callback] Script execution finished.");
           </script>
           <p>Authentication successful. You can close this window.</p>
         </body>

@@ -20,6 +20,7 @@ export const MastersView: React.FC = () => {
     const [isBulkImport, setIsBulkImport] = useState(false);
     const [bulkText, setBulkText] = useState('');
     const [openingStockDate, setOpeningStockDate] = useState('2026-05-01');
+    const [searchQuery, setSearchQuery] = useState('');
 
     const [newItem, setNewItem] = useState({ name: '', deptIds: '', unit: 'kg', buyPrice: '0', sellPrice: '0', category: 'Raw', openingStock: '0', minParLevel: '0', reorderQty: '0' });
     const [newDept, setNewDept] = useState({ name: '' });
@@ -32,6 +33,10 @@ export const MastersView: React.FC = () => {
     const [showInactive, setShowInactive] = useState(false);
     const [restaurantName, setRestaurantName] = useState('RestoManage');
     const [logoUrl, setLogoUrl] = useState('');
+    
+    // Reset Modal State
+    const [showResetModal, setShowResetModal] = useState(false);
+    const [resetConfirmText, setResetConfirmText] = useState('');
 
     const fetchData = async () => {
         setLoading(true);
@@ -481,17 +486,14 @@ export const MastersView: React.FC = () => {
         }
     };
 
-    const handleFactoryReset = async () => {
-        if (!window.confirm("WARNING: This will permanently wipe all items, suppliers, transactions, and settings (except basic AppSettings) from your Google Sheet. It will then reconstruct the base headers. This cannot be undone. Are you absolutely sure?")) return;
-        
-        // Double check
-        const confirmText = window.prompt("Type 'RESET' to confirm.");
-        if (confirmText !== 'RESET') {
-            toast.error("Reset cancelled.");
+    const executeFactoryReset = async () => {
+        if (resetConfirmText !== 'RESET') {
+            toast.error("You must type exactly 'RESET' to confirm.");
             return;
         }
 
         setLoading(true);
+        setShowResetModal(false);
         try {
             await sheetsService.performFactoryReset();
             // Refetch App Settings just to re-apply any state
@@ -505,6 +507,7 @@ export const MastersView: React.FC = () => {
             toast.error("Failed to reset: " + e.message);
         } finally {
             setLoading(false);
+            setResetConfirmText('');
         }
     };
 
@@ -731,7 +734,7 @@ export const MastersView: React.FC = () => {
                         </div>
                         <button 
                           disabled={loading}
-                          onClick={handleFactoryReset}
+                          onClick={() => setShowResetModal(true)}
                           className="shrink-0 px-6 py-3 bg-white text-rose-600 rounded-lg font-bold text-sm shadow-sm border border-rose-200 hover:bg-rose-50 transition-all dark:bg-slate-900 dark:border-rose-900 dark:text-rose-500 dark:hover:bg-rose-950"
                         >
                           Reset System Data
@@ -746,7 +749,13 @@ export const MastersView: React.FC = () => {
                 <div className="p-4 border-b border-slate-100 flex items-center justify-between gap-4 bg-slate-50/50 dark:bg-slate-950/20 dark:border-slate-800">
                     <div className="relative flex-1 max-w-sm">
                         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                        <input type="text" placeholder={`Search ${tab}...`} className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:bg-slate-800 dark:border-slate-700 dark:text-white dark:placeholder:text-slate-600" />
+                        <input 
+                            type="text" 
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            placeholder={`Search ${tab}...`} 
+                            className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:bg-slate-800 dark:border-slate-700 dark:text-white dark:placeholder:text-slate-600" 
+                        />
                     </div>
                     <div className="flex gap-2">
                         <button 
@@ -818,7 +827,7 @@ export const MastersView: React.FC = () => {
                                 </tr>
                             </thead>
                             <tbody className="text-xs divide-y divide-slate-100 dark:divide-slate-800">
-                                {tab === 'items' && items.filter(r => showInactive || r.isActive !== false).map((row) => (
+                                {tab === 'items' && items.filter(r => (showInactive || r.isActive !== false) && (!searchQuery || r.name.toLowerCase().includes(searchQuery.toLowerCase()) || r.id.toLowerCase().includes(searchQuery.toLowerCase()))).map((row) => (
                                     <tr key={row.id} className={cn("hover:bg-slate-50/50 transition-colors group dark:hover:bg-slate-800/40", row.isActive === false && "opacity-60 grayscale-[0.5]")}>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-2">
@@ -853,7 +862,7 @@ export const MastersView: React.FC = () => {
                                         </td>
                                     </tr>
                                 ))}
-                                {tab === 'depts' && departments.filter(r => showInactive || r.isActive !== false).map((row) => (
+                                {tab === 'depts' && departments.filter(r => (showInactive || r.isActive !== false) && (!searchQuery || r.name.toLowerCase().includes(searchQuery.toLowerCase()) || r.id.toLowerCase().includes(searchQuery.toLowerCase()))).map((row) => (
                                     <tr key={row.id} className={cn("hover:bg-slate-50/50 transition-colors group dark:hover:bg-slate-800/40", row.isActive === false && "opacity-60 grayscale-[0.5]")}>
                                         <td className="px-6 py-4 text-[10px] font-mono text-slate-400 uppercase tracking-wider dark:text-slate-500">{row.id}</td>
                                         <td className="px-6 py-4">
@@ -870,7 +879,7 @@ export const MastersView: React.FC = () => {
                                         </td>
                                     </tr>
                                 ))}
-                                {tab === 'suppliers' && suppliers.filter(r => showInactive || r.isActive !== false).map((row) => (
+                                {tab === 'suppliers' && suppliers.filter(r => (showInactive || r.isActive !== false) && (!searchQuery || r.name.toLowerCase().includes(searchQuery.toLowerCase()) || r.id.toLowerCase().includes(searchQuery.toLowerCase()))).map((row) => (
                                     <tr key={row.id} className={cn("hover:bg-slate-50/50 transition-colors group dark:hover:bg-slate-800/40", row.isActive === false && "opacity-60 grayscale-[0.5]")}>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-2">
@@ -1316,6 +1325,57 @@ export const MastersView: React.FC = () => {
                                 >
                                     {loading ? <Loader2 size={16} className="animate-spin" /> : <Save size={16}/>}
                                     Update Entity
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+                {showResetModal && (
+                    <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-6">
+                        <motion.div 
+                            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                            className="bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-2xl border border-rose-200 dark:bg-slate-900 dark:border-rose-900/50"
+                        >
+                            <div className="px-6 py-4 border-b border-rose-100 flex items-center justify-between bg-rose-50 dark:bg-rose-950/20 dark:border-rose-900/30">
+                                <h3 className="font-bold text-rose-900 tracking-tight dark:text-rose-400 flex items-center gap-2">
+                                    <AlertTriangle size={18} />
+                                    Confirm Factory Reset
+                                </h3>
+                                <button onClick={() => setShowResetModal(false)} className="text-rose-400 hover:text-rose-600 p-1 dark:hover:text-rose-300"><X size={20} /></button>
+                            </div>
+                            <div className="p-6 space-y-4">
+                                <p className="text-sm text-slate-700 dark:text-slate-300">
+                                    This action will <strong>permanently wipe</strong> all items, suppliers, ledgers, and inventory data from your Google Sheet. It reconstructs the base headers on empty sheets. Your logo and restaurant name will not be deleted.
+                                </p>
+                                <div className="p-3 bg-rose-50 border border-rose-100 rounded-lg dark:bg-rose-950/30 dark:border-rose-900/50">
+                                    <p className="text-[10px] text-rose-700 font-bold uppercase tracking-widest mb-2 dark:text-rose-400">Action cannot be undone</p>
+                                    <p className="text-xs text-rose-800 dark:text-rose-300">
+                                        Type <strong>RESET</strong> in the field below to confirm.
+                                    </p>
+                                </div>
+                                <input 
+                                    type="text" 
+                                    placeholder="Type RESET" 
+                                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-center font-bold tracking-widest uppercase focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 focus:outline-none transition-all dark:bg-slate-800 dark:border-slate-700 dark:text-white"
+                                    value={resetConfirmText}
+                                    onChange={(e) => setResetConfirmText(e.target.value.toUpperCase())}
+                                />
+                            </div>
+                            <div className="p-6 bg-slate-50 border-t border-slate-100 flex gap-4 dark:bg-slate-950/20 dark:border-slate-800">
+                                <button
+                                    onClick={() => setShowResetModal(false)}
+                                    className="flex-1 py-2.5 text-sm font-bold text-slate-500 hover:text-slate-900 transition-colors dark:text-slate-400 dark:hover:text-slate-200"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={executeFactoryReset}
+                                    disabled={loading || resetConfirmText !== 'RESET'}
+                                    className="flex-[2] py-2.5 bg-rose-600 text-white rounded-lg text-sm font-bold shadow-lg shadow-rose-600/20 hover:bg-rose-700 disabled:bg-slate-300 dark:disabled:bg-slate-800 dark:disabled:text-slate-500 transition-all flex items-center justify-center gap-2"
+                                >
+                                    {loading ? <Loader2 size={16} className="animate-spin" /> : "Delete All System Data"}
                                 </button>
                             </div>
                         </motion.div>

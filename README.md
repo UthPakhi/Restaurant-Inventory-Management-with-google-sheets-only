@@ -7,10 +7,10 @@ A professional, high-performance inventory and stock management system designed 
 - **Offline-First Mode (PWA)**: App works offline, caching data locally via IndexedDB.
 - **Reporting & Exports**: One-click PDF & Excel exports for tables and ledgers.
 - **Optimistic UI Updates**: Table rows appear instantly before the API call finishes.
-- **FIFO Inventory Engine**: Automatic First-In, First-Out cost and stock tracking.
+- **FIFO Inventory Engine**: Automatic First-In, First-Out cost and stock tracking holding true even for "Opening Stock" vs newer stock.
 - **Multi-Section Support**: Manage transfers to different departments (Kitchen, Bar, Pizza, etc.).
 - **Bulk Import Mastery**: Power-user tools for bulk issuing and bulk purchase importing via copy-paste.
-- **Smart Audit Log**: Every transaction is tracked with reversal support (manual corrections restore inventory automatically).
+- **Smart Audit Log & Automated Reversals**: Every transaction is tracked. Manual corrections strictly prioritize pushing reversed stock back to the top of the queue for the most accurate consecutive valuation.
 - **Store Ledger**: Real-time valuation of your stock with monthly opening/closing visibility.
 - **Setup Wizard**: Zero-config initial setup—creates your Google Sheets database structure automatically.
 

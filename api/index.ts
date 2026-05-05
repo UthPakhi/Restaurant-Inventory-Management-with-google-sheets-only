@@ -186,6 +186,39 @@ app.post("/api/sheets/update", async (req, res) => {
     }
 });
 
+app.post("/api/sheets/valuesBatchUpdate", async (req, res) => {
+    const { tokens, spreadsheetId, data } = req.body;
+    oauth2Client.setCredentials(tokens);
+    const sheets = google.sheets({ version: "v4", auth: oauth2Client });
+    try {
+        const response = await sheets.spreadsheets.values.batchUpdate({
+            spreadsheetId,
+            requestBody: { 
+                valueInputOption: 'USER_ENTERED',
+                data 
+            }
+        });
+        res.json(response.data);
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+app.post("/api/sheets/batchClear", async (req, res) => {
+    const { tokens, spreadsheetId, ranges } = req.body;
+    oauth2Client.setCredentials(tokens);
+    const sheets = google.sheets({ version: "v4", auth: oauth2Client });
+    try {
+        const response = await sheets.spreadsheets.values.batchClear({
+            spreadsheetId,
+            requestBody: { ranges }
+        });
+        res.json(response.data);
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 app.post("/api/auth/me", async (req, res) => {
   const { tokens } = req.body;
   if (!tokens) return res.status(401).json({ error: "Missing tokens" });

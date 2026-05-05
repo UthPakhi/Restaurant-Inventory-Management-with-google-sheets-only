@@ -444,7 +444,7 @@ export class SheetsService {
     const batchUpdates: { range: string, values: any[][] }[] = [];
 
     // Track state of batches in memory as we process each issue
-    const localBatches: (Batch & { rowIndex: number })[] = [...allBatches];
+    const localBatches: (Batch & { rowIndex: number })[] = allBatches.map(b => ({...b}));
 
     for (const issueReq of issues) {
         const result = calculateFIFO(issueReq, localBatches);

@@ -86,19 +86,21 @@ export const IssuesView: React.FC = () => {
         const itemBatches = [...batches]
             .filter(b => b.itemId === itemId && Number(b.remainingQty) > 0)
             .sort((a, b) => {
+                const getPriority = (batch: any) => {
+                    if (batch.id?.startsWith('B_OPEN_') || batch.source === 'Opening') return 0;
+                    if (batch.id?.startsWith('B_REV_') || batch.source?.startsWith('Reversal')) return 1;
+                    return 2;
+                };
+                
+                const pA = getPriority(a);
+                const pB = getPriority(b);
+                
+                if (pA !== pB) return pA - pB;
+
                 // Robust date parsing for FIFO sorting
                 const dateA = a.date ? new Date(a.date).getTime() : 0;
                 const dateB = b.date ? new Date(b.date).getTime() : 0;
-                
-                if (dateA !== dateB) return (isNaN(dateA) ? 0 : dateA) - (isNaN(dateB) ? 0 : dateB);
-                
-                // If dates are same, prioritize Opening sources
-                const isOpA = a.source === 'Opening' || a.id?.startsWith('B_OPEN_');
-                const isOpB = b.source === 'Opening' || b.id?.startsWith('B_OPEN_');
-                if (isOpA && !isOpB) return -1;
-                if (!isOpA && isOpB) return 1;
-                
-                return 0;
+                return (isNaN(dateA) ? 0 : dateA) - (isNaN(dateB) ? 0 : dateB);
             });
             
         let remQty = qtyToIssue;
@@ -445,6 +447,15 @@ export const IssuesView: React.FC = () => {
             sortable: true
         },
         {
+            key: 'rate',
+            header: 'Unit Rate (Rs)',
+            align: 'right',
+            cell: (row) => <span className="font-medium text-slate-600 font-mono tracking-tighter dark:text-slate-300">
+                {row.rate ? Number(row.rate).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits:2}) : '0.00'}
+            </span>,
+            sortable: true
+        },
+        {
             key: 'total',
             header: 'Total Amount (Rs)',
             align: 'right',
@@ -570,23 +581,25 @@ export const IssuesView: React.FC = () => {
                                    getDeptName(row.deptId).toLowerCase().includes(q);
                         }}
                         onExportPDF={(filteredData) => {
-                            const headers = ['Date', 'Department', 'Item', 'Qty Issued', 'Total Amount (Rs)'];
+                            const headers = ['Date', 'Department', 'Item', 'Qty Issued', 'Unit Rate (Rs)', 'Total Amount (Rs)'];
                             const rows = filteredData.map(i => [
                                 i.date, 
                                 getDeptName(i.deptId), 
                                 getItemName(i.itemId), 
                                 i.qty, 
+                                i.rate ? Number(i.rate).toFixed(2) : '0.00',
                                 i.total ? Number(i.total).toFixed(2) : '0.00'
                             ]);
                             exportTableToPDF(headers, rows, 'Consumption Log', 'consumption_log');
                         }}
                         onExportExcel={(filteredData) => {
-                            const headers = ['Date', 'Department', 'Item', 'Qty Issued', 'Total Amount (Rs)'];
+                            const headers = ['Date', 'Department', 'Item', 'Qty Issued', 'Unit Rate (Rs)', 'Total Amount (Rs)'];
                             const rows = filteredData.map(i => [
                                 i.date, 
                                 getDeptName(i.deptId), 
                                 getItemName(i.itemId), 
                                 i.qty, 
+                                i.rate ? Number(i.rate) : 0,
                                 i.total ? Number(i.total) : 0
                             ]);
                             exportTableToExcel(headers, rows, 'Consumption', 'consumption_log');

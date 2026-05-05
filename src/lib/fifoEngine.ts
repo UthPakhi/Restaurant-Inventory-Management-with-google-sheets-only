@@ -52,20 +52,15 @@ export function calculateFIFO(
     const itemBatches = [...availableBatches]
         .filter(b => b.itemId === itemId && b.remainingQty > 0)
         .sort((a, b) => {
-            const getPriority = (batch: Batch) => {
-                if (batch.id.startsWith('B_OPEN_') || batch.source === 'Opening') return 0;
-                if (batch.id.startsWith('B_REV_') || (batch.source && batch.source.startsWith('Reversal'))) return 1;
-                return 2;
-            };
-            
-            const pA = getPriority(a);
-            const pB = getPriority(b);
-            
-            if (pA !== pB) return pA - pB;
-
             const dateA = a.date ? new Date(a.date).getTime() : 0;
             const dateB = b.date ? new Date(b.date).getTime() : 0;
-            return (isNaN(dateA) ? 0 : dateA) - (isNaN(dateB) ? 0 : dateB);
+            if (dateA !== dateB) return (isNaN(dateA) ? 0 : dateA) - (isNaN(dateB) ? 0 : dateB);
+            
+            const isOpA = a.id.startsWith('B_OPEN_') || a.source === 'Opening';
+            const isOpB = b.id.startsWith('B_OPEN_') || b.source === 'Opening';
+            if (isOpA && !isOpB) return -1;
+            if (!isOpA && isOpB) return 1;
+            return 0;
         });
 
     const totalAvailable = Math.round(itemBatches.reduce((sum, b) => sum + b.remainingQty, 0) * 10000) / 10000;

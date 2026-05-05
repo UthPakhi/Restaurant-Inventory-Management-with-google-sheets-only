@@ -38,11 +38,6 @@ This report identifies critical vulnerabilities, logical flaws, and technical de
 *   **Description**: Passing 1000+ lines of text in a single URL/API body may hit the Google Cloud Nginx buffer limits (8kb - 16kb headers/body).
 *   **Impact**: Bulk imports might fail for very large datasets without clear error messages.
 
-### B-007: FIFO Reversal Mis-prioritization & Bulk Issue State Freezing [RESOLVED]
-*   **Description**: Reversals did not push the batch back to the highest priority, causing new issues to fulfill from newer, more expensive stock. During bulk imports, multiple items consuming the exact same batch concurrently passed via the same `issuesToPost` array did not subtract from a unified memory ledger.
-*   **Impact**: Cost accuracy drift and total stock value misreporting.
-*   **Resolution Details**: Applied dynamic `.sort()` priority tagging in `fifoEngine` enforcing that `B_OPEN_` and `B_REV_` references inherently queue before newer batch dates. Solved bulk state freezes by cloning the live ledger array sequentially during the `bulkIssueFIFO` iterator loop.
-
 ---
 
 ## 🛠 Strategic Recommendations

@@ -86,21 +86,19 @@ export const IssuesView: React.FC = () => {
         const itemBatches = [...batches]
             .filter(b => b.itemId === itemId && Number(b.remainingQty) > 0)
             .sort((a, b) => {
-                const getPriority = (batch: any) => {
-                    if (batch.id?.startsWith('B_OPEN_') || batch.source === 'Opening') return 0;
-                    if (batch.id?.startsWith('B_REV_') || batch.source?.startsWith('Reversal')) return 1;
-                    return 2;
-                };
-                
-                const pA = getPriority(a);
-                const pB = getPriority(b);
-                
-                if (pA !== pB) return pA - pB;
-
                 // Robust date parsing for FIFO sorting
                 const dateA = a.date ? new Date(a.date).getTime() : 0;
                 const dateB = b.date ? new Date(b.date).getTime() : 0;
-                return (isNaN(dateA) ? 0 : dateA) - (isNaN(dateB) ? 0 : dateB);
+                
+                if (dateA !== dateB) return (isNaN(dateA) ? 0 : dateA) - (isNaN(dateB) ? 0 : dateB);
+                
+                // If dates are same, prioritize Opening sources
+                const isOpA = a.source === 'Opening' || a.id?.startsWith('B_OPEN_');
+                const isOpB = b.source === 'Opening' || b.id?.startsWith('B_OPEN_');
+                if (isOpA && !isOpB) return -1;
+                if (!isOpA && isOpB) return 1;
+                
+                return 0;
             });
             
         let remQty = qtyToIssue;

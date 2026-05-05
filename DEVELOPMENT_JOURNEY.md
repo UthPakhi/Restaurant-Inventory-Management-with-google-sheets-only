@@ -74,14 +74,6 @@ Throughout the development lifecycle, we encountered and fixed several complex c
 - **The Problem:** The app's dark mode was failing to engage correctly when toggled.
 - **The Solution:** We updated the `index.css` to align with Tailwind v4's new architecture. We swapped the custom variant definition to appropriately target the dark mode class. We applied `@custom-variant dark (&:where(.dark, .dark *));` to ensure child elements accurately respect the `.dark` class scope.
 
-### Enhancing FIFO Engine Prioritization & Bulk Processing
-- **The Prioritization Problem:** The stock valuation wasn't consistently capturing older stock when reversing an issue. Situations arose where an issue was reversed, but subsequent issues picked newer stock prices instead of returning to the historically reversed stock.
-- **The Prioritization Solution:** Added strict mathematical priority sorting inside `fifoEngine.ts`. The algorithm now explicitly prefers "Opening Stock" (Priority 0) and "Reversals" (Priority 1) over standard purchases (Priority 2) during chronological ties, ensuring stock value depreciates linearly and perfectly matches accounting expectations.
-
-### Bulk State Management
-- **The Problem:** When processing multiple issues in a single bulk operation, subsequent issues were not accounting for the inventory decrements made by earlier items in the exact same batch run, causing overall total values to ignore the decrement.
-- **The Solution:** Patched the `bulkIssueFIFO` processing in `sheetsService.ts`. Instead of a shallow reference, the internal function now constructs a deep isolated copy (`allBatches.map(b => ({...b}))`) arrays, mathematically consuming the state iteration-by-iteration, so the nth bulk item accurately calculates against the live remaining quantity of the batch dynamically.
-
 ## 6. Stability & Testing
 - Embedded vitest to unit test our `fifoEngine.test.ts`, checking that calculating cost batches works mathematically properly.
 - Tested edge cases: zero quantity issues, issues exceeding capacity, backwards-dated purchases.

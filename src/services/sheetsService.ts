@@ -238,15 +238,15 @@ export class SheetsService {
   }
 
   async getAllItems(): Promise<any[][]> {
-      return this.getWithFallback('Masters_Items!A2:K', 'masters_items');
+      return this.getWithFallback('Masters_Items!A2:J', 'masters_items');
   }
 
   async getAllDepartments(): Promise<any[][]> {
-      return this.getWithFallback('Masters_Depts!A2:C', 'masters_depts');
+      return this.getWithFallback('Masters_Depts!A2:B', 'masters_depts');
   }
 
   async getAllSuppliers(): Promise<any[][]> {
-      return this.getWithFallback('Masters_Suppliers!A2:D', 'masters_suppliers');
+      return this.getWithFallback('Masters_Suppliers!A2:C', 'masters_suppliers');
   }
 
   async getAllBatches(): Promise<any[][]> {

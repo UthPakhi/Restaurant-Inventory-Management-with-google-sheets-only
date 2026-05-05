@@ -37,10 +37,6 @@ async function startServer() {
   const PORT = 3000;
 
   app.set('trust proxy', true);
-  app.use((req, res, next) => {
-    fs.appendFileSync('req-logs.txt', `REQ: ${req.method} ${req.url} ${req.originalUrl}\n`);
-    next();
-  });
   app.use(express.json());
 
   // Google OAuth Config
@@ -75,8 +71,8 @@ async function startServer() {
     return `${protocol}://${host}/api/auth/callback`;
   };
 
-  // 1. Get Google Auth URL
-  app.get(["/api/auth/google/url", "/auth/google/url", "*/api/auth/google/url"], (req, res) => {
+  // 1. Get Google Auth URL (JSON)
+  app.get(["/api/auth/google/url"], (req, res) => {
     const scopes = [
       "https://www.googleapis.com/auth/userinfo.profile",
       "https://www.googleapis.com/auth/userinfo.email",
@@ -100,6 +96,33 @@ async function startServer() {
     });
 
     res.json({ url });
+  });
+
+  // 2. Direct Google Auth Redirect (for browser navigation)
+  app.get("/api/auth/google/login", (req, res) => {
+    const scopes = [
+      "https://www.googleapis.com/auth/userinfo.profile",
+      "https://www.googleapis.com/auth/userinfo.email",
+      "https://www.googleapis.com/auth/spreadsheets",
+      "https://www.googleapis.com/auth/drive.file",
+    ];
+
+    const redirectUri = getRedirectUri(req);
+    
+    let customState: any = {};
+    if (req.query.state) {
+      try { customState = JSON.parse(req.query.state as string); } catch(e) {}
+    }
+
+    const url = oauth2Client.generateAuthUrl({
+      access_type: "offline",
+      scope: scopes,
+      prompt: "consent",
+      redirect_uri: redirectUri,
+      state: JSON.stringify({ r: redirectUri, ...customState }),
+    });
+
+    res.redirect(url);
   });
 
   // 2. OAuth Callback

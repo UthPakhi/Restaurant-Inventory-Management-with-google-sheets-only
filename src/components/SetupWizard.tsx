@@ -71,8 +71,9 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
     let popup: Window | null = null;
     try {
       popup = window.open('about:blank', 'google_auth', 'width=600,height=700');
-      const url = await sheetsService.getAuthUrl({ isJoinExisting: false });
-      if (popup) popup.location.href = url;
+      const statePayload = { isJoinExisting: false };
+      const loginUrl = `/api/auth/google/login?state=${encodeURIComponent(JSON.stringify(statePayload))}`;
+      if (popup) popup.location.href = loginUrl;
       
       const handleMessage = async (event: MessageEvent) => {
         try {
@@ -118,8 +119,9 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
       }
 
       popup = window.open('about:blank', 'google_auth', 'width=600,height=700');
-      const url = await sheetsService.getAuthUrl({ isJoinExisting: true, spreadsheetId: existingSpreadsheetId });
-      if (popup) popup.location.href = url;
+      const statePayload = { isJoinExisting: true, spreadsheetId: existingSpreadsheetId };
+      const loginUrl = `/api/auth/google/login?state=${encodeURIComponent(JSON.stringify(statePayload))}`;
+      if (popup) popup.location.href = loginUrl;
       
       const handleMessage = async (event: MessageEvent) => {
         try {

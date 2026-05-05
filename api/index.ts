@@ -47,13 +47,20 @@ app.get("/api/auth/google/url", (req, res) => {
   ];
 
   const redirectUri = (req.query.redirect_uri as string) || getRedirectUri(req);
+  
+  let customState: any = {};
+  if (req.query.state) {
+    try {
+        customState = JSON.parse(req.query.state as string);
+    } catch(e) {}
+  }
 
   const url = oauth2Client.generateAuthUrl({
     access_type: "offline",
     scope: scopes,
     prompt: "consent",
     redirect_uri: redirectUri,
-    state: JSON.stringify({ r: redirectUri }),
+    state: JSON.stringify({ r: redirectUri, ...customState }),
   });
 
   res.json({ url });
@@ -64,10 +71,12 @@ app.get(["/api/auth/callback", "/api/auth/callback/"], async (req, res) => {
 
   try {
     let redirectUri = getRedirectUri(req);
+    let authState: any = {};
     if (state) {
       try {
         const parsed = JSON.parse(state as string);
         if (parsed.r) redirectUri = parsed.r;
+        authState = parsed;
       } catch (e) {
         // ignore
       }
@@ -82,17 +91,26 @@ app.get(["/api/auth/callback", "/api/auth/callback/"], async (req, res) => {
       <html>
         <body>
           <script>
-            if (window.opener) {
-              window.opener.postMessage({ 
-                type: 'GOOGLE_AUTH_SUCCESS', 
-                tokens: ${JSON.stringify(tokens)} 
-              }, '*');
-              window.close();
-            } else {
-              window.location.href = '/';
+            const authResult = { 
+              type: 'GOOGLE_AUTH_SUCCESS', 
+              tokens: ${JSON.stringify(tokens)},
+              state: ${JSON.stringify(authState)}
+            };
+            
+            try {
+              if (window.opener && !window.opener.closed) {
+                window.opener.postMessage(authResult, '*');
+                window.close();
+              } else {
+                localStorage.setItem('resto_oauth_result', JSON.stringify(authResult));
+                window.location.href = '/';
+              }
+            } catch (e) {
+                localStorage.setItem('resto_oauth_result', JSON.stringify(authResult));
+                window.location.href = '/';
             }
           </script>
-          <p>Authentication successful. You can close this window.</p>
+          <p>Authentication successful. You will be redirected shortly.</p>
         </body>
       </html>
     `);

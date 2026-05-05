@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { sheetsService, GoogleTokens } from '../services/sheetsService';
 import { motion } from 'motion/react';
 import { LayoutDashboard, Cloud, Shield, Zap, Loader2, Database, Lock } from 'lucide-react'; 
@@ -13,11 +13,51 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
   const [showExistingInput, setShowExistingInput] = useState(false);
   const [existingIdInput, setExistingIdInput] = useState('');
 
+  useEffect(() => {
+    const handleOauthResult = async () => {
+      const savedResult = localStorage.getItem('resto_oauth_result');
+      if (savedResult) {
+        localStorage.removeItem('resto_oauth_result');
+        try {
+          setLoading(true);
+          const eventData = JSON.parse(savedResult);
+          if (eventData.type === 'GOOGLE_AUTH_SUCCESS') {
+            const tokens = eventData.tokens;
+            sheetsService.setTokens(tokens);
+            
+            const isJoinExisting = eventData.state?.isJoinExisting;
+            let existingSpreadsheetId = eventData.state?.spreadsheetId;
+
+            if (isJoinExisting && existingSpreadsheetId) {
+                sheetsService.setSpreadsheetId(existingSpreadsheetId);
+                try {
+                  await sheetsService.read("Masters_Items!A1:A1");
+                } catch (e: any) {
+                  throw new Error("Unable to access spreadsheet. Ensure you have the correct URL and the owner has shared it with your Google Account.");
+                }
+                await sheetsService.initializeSheetStructure();
+                onComplete({ tokens, spreadsheetId: existingSpreadsheetId });
+            } else if (!isJoinExisting) {
+                const result = await sheetsService.createSpreadsheet("Restaurant Management Sheet");
+                await sheetsService.initializeSheetStructure();
+                onComplete({ tokens, spreadsheetId: result.spreadsheetId });
+            }
+          }
+        } catch (e: any) {
+          setError(e.message);
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+    handleOauthResult();
+  }, [onComplete]);
+
   const startAuth = async () => {
     setLoading(true);
     try {
       const popup = window.open('about:blank', 'google_auth', 'width=600,height=700');
-      const url = await sheetsService.getAuthUrl();
+      const url = await sheetsService.getAuthUrl({ isJoinExisting: false });
       if (popup) popup.location.href = url;
       
       const handleMessage = async (event: MessageEvent) => {
@@ -49,8 +89,20 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
   const startAuthExisting = async () => {
     setLoading(true);
     try {
+      let existingSpreadsheetId = existingIdInput;
+      if (existingSpreadsheetId.includes('/d/')) {
+        const match = existingSpreadsheetId.match(/\/d\/([a-zA-Z0-9-_]+)/);
+        if (match && match[1]) {
+           existingSpreadsheetId = match[1];
+        }
+      }
+
+      if (!existingSpreadsheetId) {
+        throw new Error("Please enter a valid Spreadsheet URL or ID");
+      }
+
       const popup = window.open('about:blank', 'google_auth', 'width=600,height=700');
-      const url = await sheetsService.getAuthUrl();
+      const url = await sheetsService.getAuthUrl({ isJoinExisting: true, spreadsheetId: existingSpreadsheetId });
       if (popup) popup.location.href = url;
       
       const handleMessage = async (event: MessageEvent) => {
@@ -59,24 +111,15 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
             const tokens = event.data.tokens;
             sheetsService.setTokens(tokens);
             
-            let existingSpreadsheetId = existingIdInput;
-            if (existingSpreadsheetId.includes('/d/')) {
-              const match = existingSpreadsheetId.match(/\/d\/([a-zA-Z0-9-_]+)/);
-              if (match && match[1]) {
-                 existingSpreadsheetId = match[1];
-              }
-            }
-
             sheetsService.setSpreadsheetId(existingSpreadsheetId);
             
-            // Test read access explicitly to catch permission errors immediately:
             try {
                await sheetsService.read("Masters_Items!A1:A1");
             } catch (e: any) {
                throw new Error("Unable to access spreadsheet. Ensure you have the correct URL and the owner has shared it with your Google Account.");
             }
 
-            await sheetsService.initializeSheetStructure(); // Ensure headers exist, also validates access
+            await sheetsService.initializeSheetStructure();
             
             onComplete({ tokens, spreadsheetId: existingSpreadsheetId });
             window.removeEventListener('message', handleMessage);

@@ -76,23 +76,9 @@ export class SheetsService {
     this.spreadsheetId = id;
   }
 
-  async getAuthUrl(statePayload: any = {}): Promise<string> {
+  async getAuthUrl(): Promise<string> {
     const redirectUri = `${window.location.origin}/api/auth/callback`;
-    const res = await fetch(`/api/auth/google/url?redirect_uri=${encodeURIComponent(redirectUri)}&state=${encodeURIComponent(JSON.stringify(statePayload))}`);
-    
-    if (!res.ok) {
-        const text = await res.text();
-        console.error("Auth URL fetch failed:", res.status, text);
-        throw new Error(`Server returned ${res.status}: ${text.substring(0, 100)}`);
-    }
-
-    const contentType = res.headers.get("content-type");
-    if (!contentType || !contentType.includes("application/json")) {
-        const text = await res.text();
-        console.error("Auth URL fetch non-JSON:", contentType, text);
-        throw new Error(`Expected JSON but got ${contentType}: ${text.substring(0, 100)}`);
-    }
-
+    const res = await fetch(`/api/auth/google/url?redirect_uri=${encodeURIComponent(redirectUri)}`);
     const data = await res.json();
     return data.url;
   }

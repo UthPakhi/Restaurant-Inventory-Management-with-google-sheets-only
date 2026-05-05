@@ -1,3 +1,0 @@
-REQ: GET /api/auth/google/url /api/auth/google/url
-REQ: GET /api/auth/google/url /api/auth/google/url
-REQ: GET /api/auth/google/url /api/auth/google/url

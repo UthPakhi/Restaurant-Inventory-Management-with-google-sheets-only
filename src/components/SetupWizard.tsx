@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { sheetsService, GoogleTokens } from '../services/sheetsService';
 import { motion } from 'motion/react';
-import { LayoutDashboard, Cloud, Shield, Zap, Loader2, Database, Lock } from 'lucide-react'; 
+import { Cloud, Shield, Zap, Loader2, Database, Lock } from 'lucide-react';
 
 interface SetupWizardProps {
   onComplete: (data: { tokens: GoogleTokens; spreadsheetId: string }) => void;
@@ -13,28 +13,51 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
   const [showExistingInput, setShowExistingInput] = useState(false);
   const [existingIdInput, setExistingIdInput] = useState('');
 
-const performAuth = async (isExisting: boolean) => {
-  setLoading(true);
-  try {
-    const popup = window.open('about:blank', 'google_auth', 'width=600,height=700');
-    const url = await sheetsService.getAuthUrl();
-    if (popup) popup.location.href = url;
+  const settledRef = useRef(false);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const bcRef = useRef<BroadcastChannel | null>(null);
 
-    // Clear any stale token from a previous attempt
-    window.localStorage.removeItem('GOOGLE_AUTH_TOKENS');
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+      if (bcRef.current) bcRef.current.close();
+    };
+  }, []);
 
-    let settled = false;
+  const performAuth = async (isExisting: boolean) => {
+    setLoading(true);
+    setError(null);
+    settledRef.current = false;
+
+    // Clear any stale tokens from previous attempts
+    try { localStorage.removeItem('GOOGLE_AUTH_TOKENS'); } catch (e) {}
+
+    let popup: Window | null = null;
+
+    try {
+      popup = window.open('about:blank', 'google_auth', 'width=600,height=700');
+      const url = await sheetsService.getAuthUrl();
+      if (popup) popup.location.href = url;
+    } catch (err: any) {
+      setError(err.message);
+      setLoading(false);
+      return;
+    }
 
     const handleSuccess = async (tokens: GoogleTokens) => {
-      if (settled) return;
-      settled = true;
-      clearInterval(pollInterval);
+      if (settledRef.current) return;
+      settledRef.current = true;
+
+      // Cleanup all listeners
+      if (pollRef.current) clearInterval(pollRef.current);
+      if (bcRef.current) { bcRef.current.close(); bcRef.current = null; }
       window.removeEventListener('message', handleMessage);
-      if (bc) bc.close();
       if (popup && !popup.closed) popup.close();
 
       try {
         sheetsService.setTokens(tokens);
+
         if (isExisting) {
           let existingSpreadsheetId = existingIdInput;
           if (existingSpreadsheetId.includes('/d/')) {
@@ -56,60 +79,62 @@ const performAuth = async (isExisting: boolean) => {
       }
     };
 
-    // Method 1: postMessage (works when COOP is unsafe-none)
+    // Method 1: postMessage
     const handleMessage = (event: MessageEvent) => {
-      if (event.data?.type === 'GOOGLE_AUTH_SUCCESS') handleSuccess(event.data.tokens);
+      if (event.data?.type === 'GOOGLE_AUTH_SUCCESS') {
+        handleSuccess(event.data.tokens);
+      }
     };
     window.addEventListener('message', handleMessage);
 
     // Method 2: BroadcastChannel
-    let bc: BroadcastChannel | null = null;
     try {
-      bc = new BroadcastChannel('google_auth_channel');
-      bc.onmessage = (event) => {
-        if (event.data?.type === 'GOOGLE_AUTH_SUCCESS') handleSuccess(event.data.tokens);
+      bcRef.current = new BroadcastChannel('google_auth_channel');
+      bcRef.current.onmessage = (event) => {
+        if (event.data?.type === 'GOOGLE_AUTH_SUCCESS') {
+          handleSuccess(event.data.tokens);
+        }
       };
     } catch (e) {}
 
-    // Method 3: Poll localStorage (replaces storage event — works across COOP splits)
-    const pollInterval = setInterval(() => {
-      // Also stop polling if the popup was manually closed without auth
-      if (popup?.closed && !settled) {
-        clearInterval(pollInterval);
+    // Method 3: Poll localStorage every 500ms
+    // This is the most reliable method — works even when COOP splits the context
+    pollRef.current = setInterval(() => {
+      // If popup was manually closed without completing auth
+      if (popup?.closed && !settledRef.current) {
+        clearInterval(pollRef.current!);
         window.removeEventListener('message', handleMessage);
-        if (bc) bc.close();
+        if (bcRef.current) { bcRef.current.close(); bcRef.current = null; }
         setLoading(false);
         return;
       }
 
+      // Check localStorage for tokens written by callback page
       try {
-        const raw = window.localStorage.getItem('GOOGLE_AUTH_TOKENS');
+        const raw = localStorage.getItem('GOOGLE_AUTH_TOKENS');
         if (raw) {
-          window.localStorage.removeItem('GOOGLE_AUTH_TOKENS');
+          localStorage.removeItem('GOOGLE_AUTH_TOKENS');
           const tokens = JSON.parse(raw);
-          handleSuccess(tokens);
+          if (tokens?.access_token) {
+            handleSuccess(tokens);
+          }
         }
       } catch (e) {}
     }, 500);
-
-  } catch (err: any) {
-    setError(err.message);
-    setLoading(false);
-  }
-};
+  };
 
   const startAuth = () => performAuth(false);
   const startAuthExisting = () => performAuth(true);
 
   return (
     <div className="fixed inset-0 z-[100] bg-slate-50 flex items-center justify-center p-6 sm:p-12 overflow-y-auto dark:bg-slate-950">
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         className="max-w-xl w-full flex flex-col items-center"
       >
         <div className="w-16 h-16 bg-emerald-600 rounded-2xl flex items-center justify-center text-white text-3xl font-bold shadow-xl shadow-emerald-600/20 mb-8 cursor-default transition-transform hover:scale-105 active:scale-95">
-           R
+          R
         </div>
 
         <div className="text-center space-y-3 mb-10 max-w-sm">
@@ -120,7 +145,7 @@ const performAuth = async (isExisting: boolean) => {
         </div>
 
         {error && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             className="w-full mb-6 p-4 bg-red-50 text-red-600 text-xs font-medium rounded-xl border border-red-100 flex flex-col gap-2 dark:bg-red-500/10 dark:text-red-400 dark:border-red-900/50"
@@ -130,7 +155,7 @@ const performAuth = async (isExisting: boolean) => {
               <span className="flex-1">{error}</span>
             </div>
             <div className="pl-7 text-[10px] text-red-500/80 dark:text-red-400/80">
-              Getting 'redirect_uri_mismatch'? Make sure the URL in your Google Cloud Console matches your current domain. Check GOOGLE_OAUTH_SETUP.md for instructions.
+              Getting 'redirect_uri_mismatch'? Make sure the URL in your Google Cloud Console matches your current domain.
             </div>
           </motion.div>
         )}
@@ -169,15 +194,15 @@ const performAuth = async (isExisting: boolean) => {
               </button>
             </div>
           ) : (
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               className="space-y-3"
             >
               <div className="flex flex-col space-y-2">
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider dark:text-slate-400">Spreadsheet URL or ID</label>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   autoFocus
                   placeholder="https://docs.google.com/spreadsheets/d/..."
                   value={existingIdInput}
@@ -220,7 +245,7 @@ const performAuth = async (isExisting: boolean) => {
             <Zap size={16} className="text-amber-500" />
             Try Demo Mode (Local Only)
           </button>
-          
+
           <div className="flex items-center gap-2 justify-center text-[10px] text-slate-400 font-bold uppercase tracking-widest pt-2 dark:text-slate-600">
             <Lock size={12} />
             Secure OAuth 2.0 Encryption
@@ -228,18 +253,18 @@ const performAuth = async (isExisting: boolean) => {
         </div>
 
         <div className="w-full mt-12 grid grid-cols-3 gap-6">
-           {[
-             { label: 'Cloud Sync', icon: Cloud, color: 'text-blue-500', bg: 'bg-blue-50', darkBg: 'dark:bg-blue-500/10' },
-             { label: 'Sheet Auth', icon: Database, color: 'text-emerald-500', bg: 'bg-emerald-50', darkBg: 'dark:bg-emerald-500/10' },
-             { label: 'Instant API', icon: Zap, color: 'text-amber-500', bg: 'bg-amber-50', darkBg: 'dark:bg-amber-500/10' },
-           ].map((badge, i) => (
-             <div key={i} className="flex flex-col items-center text-center space-y-2">
-               <div className={`w-10 h-10 ${badge.bg} ${badge.color} rounded-xl flex items-center justify-center shadow-sm ${badge.darkBg}`}>
-                  <badge.icon size={20} />
-               </div>
-               <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider whitespace-nowrap dark:text-slate-600">{badge.label}</p>
-             </div>
-           ))}
+          {[
+            { label: 'Cloud Sync', icon: Cloud, color: 'text-blue-500', bg: 'bg-blue-50', darkBg: 'dark:bg-blue-500/10' },
+            { label: 'Sheet Auth', icon: Database, color: 'text-emerald-500', bg: 'bg-emerald-50', darkBg: 'dark:bg-emerald-500/10' },
+            { label: 'Instant API', icon: Zap, color: 'text-amber-500', bg: 'bg-amber-50', darkBg: 'dark:bg-amber-500/10' },
+          ].map((badge, i) => (
+            <div key={i} className="flex flex-col items-center text-center space-y-2">
+              <div className={`w-10 h-10 ${badge.bg} ${badge.color} rounded-xl flex items-center justify-center shadow-sm ${badge.darkBg}`}>
+                <badge.icon size={20} />
+              </div>
+              <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider whitespace-nowrap dark:text-slate-600">{badge.label}</p>
+            </div>
+          ))}
         </div>
 
         <p className="mt-12 text-[10px] text-slate-400 font-medium text-center leading-relaxed dark:text-slate-600">

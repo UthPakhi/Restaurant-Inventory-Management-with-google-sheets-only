@@ -68,8 +68,9 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
 
   const startAuth = async () => {
     setLoading(true);
+    let popup: Window | null = null;
     try {
-      const popup = window.open('about:blank', 'google_auth', 'width=600,height=700');
+      popup = window.open('about:blank', 'google_auth', 'width=600,height=700');
       const url = await sheetsService.getAuthUrl({ isJoinExisting: false });
       if (popup) popup.location.href = url;
       
@@ -94,6 +95,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
       
       window.addEventListener('message', handleMessage);
     } catch (err: any) {
+      if (popup) popup.close();
       setError(err.message);
       setLoading(false);
     }
@@ -101,6 +103,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
 
   const startAuthExisting = async () => {
     setLoading(true);
+    let popup: Window | null = null;
     try {
       let existingSpreadsheetId = existingIdInput;
       if (existingSpreadsheetId.includes('/d/')) {
@@ -114,7 +117,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
         throw new Error("Please enter a valid Spreadsheet URL or ID");
       }
 
-      const popup = window.open('about:blank', 'google_auth', 'width=600,height=700');
+      popup = window.open('about:blank', 'google_auth', 'width=600,height=700');
       const url = await sheetsService.getAuthUrl({ isJoinExisting: true, spreadsheetId: existingSpreadsheetId });
       if (popup) popup.location.href = url;
       
@@ -146,6 +149,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
       
       window.addEventListener('message', handleMessage);
     } catch (err: any) {
+      if (popup) popup.close();
       setError(err.message);
       setLoading(false);
     }

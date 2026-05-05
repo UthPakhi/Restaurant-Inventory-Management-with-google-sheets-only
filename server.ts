@@ -4,6 +4,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { google } from "googleapis";
 import dotenv from "dotenv";
+import * as fs from "fs";
 
 dotenv.config();
 
@@ -36,6 +37,10 @@ async function startServer() {
   const PORT = 3000;
 
   app.set('trust proxy', true);
+  app.use((req, res, next) => {
+    fs.appendFileSync('req-logs.txt', `REQ: ${req.method} ${req.url} ${req.originalUrl}\n`);
+    next();
+  });
   app.use(express.json());
 
   // Google OAuth Config

@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Edit2, Search, X, Loader2, Package, Hash, User, ShieldCheck, Save, Store, Image as ImageIcon, Camera, Check } from 'lucide-react';
+import { Plus, Edit2, Search, X, Loader2, Package, Hash, User, ShieldCheck, Save, Store, Image as ImageIcon, Camera, Check, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
 import { sheetsService } from '../services/sheetsService';
 import { mapRowToItem, mapRowToDepartment, mapRowToSupplier, mapItemToRow } from '../services/dataMappers';
 import { Item, Department, Supplier } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
-import { cn, parseFinancialNumber } from '../lib/utils';
+import { cn } from '../lib/utils';
 import { useAppLookup } from '../context/AppContext';
 
 import { toast } from 'sonner';
@@ -20,6 +20,7 @@ export const MastersView: React.FC = () => {
     const [isBulkImport, setIsBulkImport] = useState(false);
     const [bulkText, setBulkText] = useState('');
     const [openingStockDate, setOpeningStockDate] = useState('2026-05-01');
+    const [searchQuery, setSearchQuery] = useState('');
 
     const [newItem, setNewItem] = useState({ name: '', deptIds: '', unit: 'kg', buyPrice: '0', sellPrice: '0', category: 'Raw', openingStock: '0', minParLevel: '0', reorderQty: '0' });
     const [newDept, setNewDept] = useState({ name: '' });
@@ -32,6 +33,13 @@ export const MastersView: React.FC = () => {
     const [showInactive, setShowInactive] = useState(false);
     const [restaurantName, setRestaurantName] = useState('RestoManage');
     const [logoUrl, setLogoUrl] = useState('');
+    
+    // Reset Modal State
+    const [showResetModal, setShowResetModal] = useState(false);
+    const [resetConfirmText, setResetConfirmText] = useState('');
+
+    // Additional Confirmation States
+    const [showSeedModal, setShowSeedModal] = useState(false);
 
     const fetchData = async () => {
         setLoading(true);
@@ -94,11 +102,11 @@ export const MastersView: React.FC = () => {
                     const deptIds = parts[1]?.trim() || '';
                     const unit = parts[2]?.trim() || 'pcs';
                     const category = parts[3]?.trim() || 'Raw';
-                    const buyPrice = parseFinancialNumber(parts[4]);
-                    const sellPrice = parseFinancialNumber(parts[5]);
-                    const qty = parseFinancialNumber(parts[6]);
-                    const minPar = parseFinancialNumber(parts[7]);
-                    const reorder = parseFinancialNumber(parts[8]);
+                    const buyPrice = Number((parts[4] || '0').toString().replace(/,/g, '')) || 0;
+                    const sellPrice = Number((parts[5] || '0').toString().replace(/,/g, '')) || 0;
+                    const qty = Number((parts[6] || '0').toString().replace(/,/g, '')) || 0;
+                    const minPar = Number((parts[7] || '0').toString().replace(/,/g, '')) || 0;
+                    const reorder = Number((parts[8] || '0').toString().replace(/,/g, '')) || 0;
 
                     const id = `ITM_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
                     
@@ -159,12 +167,8 @@ export const MastersView: React.FC = () => {
     };
 
     const handleSeedDemo = async () => {
-        if (items.length > 0) {
-            if (!confirm("Your database already has items! Seeding will duplicate them. Are you REALLY sure you want to run this?")) return;
-        } else {
-            if (!confirm("This will seed all 190 items with their department mappings and initial stock. Continue?")) return;
-        }
         setLoading(true);
+        setShowSeedModal(false);
         try {
             // Seed Depts
             const depts = [
@@ -481,6 +485,31 @@ export const MastersView: React.FC = () => {
         }
     };
 
+    const executeFactoryReset = async () => {
+        if (resetConfirmText !== 'RESET') {
+            toast.error("You must type exactly 'RESET' to confirm.");
+            return;
+        }
+
+        setLoading(true);
+        setShowResetModal(false);
+        try {
+            await sheetsService.performFactoryReset();
+            // Refetch App Settings just to re-apply any state
+            await fetchData();
+            toast.success("System has been factory reset successfully.");
+            
+            // Re-initialize sheet structure to ensure headers are correctly placed on the now-empty sheets
+            await sheetsService.initializeSheetStructure();
+            
+        } catch(e: any) {
+            toast.error("Failed to reset: " + e.message);
+        } finally {
+            setLoading(false);
+            setResetConfirmText('');
+        }
+    };
+
     const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
@@ -561,34 +590,6 @@ export const MastersView: React.FC = () => {
         } catch (e: any) {
              console.error(e);
              toast.error("Failed to update: " + e.message);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleDeleteEntity = async (row: any, type: string) => {
-        if (!confirm("Are you sure you want to deactivate this? It will no longer appear in dropdowns but historical records will be preserved.")) return;
-        setLoading(true);
-        try {
-            let cellRange = '';
-            let values: any[][] = [];
-            if (type === 'items') {
-                cellRange = `Masters_Items!A${row.rowIndex}:K${row.rowIndex}`;
-                values = [mapItemToRow({ ...row, isActive: false })];
-            } else if (type === 'depts') {
-                cellRange = `Masters_Depts!A${row.rowIndex}:C${row.rowIndex}`;
-                values = [[row.id, row.name, 'No']];
-            } else if (type === 'suppliers') {
-                cellRange = `Masters_Suppliers!A${row.rowIndex}:D${row.rowIndex}`;
-                values = [[row.id, row.name, row.contact || '', 'No']];
-            }
-            await sheetsService.update(cellRange, values);
-            await fetchData();
-            await refreshStaticData();
-            toast.success('Successfully deactivated.');
-        } catch (e: any) {
-            console.error(e);
-            toast.error("Failed to deactivate: " + e.message);
         } finally {
             setLoading(false);
         }
@@ -690,6 +691,27 @@ export const MastersView: React.FC = () => {
                       {loading ? 'Saving...' : 'Save Settings'}
                     </button>
                   </div>
+
+                  {/* Danger Zone */}
+                  <div className="pt-8 mt-8 border-t border-slate-100 dark:border-slate-800">
+                    <h3 className="text-lg font-bold text-rose-600 flex items-center gap-2 mb-4">
+                      <AlertTriangle size={20} />
+                      Danger Zone
+                    </h3>
+                    <div className="p-5 border border-rose-100 bg-rose-50 rounded-xl flex items-center justify-between dark:border-rose-900/50 dark:bg-rose-950/20">
+                        <div>
+                          <h4 className="font-bold text-rose-900 dark:text-rose-400">Factory Reset</h4>
+                          <p className="text-sm text-rose-700 mt-1 dark:text-rose-500">Permanently delete all inventory data, items, suppliers, issues, and ledgers in the selected Google Sheet. This keeps your logo and restaurant name intact. Cannot be undone.</p>
+                        </div>
+                        <button 
+                          disabled={loading}
+                          onClick={() => setShowResetModal(true)}
+                          className="shrink-0 px-6 py-3 bg-white text-rose-600 rounded-lg font-bold text-sm shadow-sm border border-rose-200 hover:bg-rose-50 transition-all dark:bg-slate-900 dark:border-rose-900 dark:text-rose-500 dark:hover:bg-rose-950"
+                        >
+                          Reset System Data
+                        </button>
+                    </div>
+                  </div>
                 </div>
             )}
 
@@ -698,7 +720,13 @@ export const MastersView: React.FC = () => {
                 <div className="p-4 border-b border-slate-100 flex items-center justify-between gap-4 bg-slate-50/50 dark:bg-slate-950/20 dark:border-slate-800">
                     <div className="relative flex-1 max-w-sm">
                         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                        <input type="text" placeholder={`Search ${tab}...`} className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:bg-slate-800 dark:border-slate-700 dark:text-white dark:placeholder:text-slate-600" />
+                        <input 
+                            type="text" 
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            placeholder={`Search ${tab}...`} 
+                            className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:bg-slate-800 dark:border-slate-700 dark:text-white dark:placeholder:text-slate-600" 
+                        />
                     </div>
                     <div className="flex gap-2">
                         <button 
@@ -719,7 +747,7 @@ export const MastersView: React.FC = () => {
                                     Repair Structure
                                 </button>
                                 <button 
-                                    onClick={handleSeedDemo}
+                                    onClick={() => setShowSeedModal(true)}
                                     className="px-4 py-2 border border-slate-200 bg-white text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-50 transition-all dark:bg-slate-900 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
                                 >
                                     Seed Demo Data
@@ -770,7 +798,7 @@ export const MastersView: React.FC = () => {
                                 </tr>
                             </thead>
                             <tbody className="text-xs divide-y divide-slate-100 dark:divide-slate-800">
-                                {tab === 'items' && items.filter(r => showInactive || r.isActive !== false).map((row) => (
+                                {tab === 'items' && items.filter(r => (showInactive || r.isActive !== false) && (!searchQuery || r.name.toLowerCase().includes(searchQuery.toLowerCase()) || r.id.toLowerCase().includes(searchQuery.toLowerCase()))).map((row) => (
                                     <tr key={row.id} className={cn("hover:bg-slate-50/50 transition-colors group dark:hover:bg-slate-800/40", row.isActive === false && "opacity-60 grayscale-[0.5]")}>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-2">
@@ -800,12 +828,11 @@ export const MastersView: React.FC = () => {
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <button onClick={() => setEditingItem(row)} className="p-1.5 hover:bg-slate-100 rounded text-slate-400 hover:text-emerald-600 transition-colors dark:hover:bg-slate-800 dark:hover:text-emerald-400"><Edit2 size={14} /></button>
-                                                <button onClick={() => handleDeleteEntity(row, 'items')} className="p-1.5 hover:bg-slate-100 rounded text-slate-400 hover:text-red-500 transition-colors dark:hover:bg-slate-800 dark:hover:text-red-400"><Trash2 size={14} /></button>
                                             </div>
                                         </td>
                                     </tr>
                                 ))}
-                                {tab === 'depts' && departments.filter(r => showInactive || r.isActive !== false).map((row) => (
+                                {tab === 'depts' && departments.filter(r => (showInactive || r.isActive !== false) && (!searchQuery || r.name.toLowerCase().includes(searchQuery.toLowerCase()) || r.id.toLowerCase().includes(searchQuery.toLowerCase()))).map((row) => (
                                     <tr key={row.id} className={cn("hover:bg-slate-50/50 transition-colors group dark:hover:bg-slate-800/40", row.isActive === false && "opacity-60 grayscale-[0.5]")}>
                                         <td className="px-6 py-4 text-[10px] font-mono text-slate-400 uppercase tracking-wider dark:text-slate-500">{row.id}</td>
                                         <td className="px-6 py-4">
@@ -817,12 +844,11 @@ export const MastersView: React.FC = () => {
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <button onClick={() => setEditingDept(row)} className="p-1.5 hover:bg-slate-100 rounded text-slate-400 hover:text-emerald-600 transition-colors dark:hover:bg-slate-800 dark:hover:text-emerald-400"><Edit2 size={14} /></button>
-                                                <button onClick={() => handleDeleteEntity(row, 'depts')} className="p-1.5 hover:bg-slate-100 rounded text-slate-400 hover:text-red-500 transition-colors dark:hover:bg-slate-800 dark:hover:text-red-400"><Trash2 size={14} /></button>
                                             </div>
                                         </td>
                                     </tr>
                                 ))}
-                                {tab === 'suppliers' && suppliers.filter(r => showInactive || r.isActive !== false).map((row) => (
+                                {tab === 'suppliers' && suppliers.filter(r => (showInactive || r.isActive !== false) && (!searchQuery || r.name.toLowerCase().includes(searchQuery.toLowerCase()) || r.id.toLowerCase().includes(searchQuery.toLowerCase()))).map((row) => (
                                     <tr key={row.id} className={cn("hover:bg-slate-50/50 transition-colors group dark:hover:bg-slate-800/40", row.isActive === false && "opacity-60 grayscale-[0.5]")}>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-2">
@@ -835,7 +861,6 @@ export const MastersView: React.FC = () => {
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <button onClick={() => setEditingSupplier(row)} className="p-1.5 hover:bg-slate-100 rounded text-slate-400 hover:text-emerald-600 transition-colors dark:hover:bg-slate-800 dark:hover:text-emerald-400"><Edit2 size={14} /></button>
-                                                <button onClick={() => handleDeleteEntity(row, 'suppliers')} className="p-1.5 hover:bg-slate-100 rounded text-slate-400 hover:text-red-500 transition-colors dark:hover:bg-slate-800 dark:hover:text-red-400"><Trash2 size={14} /></button>
                                             </div>
                                         </td>
                                     </tr>
@@ -1268,6 +1293,97 @@ export const MastersView: React.FC = () => {
                                 >
                                     {loading ? <Loader2 size={16} className="animate-spin" /> : <Save size={16}/>}
                                     Update Entity
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+                {showSeedModal && (
+                    <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-6">
+                        <motion.div 
+                            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                            className="bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-2xl border border-slate-200 dark:bg-slate-900 dark:border-slate-800"
+                        >
+                            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-emerald-50 dark:bg-emerald-950/20 dark:border-slate-800">
+                                <h3 className="font-bold text-emerald-900 tracking-tight dark:text-emerald-400">
+                                    Confirm Demo Data Seeding
+                                </h3>
+                                <button onClick={() => setShowSeedModal(false)} className="text-emerald-400 hover:text-emerald-600 p-1 dark:hover:text-emerald-300"><X size={20} /></button>
+                            </div>
+                            <div className="p-6 space-y-4">
+                                <p className="text-sm text-slate-700 dark:text-slate-300">
+                                    {items.length > 0 
+                                      ? "Your database already has items! Seeding will duplicate them. Are you REALLY sure you want to run this?" 
+                                      : "This will seed all 190 items with their department mappings and initial stock. Continue?"}
+                                </p>
+                            </div>
+                            <div className="p-6 bg-slate-50 border-t border-slate-100 flex gap-4 dark:bg-slate-950/20 dark:border-slate-800">
+                                <button
+                                    onClick={() => setShowSeedModal(false)}
+                                    className="flex-1 py-2.5 text-sm font-bold text-slate-500 hover:text-slate-900 transition-colors dark:text-slate-400 dark:hover:text-slate-200"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleSeedDemo}
+                                    disabled={loading}
+                                    className="flex-1 py-2.5 bg-emerald-600 text-white rounded-lg text-sm font-bold shadow-lg shadow-emerald-600/20 hover:bg-emerald-700 transition-all flex items-center justify-center gap-2"
+                                >
+                                    {loading ? <Loader2 size={16} className="animate-spin" /> : <Check size={16}/>}
+                                    Yes, Seed Data
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+                {showResetModal && (
+                    <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-6">
+                        <motion.div 
+                            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                            className="bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-2xl border border-rose-200 dark:bg-slate-900 dark:border-rose-900/50"
+                        >
+                            <div className="px-6 py-4 border-b border-rose-100 flex items-center justify-between bg-rose-50 dark:bg-rose-950/20 dark:border-rose-900/30">
+                                <h3 className="font-bold text-rose-900 tracking-tight dark:text-rose-400 flex items-center gap-2">
+                                    <AlertTriangle size={18} />
+                                    Confirm Factory Reset
+                                </h3>
+                                <button onClick={() => setShowResetModal(false)} className="text-rose-400 hover:text-rose-600 p-1 dark:hover:text-rose-300"><X size={20} /></button>
+                            </div>
+                            <div className="p-6 space-y-4">
+                                <p className="text-sm text-slate-700 dark:text-slate-300">
+                                    This action will <strong>permanently wipe</strong> all items, suppliers, ledgers, and inventory data from your Google Sheet. It reconstructs the base headers on empty sheets. Your logo and restaurant name will not be deleted.
+                                </p>
+                                <div className="p-3 bg-rose-50 border border-rose-100 rounded-lg dark:bg-rose-950/30 dark:border-rose-900/50">
+                                    <p className="text-[10px] text-rose-700 font-bold uppercase tracking-widest mb-2 dark:text-rose-400">Action cannot be undone</p>
+                                    <p className="text-xs text-rose-800 dark:text-rose-300">
+                                        Type <strong>RESET</strong> in the field below to confirm.
+                                    </p>
+                                </div>
+                                <input 
+                                    type="text" 
+                                    placeholder="Type RESET" 
+                                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-center font-bold tracking-widest uppercase focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 focus:outline-none transition-all dark:bg-slate-800 dark:border-slate-700 dark:text-white"
+                                    value={resetConfirmText}
+                                    onChange={(e) => setResetConfirmText(e.target.value.toUpperCase())}
+                                />
+                            </div>
+                            <div className="p-6 bg-slate-50 border-t border-slate-100 flex gap-4 dark:bg-slate-950/20 dark:border-slate-800">
+                                <button
+                                    onClick={() => setShowResetModal(false)}
+                                    className="flex-1 py-2.5 text-sm font-bold text-slate-500 hover:text-slate-900 transition-colors dark:text-slate-400 dark:hover:text-slate-200"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={executeFactoryReset}
+                                    disabled={loading || resetConfirmText !== 'RESET'}
+                                    className="flex-[2] py-2.5 bg-rose-600 text-white rounded-lg text-sm font-bold shadow-lg shadow-rose-600/20 hover:bg-rose-700 disabled:bg-slate-300 dark:disabled:bg-slate-800 dark:disabled:text-slate-500 transition-all flex items-center justify-center gap-2"
+                                >
+                                    {loading ? <Loader2 size={16} className="animate-spin" /> : "Delete All System Data"}
                                 </button>
                             </div>
                         </motion.div>

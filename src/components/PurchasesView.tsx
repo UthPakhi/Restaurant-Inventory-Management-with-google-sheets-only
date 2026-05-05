@@ -128,8 +128,8 @@ export const PurchasesView: React.FC = () => {
             
             const dateStr = parts[0];
             const itemName = parts[1];
-            const qty = parseFinancialNumber(parts[2]);
-            const rate = parseFinancialNumber(parts[3]);
+            const qty = parts[2] ? parts[2].replace(/,/g, '') : '0';
+            const rate = parts[3] ? parts[3].replace(/,/g, '') : '0';
             let supplierName = '';
             
             if (parts.length >= 6) {
@@ -187,7 +187,7 @@ export const PurchasesView: React.FC = () => {
             let lastTs = Date.now();
 
             // filter out lines that don't have item or supplier or qty/rate
-            const toImport = bulkPreview.filter(l => l.itemId && l.supplierId && parseFinancialNumber(l.qty) > 0 && parseFinancialNumber(l.rate) >= 0);
+            const toImport = bulkPreview.filter(l => l.itemId && l.supplierId && parseFloat(l.qty) > 0 && parseFloat(l.rate) >= 0);
 
             let successCount = 0;
             let totalCost = 0;
@@ -195,8 +195,8 @@ export const PurchasesView: React.FC = () => {
             const optimisticPurchases: Purchase[] = [];
 
             toImport.forEach((line, idx) => {
-                const qty = parseFinancialNumber(line.qty);
-                const rate = parseFinancialNumber(line.rate);
+                const qty = Number(line.qty);
+                const rate = Number(line.rate);
                 const total = qty * rate;
                 lastTs++;
                 const purchaseId = `PUR_${lastTs}`;
@@ -530,7 +530,7 @@ export const PurchasesView: React.FC = () => {
                                                      {bulkPreview.map((line, idx) => {
                                                          const missingItem = !line.itemId;
                                                          const missingSupplier = !line.supplierId;
-                                                         const isZeroQty = parseFinancialNumber(line.qty) <= 0;
+                                                         const isZeroQty = parseFloat(line.qty) <= 0;
                                                          const hasError = missingItem || missingSupplier || isZeroQty || line.isDuplicate;
                                                          return (
                                                              <tr key={line.id} className={cn(hasError && "bg-red-50/50 dark:bg-red-950/10")}>
@@ -566,7 +566,7 @@ export const PurchasesView: React.FC = () => {
                                                                      />
                                                                  </td>
                                                                  <td className="px-4 py-3 text-right font-bold text-slate-900 font-mono whitespace-nowrap dark:text-white">
-                                                                     {(parseFinancialNumber(line.qty) * parseFinancialNumber(line.rate) || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits:2})}
+                                                                     {(parseFloat(line.qty) * parseFloat(line.rate) || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits:2})}
                                                                  </td>
                                                                  <td className="px-2 py-3 text-center">
                                                                      {line.isDuplicate && (
@@ -599,7 +599,7 @@ export const PurchasesView: React.FC = () => {
                                              </button>
                                              <button 
                                                  onClick={submitBulkPreview}
-                                                 disabled={loading || bulkPreview.length === 0 || bulkPreview.some(l => !l.itemId || !l.supplierId || parseFinancialNumber(l.qty) <= 0)}
+                                                 disabled={loading || bulkPreview.length === 0 || bulkPreview.some(l => !l.itemId || !l.supplierId || parseFloat(l.qty) <= 0)}
                                                  className="px-6 py-2 bg-emerald-600 text-white text-sm font-bold rounded-lg shadow-lg shadow-emerald-500/20 hover:bg-emerald-700 transition-all disabled:opacity-50 flex items-center gap-2"
                                              >
                                                  {loading ? <Loader2 size={16} className="animate-spin" /> : 'Confirm & Log Purchases'}

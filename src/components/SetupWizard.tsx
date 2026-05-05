@@ -13,87 +13,93 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
   const [showExistingInput, setShowExistingInput] = useState(false);
   const [existingIdInput, setExistingIdInput] = useState('');
 
-  const startAuth = async () => {
-    setLoading(true);
-    try {
-      const popup = window.open('about:blank', 'google_auth', 'width=600,height=700');
-      const url = await sheetsService.getAuthUrl();
-      if (popup) popup.location.href = url;
-      
-      const handleMessage = async (event: MessageEvent) => {
-        try {
-          if (event.data?.type === 'GOOGLE_AUTH_SUCCESS') {
-            const tokens = event.data.tokens;
-            sheetsService.setTokens(tokens);
-            
-            const result = await sheetsService.createSpreadsheet("Restaurant Management Sheet");
-            await sheetsService.initializeSheetStructure();
-            
-            onComplete({ tokens, spreadsheetId: result.spreadsheetId });
-            window.removeEventListener('message', handleMessage);
+const performAuth = async (isExisting: boolean) => {
+  setLoading(true);
+  try {
+    const popup = window.open('about:blank', 'google_auth', 'width=600,height=700');
+    const url = await sheetsService.getAuthUrl();
+    if (popup) popup.location.href = url;
+
+    // Clear any stale token from a previous attempt
+    window.localStorage.removeItem('GOOGLE_AUTH_TOKENS');
+
+    let settled = false;
+
+    const handleSuccess = async (tokens: GoogleTokens) => {
+      if (settled) return;
+      settled = true;
+      clearInterval(pollInterval);
+      window.removeEventListener('message', handleMessage);
+      if (bc) bc.close();
+      if (popup && !popup.closed) popup.close();
+
+      try {
+        sheetsService.setTokens(tokens);
+        if (isExisting) {
+          let existingSpreadsheetId = existingIdInput;
+          if (existingSpreadsheetId.includes('/d/')) {
+            const match = existingSpreadsheetId.match(/\/d\/([a-zA-Z0-9-_]+)/);
+            if (match && match[1]) existingSpreadsheetId = match[1];
           }
-        } catch (e: any) {
-          setError(e.message);
-          setLoading(false);
-          window.removeEventListener('message', handleMessage);
+          sheetsService.setSpreadsheetId(existingSpreadsheetId);
+          await sheetsService.read("Masters_Items!A1:A1");
+          await sheetsService.initializeSheetStructure();
+          onComplete({ tokens, spreadsheetId: existingSpreadsheetId });
+        } else {
+          const result = await sheetsService.createSpreadsheet("Restaurant Management Sheet");
+          await sheetsService.initializeSheetStructure();
+          onComplete({ tokens, spreadsheetId: result.spreadsheetId });
         }
-      };
-      
-      window.addEventListener('message', handleMessage);
-    } catch (err: any) {
-      setError(err.message);
-      setLoading(false);
-    }
-  };
+      } catch (e: any) {
+        setError(e.message);
+        setLoading(false);
+      }
+    };
 
-  const startAuthExisting = async () => {
-    setLoading(true);
+    // Method 1: postMessage (works when COOP is unsafe-none)
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'GOOGLE_AUTH_SUCCESS') handleSuccess(event.data.tokens);
+    };
+    window.addEventListener('message', handleMessage);
+
+    // Method 2: BroadcastChannel
+    let bc: BroadcastChannel | null = null;
     try {
-      const popup = window.open('about:blank', 'google_auth', 'width=600,height=700');
-      const url = await sheetsService.getAuthUrl();
-      if (popup) popup.location.href = url;
-      
-      const handleMessage = async (event: MessageEvent) => {
-        try {
-          if (event.data?.type === 'GOOGLE_AUTH_SUCCESS') {
-            const tokens = event.data.tokens;
-            sheetsService.setTokens(tokens);
-            
-            let existingSpreadsheetId = existingIdInput;
-            if (existingSpreadsheetId.includes('/d/')) {
-              const match = existingSpreadsheetId.match(/\/d\/([a-zA-Z0-9-_]+)/);
-              if (match && match[1]) {
-                 existingSpreadsheetId = match[1];
-              }
-            }
-
-            sheetsService.setSpreadsheetId(existingSpreadsheetId);
-            
-            // Test read access explicitly to catch permission errors immediately:
-            try {
-               await sheetsService.read("Masters_Items!A1:A1");
-            } catch (e: any) {
-               throw new Error("Unable to access spreadsheet. Ensure you have the correct URL and the owner has shared it with your Google Account.");
-            }
-
-            await sheetsService.initializeSheetStructure(); // Ensure headers exist, also validates access
-            
-            onComplete({ tokens, spreadsheetId: existingSpreadsheetId });
-            window.removeEventListener('message', handleMessage);
-          }
-        } catch (e: any) {
-          setError(e.message);
-          setLoading(false);
-          window.removeEventListener('message', handleMessage);
-        }
+      bc = new BroadcastChannel('google_auth_channel');
+      bc.onmessage = (event) => {
+        if (event.data?.type === 'GOOGLE_AUTH_SUCCESS') handleSuccess(event.data.tokens);
       };
-      
-      window.addEventListener('message', handleMessage);
-    } catch (err: any) {
-      setError(err.message);
-      setLoading(false);
-    }
-  };
+    } catch (e) {}
+
+    // Method 3: Poll localStorage (replaces storage event — works across COOP splits)
+    const pollInterval = setInterval(() => {
+      // Also stop polling if the popup was manually closed without auth
+      if (popup?.closed && !settled) {
+        clearInterval(pollInterval);
+        window.removeEventListener('message', handleMessage);
+        if (bc) bc.close();
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const raw = window.localStorage.getItem('GOOGLE_AUTH_TOKENS');
+        if (raw) {
+          window.localStorage.removeItem('GOOGLE_AUTH_TOKENS');
+          const tokens = JSON.parse(raw);
+          handleSuccess(tokens);
+        }
+      } catch (e) {}
+    }, 500);
+
+  } catch (err: any) {
+    setError(err.message);
+    setLoading(false);
+  }
+};
+
+  const startAuth = () => performAuth(false);
+  const startAuthExisting = () => performAuth(true);
 
   return (
     <div className="fixed inset-0 z-[100] bg-slate-50 flex items-center justify-center p-6 sm:p-12 overflow-y-auto dark:bg-slate-950">

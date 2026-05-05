@@ -20,7 +20,7 @@ export const IssuesView: React.FC = () => {
     const [bulkText, setBulkText] = useState('');
     const [bulkPreview, setBulkPreview] = useState<any[] | null>(null);
     const [bulkSummary, setBulkSummary] = useState<any | null>(null);
-    const [viewMode, setViewMode] = useState<'list' | 'pivot'>('list');
+    const [viewMode, setViewMode] = useState<'list' | 'pivot' | 'itemSummary'>('list');
     const [filters, setFilters] = useState({ dateFrom: '', dateTo: '', dept: '', itemSearch: '' });
 
     const [form, setForm] = useState({
@@ -86,19 +86,21 @@ export const IssuesView: React.FC = () => {
         const itemBatches = [...batches]
             .filter(b => b.itemId === itemId && Number(b.remainingQty) > 0)
             .sort((a, b) => {
+                const getPriority = (batch: any) => {
+                    if (batch.id?.startsWith('B_OPEN_') || batch.source === 'Opening') return 0;
+                    if (batch.id?.startsWith('B_REV_') || batch.source?.startsWith('Reversal')) return 1;
+                    return 2;
+                };
+                
+                const pA = getPriority(a);
+                const pB = getPriority(b);
+                
+                if (pA !== pB) return pA - pB;
+
                 // Robust date parsing for FIFO sorting
                 const dateA = a.date ? new Date(a.date).getTime() : 0;
                 const dateB = b.date ? new Date(b.date).getTime() : 0;
-                
-                if (dateA !== dateB) return (isNaN(dateA) ? 0 : dateA) - (isNaN(dateB) ? 0 : dateB);
-                
-                // If dates are same, prioritize Opening sources
-                const isOpA = a.source === 'Opening' || a.id?.startsWith('B_OPEN_');
-                const isOpB = b.source === 'Opening' || b.id?.startsWith('B_OPEN_');
-                if (isOpA && !isOpB) return -1;
-                if (!isOpA && isOpB) return 1;
-                
-                return 0;
+                return (isNaN(dateA) ? 0 : dateA) - (isNaN(dateB) ? 0 : dateB);
             });
             
         let remQty = qtyToIssue;
@@ -445,6 +447,15 @@ export const IssuesView: React.FC = () => {
             sortable: true
         },
         {
+            key: 'rate',
+            header: 'Unit Rate (Rs)',
+            align: 'right',
+            cell: (row) => <span className="font-medium text-slate-600 font-mono tracking-tighter dark:text-slate-300">
+                {row.rate ? Number(row.rate).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits:2}) : '0.00'}
+            </span>,
+            sortable: true
+        },
+        {
             key: 'total',
             header: 'Total Amount (Rs)',
             align: 'right',
@@ -509,6 +520,79 @@ export const IssuesView: React.FC = () => {
         }
     ];
 
+    const itemSummaryData = React.useMemo(() => {
+        const itemMap: Record<string, { qty: number, totalAmount: number, itemName: string }> = {};
+        let grandTotal = 0;
+
+        displayedIssues.forEach(issue => {
+            const qty = Number(issue.qty) || 0;
+            const amount = Number(issue.total) || 0;
+            const itemId = issue.itemId;
+            const itemName = getItemName(itemId);
+
+            if (!itemMap[itemId]) {
+                itemMap[itemId] = { qty: 0, totalAmount: 0, itemName };
+            }
+            itemMap[itemId].qty += qty;
+            itemMap[itemId].totalAmount += amount;
+            grandTotal += amount;
+        });
+
+        const rows = Object.keys(itemMap).map(itemId => {
+            const data = itemMap[itemId];
+            const avgRate = data.qty !== 0 ? data.totalAmount / data.qty : 0;
+            const percentage = grandTotal > 0 ? (data.totalAmount / grandTotal) * 100 : 0;
+            return {
+                id: itemId,
+                itemName: data.itemName,
+                qty: data.qty,
+                avgRate,
+                totalAmount: data.totalAmount,
+                percentage
+            };
+        }).filter(r => r.qty !== 0 || r.totalAmount !== 0).sort((a,b) => b.totalAmount - a.totalAmount);
+
+        return { rows, grandTotal };
+    }, [displayedIssues]);
+
+    const itemSummaryColumns: Column<any>[] = [
+        {
+            key: 'itemName',
+            header: 'Item',
+            cell: (row) => <span className="font-bold text-slate-900 dark:text-white">{row.itemName}</span>,
+            sortable: true
+        },
+        {
+            key: 'qty',
+            header: 'Total Qty',
+            align: 'right',
+            cell: (row) => <span className="font-bold text-slate-900 font-mono dark:text-white">{row.qty.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits:2})}</span>,
+            sortable: true
+        },
+        {
+            key: 'avgRate',
+            header: 'Avg Rate (Rs)',
+            align: 'right',
+            cell: (row) => <span className="text-slate-500 font-mono dark:text-slate-400">{row.avgRate.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits:2})}</span>,
+            sortable: true
+        },
+        {
+            key: 'totalAmount',
+            header: 'Total Amount (Rs)',
+            align: 'right',
+            cell: (row) => <span className="font-bold text-slate-700 font-mono dark:text-slate-300">{row.totalAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits:2})}</span>,
+            sortable: true
+        },
+        {
+            key: 'percentage',
+            header: '%',
+            align: 'right',
+            cell: (row) => <span className="text-blue-600 font-mono dark:text-blue-400">{row.percentage.toFixed(2)}%</span>,
+            sortFn: (a, b) => a.percentage - b.percentage,
+            sortable: true
+        }
+    ];
+
     // Format pivotData.dates into array of objects to satisfy DataTable's requirement extending Record<string,any>
     const mappedPivotDates = pivotData.dates.map(date => ({ date, id: date }));
 
@@ -520,9 +604,10 @@ export const IssuesView: React.FC = () => {
                   <p className="text-sm text-slate-500 dark:text-slate-400">Record and track inventory usage by department.</p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 dark:bg-slate-900 dark:border-slate-800">
-                      <button onClick={() => setViewMode('list')} className={cn("px-4 py-1.5 text-xs font-bold rounded-lg transition-all", viewMode === 'list' ? "bg-white text-emerald-600 shadow-sm dark:bg-slate-800 dark:text-emerald-400" : "text-slate-500 dark:text-slate-400")}>List View</button>
-                      <button onClick={() => setViewMode('pivot')} className={cn("px-4 py-1.5 text-xs font-bold rounded-lg transition-all", viewMode === 'pivot' ? "bg-white text-emerald-600 shadow-sm dark:bg-slate-800 dark:text-emerald-400" : "text-slate-500 dark:text-slate-400")}>Pivot View</button>
+                  <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 dark:bg-slate-900 dark:border-slate-800 overflow-x-auto">
+                      <button onClick={() => setViewMode('list')} className={cn("whitespace-nowrap px-4 py-1.5 text-xs font-bold rounded-lg transition-all", viewMode === 'list' ? "bg-white text-emerald-600 shadow-sm dark:bg-slate-800 dark:text-emerald-400" : "text-slate-500 dark:text-slate-400")}>List View</button>
+                      <button onClick={() => setViewMode('itemSummary')} className={cn("whitespace-nowrap px-4 py-1.5 text-xs font-bold rounded-lg transition-all", viewMode === 'itemSummary' ? "bg-white text-emerald-600 shadow-sm dark:bg-slate-800 dark:text-emerald-400" : "text-slate-500 dark:text-slate-400")}>Item Wise</button>
+                      <button onClick={() => setViewMode('pivot')} className={cn("whitespace-nowrap px-4 py-1.5 text-xs font-bold rounded-lg transition-all", viewMode === 'pivot' ? "bg-white text-emerald-600 shadow-sm dark:bg-slate-800 dark:text-emerald-400" : "text-slate-500 dark:text-slate-400")}>Pivot View</button>
                   </div>
                   <button 
                     onClick={() => setIsAdding(true)}
@@ -570,28 +655,70 @@ export const IssuesView: React.FC = () => {
                                    getDeptName(row.deptId).toLowerCase().includes(q);
                         }}
                         onExportPDF={(filteredData) => {
-                            const headers = ['Date', 'Department', 'Item', 'Qty Issued', 'Total Amount (Rs)'];
+                            const headers = ['Date', 'Department', 'Item', 'Qty Issued', 'Unit Rate (Rs)', 'Total Amount (Rs)'];
                             const rows = filteredData.map(i => [
                                 i.date, 
                                 getDeptName(i.deptId), 
                                 getItemName(i.itemId), 
                                 i.qty, 
+                                i.rate ? Number(i.rate).toFixed(2) : '0.00',
                                 i.total ? Number(i.total).toFixed(2) : '0.00'
                             ]);
                             exportTableToPDF(headers, rows, 'Consumption Log', 'consumption_log');
                         }}
                         onExportExcel={(filteredData) => {
-                            const headers = ['Date', 'Department', 'Item', 'Qty Issued', 'Total Amount (Rs)'];
+                            const headers = ['Date', 'Department', 'Item', 'Qty Issued', 'Unit Rate (Rs)', 'Total Amount (Rs)'];
                             const rows = filteredData.map(i => [
                                 i.date, 
                                 getDeptName(i.deptId), 
                                 getItemName(i.itemId), 
                                 i.qty, 
+                                i.rate ? Number(i.rate) : 0,
                                 i.total ? Number(i.total) : 0
                             ]);
                             exportTableToExcel(headers, rows, 'Consumption', 'consumption_log');
                         }}
                     />
+                ) : viewMode === 'itemSummary' ? (
+                    <>
+                        <div className="mb-4 flex items-center justify-between p-4 bg-emerald-50 rounded-lg border border-emerald-100 dark:bg-emerald-950/20 dark:border-emerald-900/50">
+                            <span className="text-sm font-bold text-emerald-800 dark:text-emerald-400">Total Consumption</span>
+                            <span className="text-xl font-black text-emerald-700 dark:text-emerald-400 tracking-tight">
+                                Rs {itemSummaryData.grandTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                            </span>
+                        </div>
+                        <DataTable 
+                            data={itemSummaryData.rows}
+                            columns={itemSummaryColumns}
+                            loading={loading}
+                            emptyMessage="No consumption records found in this period."
+                            customSearch={(row, q) => row.itemName.toLowerCase().includes(q)}
+                            onExportPDF={(filteredData) => {
+                                const headers = ['Item', 'Total Qty', 'Avg Rate (Rs)', 'Total Amount (Rs)', '%'];
+                                const rows = filteredData.map(i => [
+                                    i.itemName,
+                                    i.qty.toFixed(2),
+                                    i.avgRate.toFixed(2),
+                                    i.totalAmount.toFixed(2),
+                                    i.percentage.toFixed(2) + '%'
+                                ]);
+                                rows.push(['GRAND TOTAL', '', '', itemSummaryData.grandTotal.toFixed(2), '100.00%']);
+                                exportTableToPDF(headers, rows, 'Item Wise Consumption', 'item_wise_consumption');
+                            }}
+                            onExportExcel={(filteredData) => {
+                                const headers = ['Item', 'Total Qty', 'Avg Rate (Rs)', 'Total Amount (Rs)', '%'];
+                                const rows = filteredData.map(i => [
+                                    i.itemName,
+                                    i.qty,
+                                    i.avgRate,
+                                    i.totalAmount,
+                                    i.percentage.toFixed(2) + '%'
+                                ]);
+                                rows.push(['GRAND TOTAL', '', '', itemSummaryData.grandTotal, '100.00%']);
+                                exportTableToExcel(headers, rows, 'Item Wise', 'item_wise_consumption');
+                            }}
+                        />
+                    </>
                 ) : (
                     <DataTable 
                         data={mappedPivotDates}

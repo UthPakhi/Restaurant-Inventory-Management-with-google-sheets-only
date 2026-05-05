@@ -119,17 +119,17 @@ async function startServer() {
         <html>
           <body>
             <script>
-              if (window.opener) {
-                window.opener.postMessage({ 
-                  type: 'GOOGLE_AUTH_SUCCESS', 
-                  tokens: ${JSON.stringify(tokens)} 
-                }, '*');
-                window.close();
-              } else {
-                window.location.href = '/';
-              }
+              const tokens = ${JSON.stringify(tokens)};
+              try { if (window.opener) window.opener.postMessage({ type: 'GOOGLE_AUTH_SUCCESS', tokens }, '*'); } catch(e) {}
+              try { const bc = new BroadcastChannel('google_auth_channel'); bc.postMessage({ type: 'GOOGLE_AUTH_SUCCESS', tokens }); } catch(e) {}
+              try { window.localStorage.setItem('GOOGLE_AUTH_TOKENS', JSON.stringify(tokens)); } catch(e) {}
+              setTimeout(() => { window.close(); }, 300);
             </script>
-            <p>Authentication successful. You can close this window.</p>
+            <div style="font-family: sans-serif; text-align: center; padding: 50px;">
+              <h2>Authentication Successful!</h2>
+              <p>You can safely close this window to continue.</p>
+              <button onclick="window.close()" style="padding: 10px 20px; font-size: 16px; background-color: #000; color: #fff; border: none; border-radius: 6px; cursor: pointer;">Close Window</button>
+            </div>
           </body>
         </html>
       `);
@@ -174,6 +174,24 @@ async function startServer() {
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
+  });
+
+  app.post("/api/sheets/batchClear", async (req, res) => {
+      const { tokens, spreadsheetId, ranges } = req.body;
+      const release = await acquireLock(spreadsheetId);
+      try {
+          oauth2Client.setCredentials(tokens);
+          const sheets = google.sheets({ version: "v4", auth: oauth2Client });
+          const response = await sheets.spreadsheets.values.batchClear({
+              spreadsheetId,
+              requestBody: { ranges }
+          });
+          res.json(response.data);
+      } catch (error: any) {
+          res.status(500).json({ error: error.message });
+      } finally {
+          release();
+      }
   });
 
   // 5. Appending / Reading data proxies would go here

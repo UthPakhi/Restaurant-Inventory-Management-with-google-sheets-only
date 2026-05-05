@@ -192,15 +192,22 @@ export class SheetsService {
             spreadsheetId: this.spreadsheetId,
             range
         })
+    }).catch(err => {
+        // Network error
+        throw new Error(`NETWORK_ERROR`);
     });
     
     if (!res.ok) {
         const text = await res.text();
-        throw new Error(`Read failed (${res.status}): ${text.substring(0, 100)}`);
+        // If range is invalid because it's empty, out of bounds, or deleted, assume empty.
+        if (res.status === 400) {
+            return [];
+        }
+        throw new Error(`API_ERROR: Read failed (${res.status}): ${text.substring(0, 100)}`);
     }
 
     const data = await res.json();
-    if (data.error) throw new Error(data.error);
+    if (data.error) throw new Error(`API_ERROR: ${data.error}`);
     return data.values || [];
   }
 
@@ -216,24 +223,30 @@ export class SheetsService {
           const data = await this.read(range);
           import('./localDb').then(m => m.localDb.setTable(localTableName, data)).catch(console.error);
           return data;
-      } catch (err) {
-          const localDb = (await import('./localDb')).localDb;
-          const cached = await localDb.getTable(localTableName);
-          if (cached) return cached;
+      } catch (err: any) {
+          if (err.message === 'NETWORK_ERROR') {
+              const localDb = (await import('./localDb')).localDb;
+              const cached = await localDb.getTable(localTableName);
+              if (cached) return cached;
+          } else if (err.message && err.message.includes('API_ERROR') && err.message.includes('400')) {
+             // If bad request (like range not found because it's empty), just assume empty
+             import('./localDb').then(m => m.localDb.setTable(localTableName, [])).catch(console.error);
+             return [];
+          }
           throw err;
       }
   }
 
   async getAllItems(): Promise<any[][]> {
-      return this.getWithFallback('Masters_Items!A2:J', 'masters_items');
+      return this.getWithFallback('Masters_Items!A2:K', 'masters_items');
   }
 
   async getAllDepartments(): Promise<any[][]> {
-      return this.getWithFallback('Masters_Depts!A2:B', 'masters_depts');
+      return this.getWithFallback('Masters_Depts!A2:C', 'masters_depts');
   }
 
   async getAllSuppliers(): Promise<any[][]> {
-      return this.getWithFallback('Masters_Suppliers!A2:C', 'masters_suppliers');
+      return this.getWithFallback('Masters_Suppliers!A2:D', 'masters_suppliers');
   }
 
   async getAllBatches(): Promise<any[][]> {
@@ -357,6 +370,53 @@ export class SheetsService {
     return await res.json();
   }
 
+  async batchClear(ranges: string[]): Promise<any> {
+    if (this.isDemoMode) {
+        this.loadDemoData(); // resetting to initial state
+        return { success: true };
+    }
+    const res = await fetch("/api/sheets/batchClear", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        tokens: this.tokens,
+        spreadsheetId: this.spreadsheetId,
+        ranges
+      })
+    });
+
+    if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Batch clear failed (${res.status}): ${text.substring(0, 100)}`);
+    }
+
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    return data;
+  }
+
+  async performFactoryReset(): Promise<void> {
+    const allSheetsToClear = [
+        "Masters_Items!A2:Z",
+        "Masters_Depts!A2:Z",
+        "Masters_Suppliers!A2:Z",
+        "Purchases!A2:Z",
+        "Issues!A2:Z",
+        "Batches!A2:Z",
+        "DailyConsumption!A2:Z",
+        "Sales!A2:Z",
+        "Cashflow!A2:Z",
+        "Recipes!A2:Z",
+        "MenuSales!A2:Z",
+        "AuditLogs!A2:Z"
+    ];
+    await this.batchClear(allSheetsToClear);
+    
+    // Clear localDB cache
+    const localDb = (await import('./localDb')).localDb;
+    await localDb.clearAll();
+  }
+
   async bulkIssueFIFO(issues: { itemId: string, qty: number, date: string, deptId: string, itemName?: string, deptName?: string }[]): Promise<any> {
     const parseNum = (val: any) => {
         if (val === undefined || val === null) return 0;
@@ -384,7 +444,7 @@ export class SheetsService {
     const batchUpdates: { range: string, values: any[][] }[] = [];
 
     // Track state of batches in memory as we process each issue
-    const localBatches: (Batch & { rowIndex: number })[] = [...allBatches];
+    const localBatches: (Batch & { rowIndex: number })[] = allBatches.map(b => ({...b}));
 
     for (const issueReq of issues) {
         const result = calculateFIFO(issueReq, localBatches);

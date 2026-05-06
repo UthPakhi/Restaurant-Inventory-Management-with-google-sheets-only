@@ -312,6 +312,148 @@ async function startServer() {
       }
   });
 
+  // ATOMIC INVENTORY OPERATIONS
+  // Moved to server to prevent race conditions during read-modify-write FIFO cycle
+  app.post("/api/inventory/issue", async (req, res) => {
+      const { tokens, spreadsheetId, issues, userEmail } = req.body;
+      if (!tokens || !spreadsheetId || !issues) {
+          return res.status(400).json({ error: "Missing required parameters" });
+      }
+
+      const release = await acquireLock(spreadsheetId);
+      try {
+          oauth2Client.setCredentials(tokens);
+          const sheets = google.sheets({ version: "v4", auth: oauth2Client });
+
+          // 1. Fetch current batches
+          const batchesRes = await sheets.spreadsheets.values.get({
+              spreadsheetId,
+              range: 'Batches!A2:G'
+          });
+          const rows = batchesRes.data.values || [];
+
+          const parseNum = (val: any) => {
+              if (val === undefined || val === null) return 0;
+              const str = String(val).replace(/,/g, '').trim();
+              const n = Number(str);
+              return isNaN(n) ? 0 : n;
+          };
+
+          const allBatches = rows.map((row, index) => ({
+              id: String(row[0] || ''),
+              itemId: row[1] ? String(row[1]).trim() : '',
+              date: row[2],
+              originalQty: parseNum(row[3]),
+              remainingQty: parseNum(row[4]),
+              cost: parseNum(row[5]),
+              source: row[6],
+              rowIndex: index + 2
+          }));
+
+          const results = [];
+          const issueRows: any[][] = [];
+          const auditRows: any[][] = [];
+          const batchUpdates: any[] = [];
+          
+          // Track state in memory
+          const localBatches = allBatches.map(b => ({...b}));
+
+          // We need calculateFIFO here. Since we can't easily import it without potential side effects in this environment, 
+          // I will implement a simplified version or just the core logic here.
+          // Actually, I'll use the same logic as src/lib/fifoEngine.ts
+          
+          for (const req of (Array.isArray(issues) ? issues : [issues])) {
+              const { itemId, qty: qtyRequested, itemName, deptName, deptId, date } = req;
+              
+              const itemBatches = localBatches
+                .filter(b => b.itemId === itemId && b.remainingQty > 0)
+                .sort((a, b) => {
+                    const getPriority = (batch: any) => {
+                        if (batch.id.startsWith('B_OPEN_') || batch.source === 'Opening') return 0;
+                        if (batch.id.startsWith('B_REV_') || (batch.source && batch.source.startsWith('Reversal'))) return 1;
+                        return 2;
+                    };
+                    const pA = getPriority(a); const pB = getPriority(b);
+                    if (pA !== pB) return pA - pB;
+                    const dateA = new Date(a.date).getTime();
+                    const dateB = new Date(b.date).getTime();
+                    return (isNaN(dateA) ? 0 : dateA) - (isNaN(dateB) ? 0 : dateB);
+                });
+
+              const totalAvailable = Math.round(itemBatches.reduce((sum, b) => sum + b.remainingQty, 0) * 10000) / 10000;
+              if (totalAvailable < qtyRequested) {
+                  results.push({ success: false, error: `Insufficient stock for ${itemName || itemId}. Available: ${totalAvailable}, Requested: ${qtyRequested}`, itemId });
+                  continue;
+              }
+
+              let remainingToIssue = qtyRequested;
+              let totalCost = 0;
+              const consumedFromIssues = [];
+
+              for (const batch of itemBatches) {
+                  if (remainingToIssue <= 0) break;
+                  const consumed = Math.round(Math.min(batch.remainingQty, remainingToIssue) * 10000) / 10000;
+                  const newRemaining = Math.round((batch.remainingQty - consumed) * 10000) / 10000;
+                  
+                  totalCost += consumed * batch.cost;
+                  remainingToIssue = Math.round((remainingToIssue - consumed) * 10000) / 10000;
+                  
+                  // Update local state
+                  batch.remainingQty = newRemaining;
+                  consumedFromIssues.push({ rowIndex: batch.rowIndex, consumed, newRemaining });
+                  
+                  // Add to batch updates to be sent to Google Sheets
+                  batchUpdates.push({
+                      range: `Batches!E${batch.rowIndex}:E${batch.rowIndex}`,
+                      values: [[newRemaining]]
+                  });
+              }
+
+              const issueId = `ISS_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+              const avgRate = totalCost / qtyRequested;
+              
+              issueRows.push([issueId, date, deptId, itemId, qtyRequested, avgRate, userEmail]);
+              auditRows.push([new Date().toISOString(), userEmail || "System", 'ISSUE_STOCK', 'Issues', `Issued ${qtyRequested} of item ${itemName || itemId} to dept ${deptName || deptId}`]);
+              
+              results.push({ success: true, issueId, avgRate, totalCost, itemId });
+          }
+
+          // 2. Execute all modifications in one go (or in parallel)
+          const promises = [];
+          if (batchUpdates.length > 0) {
+              promises.push(sheets.spreadsheets.values.batchUpdate({
+                  spreadsheetId,
+                  requestBody: { valueInputOption: 'USER_ENTERED', data: batchUpdates }
+              }));
+          }
+          if (issueRows.length > 0) {
+              promises.push(sheets.spreadsheets.values.append({
+                  spreadsheetId,
+                  range: 'Issues!A:G',
+                  valueInputOption: 'USER_ENTERED',
+                  requestBody: { values: issueRows }
+              }));
+          }
+          if (auditRows.length > 0) {
+              promises.push(sheets.spreadsheets.values.append({
+                  spreadsheetId,
+                  range: 'AuditLogs!A:E',
+                  valueInputOption: 'USER_ENTERED',
+                  requestBody: { values: auditRows }
+              }));
+          }
+
+          await Promise.all(promises);
+          res.json({ results });
+
+      } catch (error: any) {
+          console.error("Atomic Issue Failed:", error);
+          res.status(500).json({ error: error.message });
+      } finally {
+          release();
+      }
+  });
+
   app.post("/api/auth/me", async (req, res) => {
     const { tokens } = req.body;
     if (!tokens) return res.status(401).json({ error: "Missing tokens" });

@@ -17,6 +17,7 @@ export class SheetsService {
   public isDemoMode: boolean = false;
   private demoData: Record<string, any[][]> = {};
   public currentUserEmail: string = '';
+  private demoLock: Promise<void> = Promise.resolve();
 
   constructor(tokens?: GoogleTokens, spreadsheetId?: string) {
     if (tokens) this.tokens = tokens;
@@ -434,132 +435,77 @@ export class SheetsService {
   }
 
   async bulkIssueFIFO(issues: { itemId: string, qty: number, date: string, deptId: string, itemName?: string, deptName?: string }[]): Promise<any> {
-    const parseNum = (val: any) => {
-        if (val === undefined || val === null) return 0;
-        const str = String(val).replace(/,/g, '').trim();
-        const n = Number(str);
-        return isNaN(n) ? 0 : n;
-    };
+    if (this.isDemoMode) {
+        // Atomic lock for demo mode to prevent race conditions
+        const currentLock = this.demoLock;
+        let resolveLock: () => void;
+        this.demoLock = new Promise(res => { resolveLock = res; });
+        await currentLock;
 
-    // 1. Fetch ALL batches
-    const allBatchesRaw = await this.read('Batches!A2:G');
-    const allBatches = allBatchesRaw.map((row, index) => ({
-        id: String(row[0] || ''),
-        itemId: row[1] ? String(row[1]).trim() : '',
-        date: row[2],
-        originalQty: parseNum(row[3]),
-        remainingQty: parseNum(row[4]),
-        cost: parseNum(row[5]),
-        source: row[6],
-        rowIndex: index + 2
-    }));
-
-    const results = [];
-    const issueRows: any[][] = [];
-    const auditRows: any[][] = [];
-    const batchUpdates: { range: string, values: any[][] }[] = [];
-
-    // Track state of batches in memory as we process each issue
-    const localBatches: (Batch & { rowIndex: number })[] = allBatches.map(b => ({...b}));
-
-    for (const issueReq of issues) {
-        const result = calculateFIFO(issueReq, localBatches);
-
-        if (!result.success) {
-            results.push({ success: false, error: result.error, itemId: issueReq.itemId });
-            continue;
-        }
-
-        // Apply changes to localBatches for the next issue in the same bulk request
-        if (result.consumedBatches) {
-            result.consumedBatches.forEach(cb => {
-                const batch = localBatches.find(b => b.rowIndex === cb.rowIndex);
-                if (batch) batch.remainingQty = cb.newRemaining;
-            });
-        }
-
-        const issueId = result.issueId!;
-        const avgRate = result.avgRate!;
-        const totalCost = result.totalCost!;
-        
-        issueRows.push([issueId, issueReq.date, issueReq.deptId, issueReq.itemId, issueReq.qty, avgRate, this.currentUserEmail]);
-        auditRows.push([new Date().toISOString(), this.currentUserEmail, 'ISSUE_STOCK', 'Issues', `Issued ${issueReq.qty} of item ${issueReq.itemName || issueReq.itemId} to dept ${issueReq.deptName || issueReq.deptId}`]);
-        
-        results.push({ ...result, success: true });
-    }
-
-    // 2. Consolidate batch updates - find batches that were actually modified
-    for (const batch of localBatches) {
-        const original = allBatches.find(b => b.rowIndex === batch.rowIndex);
-        if (original && original.remainingQty !== batch.remainingQty) {
-            batchUpdates.push({
-                range: `Batches!E${batch.rowIndex}:E${batch.rowIndex}`,
-                values: [[batch.remainingQty]]
-            });
+        try {
+            // Fallback for demo mode
+            const parseNum = (val: any) => {
+                if (val === undefined || val === null) return 0;
+                const str = String(val).replace(/,/g, '').trim();
+                const n = Number(str);
+                return isNaN(n) ? 0 : n;
+            };
+            const allBatchesRaw = await this.read('Batches!A2:G');
+            const allBatches = allBatchesRaw.map((row, index) => ({
+                id: String(row[0] || ''), itemId: row[1] ? String(row[1]).trim() : '',
+                date: row[2], originalQty: parseNum(row[3]), remainingQty: parseNum(row[4]),
+                cost: parseNum(row[5]), source: row[6], rowIndex: index + 2
+            }));
+            const results = [];
+            const issueRows: any[][] = [];
+            const batchUpdates: any[] = [];
+            const localBatches = allBatches.map(b => ({...b}));
+            for (const req of issues) {
+                const result = calculateFIFO(req, localBatches);
+                if (!result.success) { results.push({ success: false, error: result.error, itemId: req.itemId }); continue; }
+                if (result.consumedBatches) {
+                    result.consumedBatches.forEach(cb => {
+                        const batch = localBatches.find(b => b.rowIndex === cb.rowIndex);
+                        if (batch) batch.remainingQty = cb.newRemaining;
+                        batchUpdates.push({ range: `Batches!E${cb.rowIndex}:E${cb.rowIndex}`, values: [[cb.newRemaining]] });
+                    });
+                }
+                issueRows.push([result.issueId, req.date, req.deptId, req.itemId, req.qty, result.avgRate, this.currentUserEmail]);
+                results.push({ ...result, success: true });
+            }
+            await Promise.all([
+                this.valuesBatchUpdate(batchUpdates),
+                this.append('Issues!A:G', issueRows)
+            ]);
+            return results;
+        } finally {
+            resolveLock!();
         }
     }
 
-    // 3. Execution (Batched)
-    const promises: Promise<any>[] = [];
-    if (batchUpdates.length > 0) {
-        promises.push(this.valuesBatchUpdate(batchUpdates));
+    const res = await fetch("/api/inventory/issue", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            tokens: this.tokens,
+            spreadsheetId: this.spreadsheetId,
+            issues,
+            userEmail: this.currentUserEmail
+        })
+    });
+    if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Bulk issue failed: ${text.substring(0, 100)}`);
     }
-    if (issueRows.length > 0) {
-        promises.push(this.append('Issues!A:G', issueRows));
-    }
-    if (auditRows.length > 0) {
-        promises.push(this.append('AuditLogs!A:E', auditRows));
-    }
-
-    await Promise.all(promises);
-
-    return results;
+    const data = await res.json();
+    return data.results;
   }
 
   async issueFIFO(itemId: string, qtyRequested: number, date: string, deptId: string, itemName?: string, deptName?: string): Promise<any> {
-    // Robust number parsing
-    const parseNum = (val: any) => {
-        if (val === undefined || val === null) return 0;
-        const str = String(val).replace(/,/g, '').trim();
-        const n = Number(str);
-        return isNaN(n) ? 0 : n;
-    };
-
-    // 1. Fetch batches for this item
-    const allBatchesRaw = await this.read('Batches!A2:G');
-    const allBatches: (Batch & { rowIndex: number })[] = allBatchesRaw
-        .map((row, index) => ({ 
-            id: String(row[0] || ''),
-            itemId: row[1] ? String(row[1]).trim() : '',
-            date: row[2],
-            originalQty: parseNum(row[3]),
-            remainingQty: parseNum(row[4]),
-            cost: parseNum(row[5]),
-            source: row[6],
-            rowIndex: index + 2 
-        }));
-
-    const result = calculateFIFO({ itemId, qty: qtyRequested, date, deptId, itemName, deptName }, allBatches);
-
-    if (!result.success) {
-        throw new Error(result.error);
-    }
-
-    const { avgRate, totalCost, consumedBatches, issueId } = result;
-
-    // 2. Perform updates to batches
-    for (const cb of consumedBatches) {
-        await this.update(`Batches!E${cb.rowIndex}:E${cb.rowIndex}`, [[cb.newRemaining]]);
-    }
-
-    // 3. Record the issue
-    const id = issueId!;
-    await this.append('Issues!A:G', [[id, date, deptId, itemId, qtyRequested, avgRate, this.currentUserEmail]]);
-    const displayItem = itemName || itemId;
-    const displayDept = deptName || deptId;
-    await this.logAudit(this.currentUserEmail, 'ISSUE_STOCK', 'Issues', `Issued ${qtyRequested} of item ${displayItem} to dept ${displayDept}`);
-
-    return { issueId: id, avgRate, totalCost };
+    const results = await this.bulkIssueFIFO([{ itemId, qty: qtyRequested, date, deptId, itemName, deptName }]);
+    const result = results[0];
+    if (!result.success) throw new Error(result.error);
+    return result;
   }
 
   async reverseIssue(issue: any): Promise<any> {
@@ -567,16 +513,23 @@ export class SheetsService {
     const { id, itemId, qty, rate, deptId, date } = issue;
     if (qty <= 0) throw new Error("Cannot reverse a reversal or zero quantity.");
 
+    // Bug Fix: Check if already reversed
+    const allIssues = await this.getAllIssues();
+    const reversalId = `REV_${id}`;
+    const alreadyReversed = allIssues.some(row => row[0] === reversalId);
+    if (alreadyReversed) {
+        throw new Error(`Issue ${id} has already been reversed.`);
+    }
+
     const ts = Date.now();
     const batchId = `B_REV_${ts}`;
-    const revIssueId = `REV_${id}`;
     const email = this.currentUserEmail || 'Unknown';
 
     // 1. Create a new batch to restore the stock at the same rate
     const newBatch = [batchId, itemId, date, qty, qty, rate, `Reversal of ${id}`];
 
     // 2. Append a negative issue to cancel out the consumption
-    const negativeIssue = [revIssueId, date, deptId, itemId, -qty, rate, email];
+    const negativeIssue = [reversalId, date, deptId, itemId, -qty, rate, email];
 
     await Promise.all([
         this.append('Batches!A:G', [newBatch]),

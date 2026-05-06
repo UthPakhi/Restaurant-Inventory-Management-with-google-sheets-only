@@ -45,12 +45,15 @@ export default function App() {
   });
 
   useEffect(() => {
+    const metaThemeColor = document.getElementById('theme-color-meta');
     if (isDarkMode) {
       document.documentElement.classList.add('dark');
       localStorage.setItem('resto_theme', 'dark');
+      if (metaThemeColor) metaThemeColor.setAttribute('content', '#0f172a');
     } else {
       document.documentElement.classList.remove('dark');
       localStorage.setItem('resto_theme', 'light');
+      if (metaThemeColor) metaThemeColor.setAttribute('content', '#ffffff');
     }
   }, [isDarkMode]);
   const [isInitialized, setIsInitialized] = useState(false);

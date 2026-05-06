@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { sheetsService, GoogleTokens } from '../services/sheetsService';
 import { motion } from 'motion/react';
 import { LayoutDashboard, Cloud, Shield, Zap, Loader2, Database, Lock } from 'lucide-react'; 
@@ -13,35 +13,79 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
   const [showExistingInput, setShowExistingInput] = useState(false);
   const [existingIdInput, setExistingIdInput] = useState('');
 
+  useEffect(() => {
+    const handleOauthResult = async (savedResult: string) => {
+      try {
+        setLoading(true);
+        const eventData = JSON.parse(savedResult);
+        if (eventData.type === 'GOOGLE_AUTH_SUCCESS') {
+          const tokens = eventData.tokens;
+          sheetsService.setTokens(tokens);
+          
+          const isJoinExisting = eventData.state?.isJoinExisting;
+          let existingSpreadsheetId = eventData.state?.spreadsheetId;
+
+          if (isJoinExisting && existingSpreadsheetId) {
+              sheetsService.setSpreadsheetId(existingSpreadsheetId);
+              try {
+                await sheetsService.read("Masters_Items!A1:A1");
+              } catch (e: any) {
+                throw new Error("Unable to access spreadsheet. Ensure you have the correct URL and the owner has shared it with your Google Account.");
+              }
+              await sheetsService.initializeSheetStructure();
+              onComplete({ tokens, spreadsheetId: existingSpreadsheetId });
+          } else if (!isJoinExisting) {
+              const result = await sheetsService.createSpreadsheet("Restaurant Management Sheet");
+              await sheetsService.initializeSheetStructure();
+              onComplete({ tokens, spreadsheetId: result.spreadsheetId });
+          }
+        }
+      } catch (e: any) {
+        setError(e.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    // Check mount
+    const savedResult = localStorage.getItem('resto_oauth_result');
+    if (savedResult) {
+      localStorage.removeItem('resto_oauth_result');
+      handleOauthResult(savedResult);
+    }
+    
+    // Check storage event (for cross-window/fallback)
+    const handleStorageEvent = (e: StorageEvent) => {
+        if (e.key === 'resto_oauth_result' && e.newValue) {
+            localStorage.removeItem('resto_oauth_result');
+            handleOauthResult(e.newValue);
+        }
+    };
+    
+    window.addEventListener('storage', handleStorageEvent);
+    return () => window.removeEventListener('storage', handleStorageEvent);
+  }, [onComplete]);
+
   const startAuth = async () => {
     setLoading(true);
-    console.log("[SetupWizard] startAuth started.");
     try {
       const popup = window.open('about:blank', 'google_auth', 'width=600,height=700');
-      console.log("[SetupWizard] window.open called, popup instance:", !!popup);
-      const url = await sheetsService.getAuthUrl();
-      console.log("[SetupWizard] Auth URL acquired:", url);
+      const url = await sheetsService.getAuthUrl({ isJoinExisting: false });
       if (popup) popup.location.href = url;
       
       const handleMessage = async (event: MessageEvent) => {
-        console.log("[SetupWizard] MessageEvent received from:", event.origin, "Data:", event.data);
         try {
           if (event.data?.type === 'GOOGLE_AUTH_SUCCESS') {
-            console.log("[SetupWizard] Auth successful via postMessage.");
             const tokens = event.data.tokens;
             sheetsService.setTokens(tokens);
             
-            console.log("[SetupWizard] Creating spreadsheet...");
             const result = await sheetsService.createSpreadsheet("Restaurant Management Sheet");
-            console.log("[SetupWizard] Spreadsheet created:", result.spreadsheetId);
             await sheetsService.initializeSheetStructure();
-            console.log("[SetupWizard] Sheet structure initialized.");
             
             onComplete({ tokens, spreadsheetId: result.spreadsheetId });
             window.removeEventListener('message', handleMessage);
           }
         } catch (e: any) {
-          console.error("[SetupWizard] Error in handleMessage:", e);
           setError(e.message);
           setLoading(false);
           window.removeEventListener('message', handleMessage);
@@ -49,9 +93,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
       };
       
       window.addEventListener('message', handleMessage);
-      console.log("[SetupWizard] Added message listener.");
     } catch (err: any) {
-      console.error("[SetupWizard] startAuth error:", err);
       setError(err.message);
       setLoading(false);
     }
@@ -59,52 +101,43 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
 
   const startAuthExisting = async () => {
     setLoading(true);
-    console.log("[SetupWizard] startAuthExisting started.");
     try {
+      let existingSpreadsheetId = existingIdInput;
+      if (existingSpreadsheetId.includes('/d/')) {
+        const match = existingSpreadsheetId.match(/\/d\/([a-zA-Z0-9-_]+)/);
+        if (match && match[1]) {
+           existingSpreadsheetId = match[1];
+        }
+      }
+
+      if (!existingSpreadsheetId) {
+        throw new Error("Please enter a valid Spreadsheet URL or ID");
+      }
+
       const popup = window.open('about:blank', 'google_auth', 'width=600,height=700');
-      console.log("[SetupWizard] window.open called, popup instance:", !!popup);
-      const url = await sheetsService.getAuthUrl();
-      console.log("[SetupWizard] Auth URL acquired:", url);
+      const url = await sheetsService.getAuthUrl({ isJoinExisting: true, spreadsheetId: existingSpreadsheetId });
       if (popup) popup.location.href = url;
       
       const handleMessage = async (event: MessageEvent) => {
-        console.log("[SetupWizard] MessageEvent received in existing from:", event.origin, "Data:", event.data);
         try {
           if (event.data?.type === 'GOOGLE_AUTH_SUCCESS') {
-            console.log("[SetupWizard] Auth successful via postMessage (existing).");
             const tokens = event.data.tokens;
             sheetsService.setTokens(tokens);
             
-            let existingSpreadsheetId = existingIdInput;
-            if (existingSpreadsheetId.includes('/d/')) {
-              const match = existingSpreadsheetId.match(/\/d\/([a-zA-Z0-9-_]+)/);
-              if (match && match[1]) {
-                 existingSpreadsheetId = match[1];
-              }
-            }
-
-            console.log("[SetupWizard] Parsed spreadsheet ID:", existingSpreadsheetId);
             sheetsService.setSpreadsheetId(existingSpreadsheetId);
             
-            // Test read access explicitly to catch permission errors immediately:
             try {
-               console.log("[SetupWizard] Testing read access...");
                await sheetsService.read("Masters_Items!A1:A1");
-               console.log("[SetupWizard] Read access OK.");
             } catch (e: any) {
-               console.error("[SetupWizard] Read access failed:", e);
                throw new Error("Unable to access spreadsheet. Ensure you have the correct URL and the owner has shared it with your Google Account.");
             }
 
-            console.log("[SetupWizard] Initializing sheet structure...");
-            await sheetsService.initializeSheetStructure(); // Ensure headers exist, also validates access
-            console.log("[SetupWizard] Sheet initialized.");
+            await sheetsService.initializeSheetStructure();
             
             onComplete({ tokens, spreadsheetId: existingSpreadsheetId });
             window.removeEventListener('message', handleMessage);
           }
         } catch (e: any) {
-          console.error("[SetupWizard] Error in handleMessage (existing):", e);
           setError(e.message);
           setLoading(false);
           window.removeEventListener('message', handleMessage);
@@ -112,9 +145,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
       };
       
       window.addEventListener('message', handleMessage);
-      console.log("[SetupWizard] Added message listener (existing).");
     } catch (err: any) {
-      console.error("[SetupWizard] startAuthExisting error:", err);
       setError(err.message);
       setLoading(false);
     }

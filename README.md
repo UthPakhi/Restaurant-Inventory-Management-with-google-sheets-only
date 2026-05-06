@@ -1,10 +1,9 @@
 # TC Inventory Management Pro
 
-Welcome to **TC Inventory Management Pro**—a robust, serverless inventory management system optimized for the hospitality & retail industries. Instead of relying on a traditional backend, this application leverages **Google Sheets as its database**, providing real-time synchronization, offline capabilities, and a seamless user experience.
+A professional, high-performance inventory and stock management system designed for hospitality and retail businesses. Built with **React 18**, **Tailwind CSS**, and powered by **Google Sheets** as a real-time serverless database.
 
 ## ✨ Key Features
 
-- **Google Sheets Database:** Your data lives securely in your own Google Drive.
 - **Offline-First Mode (PWA)**: App works offline, caching data locally via IndexedDB.
 - **Reporting & Exports**: One-click PDF & Excel exports for tables and ledgers.
 - **Optimistic UI Updates**: Table rows appear instantly before the API call finishes.
@@ -12,7 +11,8 @@ Welcome to **TC Inventory Management Pro**—a robust, serverless inventory mana
 - **Multi-Section Support**: Manage transfers to different departments (Kitchen, Bar, Pizza, etc.).
 - **Bulk Import Mastery**: Power-user tools for bulk issuing and bulk purchase importing via copy-paste.
 - **Smart Audit Log & Automated Reversals**: Every transaction is tracked. Manual corrections strictly prioritize pushing reversed stock back to the top of the queue for the most accurate consecutive valuation.
-- **Safe State Handling:** Intelligently mark items as inactive without destroying historical records.
+- **Store Ledger**: Real-time valuation of your stock with monthly opening/closing visibility.
+- **Setup Wizard**: Zero-config initial setup—creates your Google Sheets database structure automatically.
 
 ## 🚀 Quick Start (Local Setup)
 
@@ -58,7 +58,7 @@ Welcome to **TC Inventory Management Pro**—a robust, serverless inventory mana
 
 ## 📙 Documentation & Roadmaps
 
-- **[Development Journey](./DEVELOPMENT_JOURNEY.md)**: A detailed, story-driven breakdown of how this application was built from scratch—including architectural choices, the FIFO engine strategy, UI considerations, and issue resolution tracking.
+- **[Development Journey](./DEVELOPMENT_JOURNEY.md)**: A detailed breakdown of how this application was built from scratch—including architectural choices, the FIFO engine strategy, UI considerations, and issue resolution tracking.
 - **[Future Roadmap](./FUTURE_ROADMAP.md)**: A strategic, specialist-level architectural plan mapping out basic, intermediate, and advanced feature scaling (including AI integrations and database migrations).
 
 ## 📄 License

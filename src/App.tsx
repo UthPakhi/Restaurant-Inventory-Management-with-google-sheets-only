@@ -30,13 +30,15 @@ import { useAppLookup } from './context/AppContext';
 
 import { Toaster } from 'sonner';
 
+import { Analytics } from "@vercel/analytics/react";
+
 // Types
 type View = 'summary' | 'inventory' | 'purchases' | 'issues' | 'cashflow' | 'sales' | 'masters' | 'settings' | 'audit' | 'ledger';
 
 export default function App() {
   const [activeView, setActiveView] = useState<View>('summary');
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 1024);
-  const [user, setUser] = useState<{ email: string; name: string } | null>(null);
+  const [user, setUser] = useState<{ email: string; name: string; picture?: string } | null>(null);
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const saved = localStorage.getItem('resto_theme');
     return saved === 'dark';
@@ -119,7 +121,7 @@ export default function App() {
       });
       const data = await res.json();
       if (data.email) {
-        setUser({ email: data.email, name: data.name || data.given_name || "User" });
+        setUser({ email: data.email, name: data.name || data.given_name || "User", picture: data.picture });
         sheetsService.setCurrentUser(data.email);
       }
     } catch (e) {
@@ -150,7 +152,7 @@ export default function App() {
 
         if (parsed.spreadsheetId === 'demo-mode') {
           sheetsService.setDemoMode(true);
-          setUser({ email: 'demo@example.com', name: 'Demo User' });
+          setUser({ email: 'demo@example.com', name: 'Demo User', picture: '' });
           sheetsService.setCurrentUser('demo@example.com');
           loadBrandingData('demo-mode');
         } else {
@@ -172,7 +174,7 @@ export default function App() {
     localStorage.setItem('resto_manage_data', JSON.stringify(data));
     setIsInitialized(true);
     if (data.spreadsheetId === 'demo-mode') {
-      setUser({ email: 'demo@example.com', name: 'Demo User' });
+      setUser({ email: 'demo@example.com', name: 'Demo User', picture: '' });
       sheetsService.setCurrentUser('demo@example.com');
       loadBrandingData('demo-mode');
     } else {
@@ -201,6 +203,7 @@ export default function App() {
       "flex h-screen w-full bg-slate-50 text-slate-900 overflow-hidden font-sans transition-colors duration-300",
       "dark:bg-slate-950 dark:text-slate-100"
     )}>
+      <Analytics />
       <Toaster position="top-right" richColors />
       {isSidebarOpen && (
         <div 
@@ -271,21 +274,27 @@ export default function App() {
              </div>
            )}
           <div className="flex items-center gap-3 p-2 rounded-lg bg-slate-800/50 group">
-            <div className="w-8 h-8 rounded bg-orange-400 flex items-center justify-center text-xs font-bold shrink-0">
-              {user?.name.slice(0, 2) || "AD"}
-            </div>
-            {isSidebarOpen && (
-              <div className="flex-1 overflow-hidden">
-                <p className="text-xs font-semibold truncate">{user?.name}</p>
-                <p className="text-[10px] text-slate-500 truncate lowercase">{user?.email}</p>
+            {user?.picture ? (
+              <img src={user.picture} alt="Avatar" className="w-8 h-8 rounded shrink-0 object-cover" referrerPolicy="no-referrer" />
+            ) : (
+              <div className="w-8 h-8 rounded bg-orange-400 flex items-center justify-center text-xs font-bold shrink-0">
+                {user?.name.slice(0, 2) || "AD"}
               </div>
             )}
-            <button 
-                onClick={() => { localStorage.removeItem('resto_manage_data'); window.location.reload(); }}
-                className="text-slate-500 hover:text-red-400 transition-colors ml-auto"
-            >
-              <LogOut size={14} />
-            </button>
+            {isSidebarOpen && (
+              <>
+                <div className="flex-1 overflow-hidden">
+                  <p className="text-xs font-semibold truncate">{user?.name}</p>
+                  <p className="text-[10px] text-slate-500 truncate lowercase">{user?.email}</p>
+                </div>
+                <button 
+                    onClick={() => { localStorage.removeItem('resto_manage_data'); window.location.reload(); }}
+                    className="text-slate-500 hover:text-red-400 transition-colors shrink-0"
+                >
+                  <LogOut size={14} />
+                </button>
+              </>
+            )}
           </div>
         </div>
       </aside>

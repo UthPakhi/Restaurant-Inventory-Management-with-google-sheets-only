@@ -80,13 +80,18 @@ async function startServer() {
     ];
 
     const redirectUri = (req.query.redirect_uri as string) || getRedirectUri(req);
+    
+    let customState: any = {};
+    if (req.query.state) {
+      try { customState = JSON.parse(req.query.state as string); } catch(e) {}
+    }
 
     const url = oauth2Client.generateAuthUrl({
       access_type: "offline",
       scope: scopes,
       prompt: "consent",
       redirect_uri: redirectUri,
-      state: JSON.stringify({ r: redirectUri }),
+      state: JSON.stringify({ r: redirectUri, ...customState }),
     });
 
     res.json({ url });
@@ -98,10 +103,12 @@ async function startServer() {
 
     try {
       let redirectUri = getRedirectUri(req);
+      let authState: any = {};
       if (state) {
         try {
           const parsed = JSON.parse(state as string);
           if (parsed.r) redirectUri = parsed.r;
+          authState = parsed;
         } catch (e) {
           // ignore
         }
@@ -119,17 +126,34 @@ async function startServer() {
         <html>
           <body>
             <script>
-              if (window.opener) {
-                window.opener.postMessage({ 
-                  type: 'GOOGLE_AUTH_SUCCESS', 
-                  tokens: ${JSON.stringify(tokens)} 
-                }, '*');
+              const authResult = { 
+                type: 'GOOGLE_AUTH_SUCCESS', 
+                tokens: ${JSON.stringify(tokens)},
+                state: ${JSON.stringify(authState)}
+              };
+              try {
+                localStorage.setItem('resto_oauth_result', JSON.stringify(authResult));
+                
+                if (window.opener && !window.opener.closed) {
+                  window.opener.postMessage(authResult, '*');
+                }
+                
                 window.close();
-              } else {
-                window.location.href = '/';
+                
+                setTimeout(() => {
+                  if (!window.closed) {
+                    window.location.href = '/';
+                  }
+                }, 1500);
+              } catch (e) {
+                  localStorage.setItem('resto_oauth_result', JSON.stringify(authResult));
+                  window.close();
+                  setTimeout(() => {
+                    window.location.href = '/';
+                  }, 1500);
               }
             </script>
-            <p>Authentication successful. You can close this window.</p>
+            <p>Authentication successful. You will be redirected shortly.</p>
           </body>
         </html>
       `);

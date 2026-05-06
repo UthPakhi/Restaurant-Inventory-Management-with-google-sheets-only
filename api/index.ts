@@ -34,11 +34,11 @@ const getRedirectUri = (req: express.Request) => {
   return `${protocol}://${host}/api/auth/callback`;
 };
 
-app.get(["/api/health", "/health"], (req, res) => {
+app.get("/api/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
-app.get(["/api/auth/google/url", "/auth/google/url"], (req, res) => {
+app.get("/api/auth/google/url", (req, res) => {
   const scopes = [
     "https://www.googleapis.com/auth/userinfo.profile",
     "https://www.googleapis.com/auth/userinfo.email",
@@ -47,27 +47,36 @@ app.get(["/api/auth/google/url", "/auth/google/url"], (req, res) => {
   ];
 
   const redirectUri = (req.query.redirect_uri as string) || getRedirectUri(req);
+  
+  let customState: any = {};
+  if (req.query.state) {
+    try {
+        customState = JSON.parse(req.query.state as string);
+    } catch(e) {}
+  }
 
   const url = oauth2Client.generateAuthUrl({
     access_type: "offline",
     scope: scopes,
     prompt: "consent",
     redirect_uri: redirectUri,
-    state: JSON.stringify({ r: redirectUri }),
+    state: JSON.stringify({ r: redirectUri, ...customState }),
   });
 
   res.json({ url });
 });
 
-app.get(["/api/auth/callback", "/api/auth/callback/", "/auth/callback", "/auth/callback/"], async (req, res) => {
+app.get(["/api/auth/callback", "/api/auth/callback/"], async (req, res) => {
   const { code, state } = req.query;
 
   try {
     let redirectUri = getRedirectUri(req);
+    let authState: any = {};
     if (state) {
       try {
         const parsed = JSON.parse(state as string);
         if (parsed.r) redirectUri = parsed.r;
+        authState = parsed;
       } catch (e) {
         // ignore
       }
@@ -82,39 +91,39 @@ app.get(["/api/auth/callback", "/api/auth/callback/", "/auth/callback", "/auth/c
       <html>
         <body>
           <script>
-            console.log("[Auth Callback] Script started executing.");
-            console.log("[Auth Callback] tokens received:", ${JSON.stringify(tokens ? "Tokens present" : "No tokens")});
-            console.log("[Auth Callback] Trying window.opener: ", !!window.opener);
-            if (window.opener) {
-              try {
-                console.log("[Auth Callback] Posting message to window.opener...");
-                window.opener.postMessage({ 
-                  type: 'GOOGLE_AUTH_SUCCESS', 
-                  tokens: ${JSON.stringify(tokens)} 
-                }, '*');
-                console.log("[Auth Callback] Message posted to window.opener successfully.");
-              } catch (e) {
-                console.error("[Auth Callback] Failed to postMessage to opener:", e);
+            const authResult = { 
+              type: 'GOOGLE_AUTH_SUCCESS', 
+              tokens: ${JSON.stringify(tokens)},
+              state: ${JSON.stringify(authState)}
+            };
+            
+            try {
+              // Always write to localStorage so the main window can pick it up via storage event
+              localStorage.setItem('resto_oauth_result', JSON.stringify(authResult));
+              
+              // Try to postMessage as primary method
+              if (window.opener && !window.opener.closed) {
+                window.opener.postMessage(authResult, '*');
               }
               
-              try {
-                console.log("[Auth Callback] Attempting to close window...");
+              // Always attempt to close the popup
+              window.close();
+              
+              // Keep a fallback redirect in case window.close() is blocked
+              setTimeout(() => {
+                if (!window.closed) {
+                  window.location.href = '/';
+                }
+              }, 1500);
+            } catch (e) {
+                localStorage.setItem('resto_oauth_result', JSON.stringify(authResult));
                 window.close();
-                console.log("[Auth Callback] window.close() called.");
-              } catch (e) {
-                console.error("[Auth Callback] Failed to close window:", e);
-              }
-            } else {
-              console.log("[Auth Callback] No window.opener found. Redirecting to '/'...");
-              try {
-                window.location.href = '/';
-              } catch (e) {
-                console.error("[Auth Callback] Failed to redirect:", e);
-              }
+                setTimeout(() => {
+                  window.location.href = '/';
+                }, 1500);
             }
-            console.log("[Auth Callback] Script execution finished.");
           </script>
-          <p>Authentication successful. You can close this window.</p>
+          <p>Authentication successful. You will be redirected shortly.</p>
         </body>
       </html>
     `);
@@ -124,7 +133,7 @@ app.get(["/api/auth/callback", "/api/auth/callback/", "/auth/callback", "/auth/c
   }
 });
 
-app.post(["/api/sheets/create", "/sheets/create"], async (req, res) => {
+app.post("/api/sheets/create", async (req, res) => {
   const { tokens, name } = req.body;
   if (!tokens) return res.status(401).json({ error: "Missing tokens" });
 
@@ -143,7 +152,7 @@ app.post(["/api/sheets/create", "/sheets/create"], async (req, res) => {
   }
 });
 
-app.post(["/api/sheets/batchUpdate", "/sheets/batchUpdate"], async (req, res) => {
+app.post("/api/sheets/batchUpdate", async (req, res) => {
   const { tokens, spreadsheetId, requests } = req.body;
   oauth2Client.setCredentials(tokens);
   const sheets = google.sheets({ version: "v4", auth: oauth2Client });
@@ -159,7 +168,7 @@ app.post(["/api/sheets/batchUpdate", "/sheets/batchUpdate"], async (req, res) =>
   }
 });
 
-app.post(["/api/sheets/append", "/sheets/append"], async (req, res) => {
+app.post("/api/sheets/append", async (req, res) => {
     const { tokens, spreadsheetId, range, values } = req.body;
     oauth2Client.setCredentials(tokens);
     const sheets = google.sheets({ version: "v4", auth: oauth2Client });
@@ -176,7 +185,7 @@ app.post(["/api/sheets/append", "/sheets/append"], async (req, res) => {
     }
 });
 
-app.post(["/api/sheets/read", "/sheets/read"], async (req, res) => {
+app.post("/api/sheets/read", async (req, res) => {
     const { tokens, spreadsheetId, range } = req.body;
     oauth2Client.setCredentials(tokens);
     const sheets = google.sheets({ version: "v4", auth: oauth2Client });
@@ -191,7 +200,7 @@ app.post(["/api/sheets/read", "/sheets/read"], async (req, res) => {
     }
 });
 
-app.post(["/api/sheets/update", "/sheets/update"], async (req, res) => {
+app.post("/api/sheets/update", async (req, res) => {
     const { tokens, spreadsheetId, range, values } = req.body;
     oauth2Client.setCredentials(tokens);
     const sheets = google.sheets({ version: "v4", auth: oauth2Client });
@@ -208,7 +217,7 @@ app.post(["/api/sheets/update", "/sheets/update"], async (req, res) => {
     }
 });
 
-app.post(["/api/sheets/valuesBatchUpdate", "/sheets/valuesBatchUpdate"], async (req, res) => {
+app.post("/api/sheets/valuesBatchUpdate", async (req, res) => {
     const { tokens, spreadsheetId, data } = req.body;
     oauth2Client.setCredentials(tokens);
     const sheets = google.sheets({ version: "v4", auth: oauth2Client });
@@ -226,7 +235,7 @@ app.post(["/api/sheets/valuesBatchUpdate", "/sheets/valuesBatchUpdate"], async (
     }
 });
 
-app.post(["/api/sheets/batchClear", "/sheets/batchClear"], async (req, res) => {
+app.post("/api/sheets/batchClear", async (req, res) => {
     const { tokens, spreadsheetId, ranges } = req.body;
     oauth2Client.setCredentials(tokens);
     const sheets = google.sheets({ version: "v4", auth: oauth2Client });
@@ -241,7 +250,7 @@ app.post(["/api/sheets/batchClear", "/sheets/batchClear"], async (req, res) => {
     }
 });
 
-app.post(["/api/auth/me", "/auth/me"], async (req, res) => {
+app.post("/api/auth/me", async (req, res) => {
   const { tokens } = req.body;
   if (!tokens) return res.status(401).json({ error: "Missing tokens" });
 

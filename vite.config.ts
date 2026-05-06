@@ -13,12 +13,26 @@ export default defineConfig(({mode}) => {
       VitePWA({
         registerType: 'autoUpdate',
         devOptions: { enabled: true },
+        workbox: {
+          navigateFallbackDenylist: [/^\/api/],
+        },
         manifest: {
           name: 'TC Inventory Management Pro',
           short_name: 'TC Inventory',
           description: 'Serverless inventory management system',
           theme_color: '#ffffff',
-          icons: []
+          icons: [
+            {
+              src: 'pwa-192x192.png',
+              sizes: '192x192',
+              type: 'image/png'
+            },
+            {
+              src: 'pwa-512x512.png',
+              sizes: '512x512',
+              type: 'image/png'
+            }
+          ]
         }
       })
     ],

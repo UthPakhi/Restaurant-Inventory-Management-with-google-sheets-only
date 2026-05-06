@@ -76,9 +76,9 @@ export class SheetsService {
     this.spreadsheetId = id;
   }
 
-  async getAuthUrl(): Promise<string> {
+  async getAuthUrl(statePayload: any = {}): Promise<string> {
     const redirectUri = `${window.location.origin}/api/auth/callback`;
-    const res = await fetch(`/api/auth/google/url?redirect_uri=${encodeURIComponent(redirectUri)}`);
+    const res = await fetch(`/api/auth/google/url?redirect_uri=${encodeURIComponent(redirectUri)}&state=${encodeURIComponent(JSON.stringify(statePayload))}`);
     const data = await res.json();
     return data.url;
   }

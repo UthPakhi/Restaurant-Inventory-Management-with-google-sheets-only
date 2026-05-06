@@ -31,6 +31,7 @@ import { useAppLookup } from './context/AppContext';
 import { Toaster } from 'sonner';
 
 import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 
 // Types
 type View = 'summary' | 'inventory' | 'purchases' | 'issues' | 'cashflow' | 'sales' | 'masters' | 'settings' | 'audit' | 'ledger';
@@ -45,15 +46,18 @@ export default function App() {
   });
 
   useEffect(() => {
-    const metaThemeColor = document.getElementById('theme-color-meta');
+    const metaLight = document.getElementById('theme-color-light');
+    const metaDark = document.getElementById('theme-color-dark');
     if (isDarkMode) {
       document.documentElement.classList.add('dark');
       localStorage.setItem('resto_theme', 'dark');
-      if (metaThemeColor) metaThemeColor.setAttribute('content', '#0f172a');
+      if (metaLight) metaLight.setAttribute('content', '#0f172a');
+      if (metaDark) metaDark.setAttribute('content', '#0f172a');
     } else {
       document.documentElement.classList.remove('dark');
       localStorage.setItem('resto_theme', 'light');
-      if (metaThemeColor) metaThemeColor.setAttribute('content', '#ffffff');
+      if (metaLight) metaLight.setAttribute('content', '#ffffff');
+      if (metaDark) metaDark.setAttribute('content', '#ffffff');
     }
   }, [isDarkMode]);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -207,6 +211,7 @@ export default function App() {
       "dark:bg-slate-950 dark:text-slate-100"
     )}>
       <Analytics />
+      <SpeedInsights />
       <Toaster position="top-right" richColors />
       {isSidebarOpen && (
         <div 
@@ -216,7 +221,7 @@ export default function App() {
       )}
       {/* Sidebar */}
       <aside className={cn(
-        "fixed lg:relative z-50 h-full w-64 bg-slate-900 text-white flex flex-col transition-transform duration-300 shrink-0",
+        "fixed lg:relative z-50 h-full w-64 bg-slate-900 text-white flex flex-col transition-transform duration-300 shrink-0 pt-safe pb-safe",
         !isSidebarOpen && "-translate-x-full lg:translate-x-0 lg:w-20",
         isDarkMode && "bg-slate-950 border-r border-slate-800"
       )}>
@@ -305,7 +310,7 @@ export default function App() {
       {/* Main Content */}
       <main className="flex-1 flex flex-col h-full overflow-hidden">
         {/* Header */}
-        <header className="h-16 px-6 flex items-center justify-between shrink-0 border-b border-slate-200 bg-white shadow-sm dark:bg-slate-900 dark:border-slate-800">
+        <header className="h-safe-header pt-safe px-6 flex items-center justify-between shrink-0 border-b border-slate-200 bg-white shadow-sm dark:bg-slate-900 dark:border-slate-800">
           <div className="flex items-center gap-4">
             <button 
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -329,8 +334,8 @@ export default function App() {
           </div>
         </header>
 
-        <section className="flex-1 overflow-y-auto p-6 scroll-smooth">
-          <div className="max-w-6xl mx-auto h-full">
+        <section className="flex-1 overflow-y-auto p-6 pb-safe scroll-smooth">
+          <div className="max-w-6xl mx-auto h-full pb-8">
             <AnimatePresence mode="wait">
               <motion.div
                 key={activeView}

@@ -13,4 +13,25 @@
   body {
     @apply bg-slate-50 text-slate-900 font-sans;
   }
+  .dark body {
+    @apply bg-slate-950 text-slate-100;
+  }
+}
+
+@layer utilities {
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .pl-safe {
+    padding-left: env(safe-area-inset-left);
+  }
+  .pr-safe {
+    padding-right: env(safe-area-inset-right);
+  }
+  .h-safe-header {
+    height: calc(4rem + env(safe-area-inset-top));
+  }
 }

@@ -596,6 +596,51 @@ export const IssuesView: React.FC = () => {
     // Format pivotData.dates into array of objects to satisfy DataTable's requirement extending Record<string,any>
     const mappedPivotDates = pivotData.dates.map(date => ({ date, id: date }));
 
+    const pivotTotals = React.useMemo(() => {
+        const totals: Record<string, number> = {};
+        let grandTotal = 0;
+        mappedPivotDates.forEach(r => {
+            pivotData.cols.forEach(col => {
+                const val = pivotData.data[r.date][col] || 0;
+                totals[col] = (totals[col] || 0) + val;
+                grandTotal += val;
+            });
+        });
+        return { totals, grandTotal };
+    }, [mappedPivotDates, pivotData]);
+
+    const pivotSummaryRow = (
+        <tr>
+            <td className="px-6 py-4 whitespace-nowrap" colSpan={2}>
+                <span className="font-bold">GRAND TOTAL</span>
+            </td>
+            {pivotData.cols.map(col => (
+               <td key={col} className="px-6 py-4 text-right">
+                  <span className="font-mono">{pivotTotals.totals[col] > 0 ? pivotTotals.totals[col].toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits:2}) : '-'}</span>
+               </td>
+            ))}
+            <td className="px-6 py-4 text-right font-black">
+                <span className="font-mono text-emerald-700 dark:text-emerald-400">{pivotTotals.grandTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits:2})}</span>
+            </td>
+        </tr>
+    );
+
+    const listGrandTotal = React.useMemo(() => {
+        return displayedIssues.reduce((sum, issue) => sum + (Number(issue.total) || 0), 0);
+    }, [displayedIssues]);
+
+    const listSummaryRow = (
+        <tr>
+            <td colSpan={5} className="px-6 py-4 whitespace-nowrap text-right">
+                <span className="font-bold">SUBTOTAL OF ALL DAYS</span>
+            </td>
+            <td className="px-6 py-4 text-right font-black border-x border-emerald-200/50 dark:border-emerald-800/50">
+               <span className="font-mono text-emerald-700 dark:text-emerald-400">{listGrandTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits:2})}</span>
+            </td>
+            <td className="px-6 py-4"></td>
+        </tr>
+    );
+
     return (
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -678,6 +723,7 @@ export const IssuesView: React.FC = () => {
                             ]);
                             exportTableToExcel(headers, rows, 'Consumption', 'consumption_log');
                         }}
+                        summaryRow={listSummaryRow}
                     />
                 ) : viewMode === 'itemSummary' ? (
                     <>
@@ -753,6 +799,7 @@ export const IssuesView: React.FC = () => {
                             });
                             exportTableToExcel(headers, rows, 'Consumption Pivot', 'consumption_pivot');
                         }}
+                        summaryRow={pivotSummaryRow}
                     />
                 )}
             </div>

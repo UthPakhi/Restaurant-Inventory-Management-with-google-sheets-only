@@ -20,7 +20,7 @@ export default defineConfig(({mode}) => {
           name: 'TC Inventory Management Pro',
           short_name: 'TC Inventory',
           description: 'Serverless inventory management system',
-          theme_color: '#ffffff',
+          background_color: '#ffffff',
           icons: [
             {
               src: 'pwa-192x192.png',

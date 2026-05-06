@@ -24,6 +24,7 @@ interface DataTableProps<T> {
   defaultPageSize?: number;
   onExportPDF?: (filteredData: T[]) => void;
   onExportExcel?: (filteredData: T[]) => void;
+  summaryRow?: React.ReactNode;
 }
 
 export function DataTable<T extends Record<string, any>>({
@@ -38,7 +39,8 @@ export function DataTable<T extends Record<string, any>>({
   pageSizeStats = [10, 25, 50, 100],
   defaultPageSize = 25,
   onExportPDF,
-  onExportExcel
+  onExportExcel,
+  summaryRow
 }: DataTableProps<T>) {
   const [search, setSearch] = useState('');
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
@@ -231,6 +233,11 @@ export function DataTable<T extends Record<string, any>>({
                 ))
               )}
             </tbody>
+            {summaryRow && (
+              <tfoot className="bg-emerald-50 text-[11px] uppercase tracking-wider text-emerald-800 font-bold border-t border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900/50">
+                {summaryRow}
+              </tfoot>
+            )}
           </table>
         </div>
       </div>

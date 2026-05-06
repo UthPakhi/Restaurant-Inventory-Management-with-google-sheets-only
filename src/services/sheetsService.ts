@@ -98,6 +98,21 @@ export class SheetsService {
     return data;
   }
 
+  async getMetadata(): Promise<any[]> {
+    if (this.isDemoMode) {
+      return Object.keys(this.demoData).map(title => ({ title }));
+    }
+    const res = await fetch("/api/sheets/metadata", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tokens: this.tokens, spreadsheetId: this.spreadsheetId }),
+    });
+    if (!res.ok) {
+        throw new Error("Failed to get spreadsheet metadata");
+    }
+    return await res.json();
+  }
+
   async initializeSheetStructure(): Promise<any> {
     if (this.isDemoMode) return { success: true };
     if (!this.spreadsheetId) throw new Error("No spreadsheet ID set");
@@ -109,34 +124,37 @@ export class SheetsService {
       "AuditLogs", "AppSettings"
     ];
 
-    for (const title of titles) {
-      try {
+    try {
+      const existingMetadata = await this.getMetadata();
+      const existingTitles = existingMetadata.map(s => s.title);
+      const missingTitles = titles.filter(t => !existingTitles.includes(t));
+
+      if (missingTitles.length > 0) {
+        const requests = missingTitles.map(title => ({ addSheet: { properties: { title } } }));
         const res = await fetch("/api/sheets/batchUpdate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ 
             tokens: this.tokens, 
             spreadsheetId: this.spreadsheetId, 
-            requests: [{ addSheet: { properties: { title } } }]
+            requests
           }),
         });
         const data = await res.json();
         if (data.error && !data.error.includes("already exists")) {
-            console.warn(`Failed to create sheet ${title}:`, data.error);
+            console.warn(`Failed to create sheets:`, data.error);
         }
-      } catch (e) {
-        // Network error or other
-        console.error(`Network error creating sheet ${title}:`, e);
       }
+
+      await this.setupHeaders(missingTitles);
+      return { success: true };
+    } catch (e) {
+      console.error(`Network error initializing sheets:`, e);
+      return { success: false, error: e };
     }
-
-    // Also add headers to each sheet
-    await this.setupHeaders();
-
-    return { success: true };
   }
 
-  private async setupHeaders() {
+  private async setupHeaders(newlyCreatedSheets: string[]) {
       const headers = [
           { range: "Masters_Items!A1:K1", values: [["ID", "Name", "Dept_IDs", "Unit", "BuyPrice", "SellPrice", "Category", "OpeningStock", "MinParLevel", "ReorderQty", "Status"]] },
           { range: "Masters_Depts!A1:C1", values: [["ID", "Name", "Status"]] },
@@ -153,18 +171,16 @@ export class SheetsService {
           { range: "AppSettings!A1:B3", values: [["Key", "Value"], ["RestaurantName", "RestoManage"], ["LogoUrl", ""]] },
       ];
 
-      for (const h of headers) {
+      // Only write headers for sheets we definitively know are new, to avoid many reads
+      const dataToUpdate = headers
+          .filter(h => newlyCreatedSheets.includes(h.range.split('!')[0]))
+          .map(h => ({ range: h.range, values: h.values }));
+
+      if (dataToUpdate.length > 0) {
           try {
-              // Read first row to see if headers exist
-              const existing = await this.read(h.range);
-              if (existing && existing.length > 0 && existing[0][0] === h.values[0][0]) {
-                  // Headers likely exist, skip
-                  continue;
-              }
-              
-              await this.update(h.range, h.values);
+              await this.valuesBatchUpdate(dataToUpdate);
           } catch (e) {
-              console.error(`Failed to setup headers for ${h.range}`, e);
+              console.error(`Failed to setup headers with batch update`, e);
           }
       }
   }

@@ -13,87 +13,77 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
   const [showExistingInput, setShowExistingInput] = useState(false);
   const [existingIdInput, setExistingIdInput] = useState('');
 
-  const startAuth = async () => {
+  const performAuth = async (isExisting: boolean) => {
     setLoading(true);
     try {
       const popup = window.open('about:blank', 'google_auth', 'width=600,height=700');
       const url = await sheetsService.getAuthUrl();
       if (popup) popup.location.href = url;
       
-      const handleMessage = async (event: MessageEvent) => {
+      const handleSuccess = async (tokens: GoogleTokens) => {
         try {
-          if (event.data?.type === 'GOOGLE_AUTH_SUCCESS') {
-            const tokens = event.data.tokens;
-            sheetsService.setTokens(tokens);
-            
-            const result = await sheetsService.createSpreadsheet("Restaurant Management Sheet");
-            await sheetsService.initializeSheetStructure();
-            
-            onComplete({ tokens, spreadsheetId: result.spreadsheetId });
-            window.removeEventListener('message', handleMessage);
-          }
-        } catch (e: any) {
-          setError(e.message);
-          setLoading(false);
-          window.removeEventListener('message', handleMessage);
-        }
-      };
-      
-      window.addEventListener('message', handleMessage);
-    } catch (err: any) {
-      setError(err.message);
-      setLoading(false);
-    }
-  };
-
-  const startAuthExisting = async () => {
-    setLoading(true);
-    try {
-      const popup = window.open('about:blank', 'google_auth', 'width=600,height=700');
-      const url = await sheetsService.getAuthUrl();
-      if (popup) popup.location.href = url;
-      
-      const handleMessage = async (event: MessageEvent) => {
-        try {
-          if (event.data?.type === 'GOOGLE_AUTH_SUCCESS') {
-            const tokens = event.data.tokens;
-            sheetsService.setTokens(tokens);
-            
+          sheetsService.setTokens(tokens);
+          if (isExisting) {
             let existingSpreadsheetId = existingIdInput;
             if (existingSpreadsheetId.includes('/d/')) {
               const match = existingSpreadsheetId.match(/\/d\/([a-zA-Z0-9-_]+)/);
-              if (match && match[1]) {
-                 existingSpreadsheetId = match[1];
-              }
+              if (match && match[1]) existingSpreadsheetId = match[1];
             }
-
             sheetsService.setSpreadsheetId(existingSpreadsheetId);
-            
-            // Test read access explicitly to catch permission errors immediately:
-            try {
-               await sheetsService.read("Masters_Items!A1:A1");
-            } catch (e: any) {
-               throw new Error("Unable to access spreadsheet. Ensure you have the correct URL and the owner has shared it with your Google Account.");
-            }
-
-            await sheetsService.initializeSheetStructure(); // Ensure headers exist, also validates access
-            
+            await sheetsService.read("Masters_Items!A1:A1");
+            await sheetsService.initializeSheetStructure();
             onComplete({ tokens, spreadsheetId: existingSpreadsheetId });
-            window.removeEventListener('message', handleMessage);
+          } else {
+            const result = await sheetsService.createSpreadsheet("Restaurant Management Sheet");
+            await sheetsService.initializeSheetStructure();
+            onComplete({ tokens, spreadsheetId: result.spreadsheetId });
           }
         } catch (e: any) {
           setError(e.message);
           setLoading(false);
-          window.removeEventListener('message', handleMessage);
+        } finally {
+          cleanup();
         }
       };
-      
+
+      const handleMessage = (event: MessageEvent) => {
+        if (event.data?.type === 'GOOGLE_AUTH_SUCCESS') handleSuccess(event.data.tokens);
+      };
+
+      const handleStorage = (event: StorageEvent) => {
+        if (event.key === 'GOOGLE_AUTH_TOKENS' && event.newValue) {
+          try {
+             const tokens = JSON.parse(event.newValue);
+             window.localStorage.removeItem('GOOGLE_AUTH_TOKENS');
+             handleSuccess(tokens);
+          } catch(e) {}
+        }
+      };
+
+      let bc: BroadcastChannel | null = null;
+      try {
+        bc = new BroadcastChannel('google_auth_channel');
+        bc.onmessage = (event) => {
+          if (event.data?.type === 'GOOGLE_AUTH_SUCCESS') handleSuccess(event.data.tokens);
+        };
+      } catch (e) {}
+
+      const cleanup = () => {
+        window.removeEventListener('message', handleMessage);
+        window.removeEventListener('storage', handleStorage);
+        if (bc) bc.close();
+      };
+
       window.addEventListener('message', handleMessage);
+      window.addEventListener('storage', handleStorage);
     } catch (err: any) {
       setError(err.message);
       setLoading(false);
     }
   };
+
+  const startAuth = () => performAuth(false);
+  const startAuthExisting = () => performAuth(true);
 
   return (
     <div className="fixed inset-0 z-[100] bg-slate-50 flex items-center justify-center p-6 sm:p-12 overflow-y-auto dark:bg-slate-950">

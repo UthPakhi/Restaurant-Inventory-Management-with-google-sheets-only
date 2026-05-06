@@ -234,5 +234,6 @@ app.post("/api/auth/me", async (req, res) => {
   }
 });
 
-export default app; // Vercel understands standard Express handlers
-export const handler = serverless(app); // Backup for other function platforms
+//export default app; // Vercel understands standard Express handlers
+//export const handler = serverless(app); // Backup for other function platforms
+export default serverless(app);

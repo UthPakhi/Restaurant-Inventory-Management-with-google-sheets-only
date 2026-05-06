@@ -8,18 +8,6 @@ dotenv.config();
 const app = express();
 app.use(express.json());
 
-// Vercel Rewrite URL Restorer
-app.use((req, res, next) => {
-  if (req.query.routePath) {
-    req.url = '/api/' + req.query.routePath;
-    const qStr = new URLSearchParams(req.query as any).toString();
-    if (qStr) {
-      req.url += '?' + qStr;
-    }
-  }
-  next();
-});
-
 // Google OAuth Config
 const oauth2Client = new google.auth.OAuth2(
   process.env.GOOGLE_CLIENT_ID,
@@ -96,38 +84,37 @@ app.get(["/api/auth/callback", "/api/auth/callback/", "/auth/callback", "/auth/c
           <script>
             console.log("[Auth Callback] Script started executing.");
             console.log("[Auth Callback] tokens received:", ${JSON.stringify(tokens ? "Tokens present" : "No tokens")});
-            const tokens = ${JSON.stringify(tokens)};
-            
-            // Method 1: window.opener
-            try {
-              if (window.opener) {
-                window.opener.postMessage({ type: 'GOOGLE_AUTH_SUCCESS', tokens }, '*');
+            console.log("[Auth Callback] Trying window.opener: ", !!window.opener);
+            if (window.opener) {
+              try {
+                console.log("[Auth Callback] Posting message to window.opener...");
+                window.opener.postMessage({ 
+                  type: 'GOOGLE_AUTH_SUCCESS', 
+                  tokens: ${JSON.stringify(tokens)} 
+                }, '*');
+                console.log("[Auth Callback] Message posted to window.opener successfully.");
+              } catch (e) {
+                console.error("[Auth Callback] Failed to postMessage to opener:", e);
               }
-            } catch (e) {}
-
-            // Method 2: BroadcastChannel
-            try {
-              const bc = new BroadcastChannel('google_auth_channel');
-              bc.postMessage({ type: 'GOOGLE_AUTH_SUCCESS', tokens });
-            } catch (e) {}
-
-            // Method 3: LocalStorage
-            try {
-              window.localStorage.setItem('GOOGLE_AUTH_TOKENS', JSON.stringify(tokens));
-            } catch (e) {}
-
-            // Close window automatically
-            setTimeout(() => {
+              
+              try {
+                console.log("[Auth Callback] Attempting to close window...");
                 window.close();
-                // If it fails to close, maybe we're on mobile where it's a tab, we can redirect back to main app
-                // with a hash that could be processed if we wanted, but let's just show a success message
-            }, 300);
+                console.log("[Auth Callback] window.close() called.");
+              } catch (e) {
+                console.error("[Auth Callback] Failed to close window:", e);
+              }
+            } else {
+              console.log("[Auth Callback] No window.opener found. Redirecting to '/'...");
+              try {
+                window.location.href = '/';
+              } catch (e) {
+                console.error("[Auth Callback] Failed to redirect:", e);
+              }
+            }
+            console.log("[Auth Callback] Script execution finished.");
           </script>
-          <div style="font-family: sans-serif; text-align: center; padding: 50px;">
-            <h2>Authentication Successful!</h2>
-            <p>You can safely close this window to continue.</p>
-            <button onclick="window.close()" style="padding: 10px 20px; font-size: 16px; background-color: #000; color: #fff; border: none; border-radius: 6px; cursor: pointer;">Close Window</button>
-          </div>
+          <p>Authentication successful. You can close this window.</p>
         </body>
       </html>
     `);

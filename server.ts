@@ -119,17 +119,17 @@ async function startServer() {
         <html>
           <body>
             <script>
-              const tokens = ${JSON.stringify(tokens)};
-              try { if (window.opener) window.opener.postMessage({ type: 'GOOGLE_AUTH_SUCCESS', tokens }, '*'); } catch(e) {}
-              try { const bc = new BroadcastChannel('google_auth_channel'); bc.postMessage({ type: 'GOOGLE_AUTH_SUCCESS', tokens }); } catch(e) {}
-              try { window.localStorage.setItem('GOOGLE_AUTH_TOKENS', JSON.stringify(tokens)); } catch(e) {}
-              setTimeout(() => { window.close(); }, 300);
+              if (window.opener) {
+                window.opener.postMessage({ 
+                  type: 'GOOGLE_AUTH_SUCCESS', 
+                  tokens: ${JSON.stringify(tokens)} 
+                }, '*');
+                window.close();
+              } else {
+                window.location.href = '/';
+              }
             </script>
-            <div style="font-family: sans-serif; text-align: center; padding: 50px;">
-              <h2>Authentication Successful!</h2>
-              <p>You can safely close this window to continue.</p>
-              <button onclick="window.close()" style="padding: 10px 20px; font-size: 16px; background-color: #000; color: #fff; border: none; border-radius: 6px; cursor: pointer;">Close Window</button>
-            </div>
+            <p>Authentication successful. You can close this window.</p>
           </body>
         </html>
       `);

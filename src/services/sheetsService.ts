@@ -435,15 +435,13 @@ export class SheetsService {
   }
 
   async bulkIssueFIFO(issues: { itemId: string, qty: number, date: string, deptId: string, itemName?: string, deptName?: string }[]): Promise<any> {
-    if (this.isDemoMode) {
-        // Atomic lock for demo mode to prevent race conditions
+        // Atomic lock to prevent local race conditions
         const currentLock = this.demoLock;
         let resolveLock: () => void;
         this.demoLock = new Promise(res => { resolveLock = res; });
         await currentLock;
 
         try {
-            // Fallback for demo mode
             const parseNum = (val: any) => {
                 if (val === undefined || val === null) return 0;
                 const str = String(val).replace(/,/g, '').trim();
@@ -481,24 +479,6 @@ export class SheetsService {
         } finally {
             resolveLock!();
         }
-    }
-
-    const res = await fetch("/api/inventory/issue", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-            tokens: this.tokens,
-            spreadsheetId: this.spreadsheetId,
-            issues,
-            userEmail: this.currentUserEmail
-        })
-    });
-    if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`Bulk issue failed: ${text.substring(0, 100)}`);
-    }
-    const data = await res.json();
-    return data.results;
   }
 
   async issueFIFO(itemId: string, qtyRequested: number, date: string, deptId: string, itemName?: string, deptName?: string): Promise<any> {

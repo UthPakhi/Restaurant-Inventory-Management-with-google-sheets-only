@@ -28,7 +28,11 @@ import {
   LineChart, 
   Line,
   Cell,
-  Legend
+  Legend,
+  PieChart as RechartsPieChart,
+  Pie,
+  Sector,
+  Label
 } from 'recharts';
 import { format, startOfMonth, endOfMonth, eachMonthOfInterval, subMonths } from 'date-fns';
 import jsPDF from 'jspdf';
@@ -133,6 +137,21 @@ export const SummaryView: React.FC = () => {
             const deptName = depts.find(d => d.id === curr.deptId)?.name || curr.deptId;
             const val = (Number(curr.qty) || 0) * (Number(curr.rate) || 0);
             acc[deptName] = (acc[deptName] || 0) + val;
+            return acc;
+        }, {});
+
+        return Object.entries(aggregated)
+            .map(([name, value]) => ({ name, value: Number(value) }))
+            .sort((a, b) => b.value - a.value);
+    };
+
+    // Category Distribution (Pie Chart)
+    const getCategoryDistribution = () => {
+        const aggregated = issues.filter(i => i.date && i.date.startsWith(selectedMonth)).reduce((acc: any, curr: Issue) => {
+            const item = items.find(itm => itm.id === curr.itemId);
+            const categoryName = item?.category || 'Uncategorized';
+            const val = (Number(curr.qty) || 0) * (Number(curr.rate) || 0);
+            acc[categoryName] = (acc[categoryName] || 0) + val;
             return acc;
         }, {});
 
@@ -322,6 +341,7 @@ export const SummaryView: React.FC = () => {
     const deptChartData = getDeptConsumptionData();
     const trendData = getMonthlyTrendData();
     const sectionData = getSectionComparison();
+    const categoryData = getCategoryDistribution();
     const costStats = getFoodCostStats();
     const inventoryValue = getInventoryValue();
 
@@ -539,7 +559,7 @@ export const SummaryView: React.FC = () => {
                 </div>
 
                 {/* Monthly Store Trend */}
-                <div className="col-span-12 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm h-[350px] dark:bg-slate-900 dark:border-slate-800">
+                <div className="col-span-12 lg:col-span-8 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm h-[400px] dark:bg-slate-900 dark:border-slate-800">
                     <div className="flex items-center gap-2 mb-6">
                         <TrendingUp size={18} className="text-orange-500" />
                         <h3 className="font-bold text-slate-900 tracking-tight dark:text-white">Store Consumption Trend (Last 6 Months)</h3>
@@ -572,6 +592,56 @@ export const SummaryView: React.FC = () => {
                                     activeDot={{ r: 6 }}
                                 />
                             </LineChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+
+                {/* Category Distribution (Pie Chart) */}
+                <div className="col-span-12 lg:col-span-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[400px] dark:bg-slate-900 dark:border-slate-800">
+                    <div className="flex items-center gap-2 mb-6">
+                        <PieChart size={18} className="text-indigo-500" />
+                        <h3 className="font-bold text-slate-900 tracking-tight dark:text-white">Category Distribution</h3>
+                    </div>
+                    <div className="flex-1 w-full relative">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <RechartsPieChart>
+                                <Pie
+                                    data={categoryData}
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius={70}
+                                    outerRadius={110}
+                                    paddingAngle={3}
+                                    dataKey="value"
+                                    stroke="none"
+                                >
+                                    {categoryData.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={['#6366f1', '#ec4899', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#14b8a6', '#ef4444'][index % 8]} />
+                                    ))}
+                                </Pie>
+                                <Tooltip 
+                                    cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+                                    content={({ active, payload }) => {
+                                        if (active && payload && payload.length) {
+                                            const data = payload[0].payload;
+                                            const percentage = costStats.storeIssues ? ((data.value / costStats.storeIssues) * 100).toFixed(1) : 0;
+                                            return (
+                                                <div className="bg-white p-3 rounded-xl shadow-lg border border-slate-100 text-xs dark:bg-slate-800 dark:border-slate-700">
+                                                    <p className="font-bold text-slate-800 mb-1 dark:text-white">{data.name}</p>
+                                                    <p className="text-slate-600 font-medium pb-0.5 dark:text-slate-400">Value: <span className="text-indigo-600 font-bold font-mono dark:text-indigo-400">Rs. {data.value.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span></p>
+                                                    <p className="text-slate-600 font-medium dark:text-slate-400">Share: <span className="text-slate-800 font-bold font-mono dark:text-slate-200">{percentage}%</span></p>
+                                                </div>
+                                            );
+                                        }
+                                        return null;
+                                    }}
+                                />
+                                <Legend 
+                                    iconType="circle"
+                                    wrapperStyle={{ fontSize: '11px', fontWeight: 600 }}
+                                    formatter={(value) => <span className="text-slate-600 dark:text-slate-400">{value}</span>}
+                                />
+                            </RechartsPieChart>
                         </ResponsiveContainer>
                     </div>
                 </div>

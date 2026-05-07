@@ -1,11 +1,13 @@
 import React, { useState, useMemo } from 'react';
-import { Search, ChevronLeft, ChevronRight, ArrowUpDown, Loader2, FileText, Download } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, ArrowUpDown, Loader2, FileText, Download, X, Check } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { AnimatePresence, motion } from 'motion/react';
 
 export interface Column<T> {
   key: string;
   header: React.ReactNode;
   cell: (item: T) => React.ReactNode;
+  exportValue?: (item: T) => any; // For extracting plain data for exports
   sortable?: boolean;
   align?: 'left' | 'center' | 'right';
   sortFn?: (a: T, b: T) => number;
@@ -22,8 +24,8 @@ interface DataTableProps<T> {
   pagination?: boolean;
   pageSizeStats?: number[];
   defaultPageSize?: number;
-  onExportPDF?: (filteredData: T[]) => void;
-  onExportExcel?: (filteredData: T[]) => void;
+  onExportPDF?: (filteredData: T[], activeColumns: Column<T>[]) => Promise<void> | void;
+  onExportExcel?: (filteredData: T[], activeColumns: Column<T>[]) => Promise<void> | void;
   summaryRow?: React.ReactNode;
 }
 
@@ -46,6 +48,13 @@ export function DataTable<T extends Record<string, any>>({
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(defaultPageSize);
+
+  // Export State
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportType, setExportType] = useState<'pdf' | 'excel' | null>(null);
+  const [selectedColumns, setSelectedColumns] = useState<string[]>(columns.map(c => c.key));
+  const [isExporting, setIsExporting] = useState(false);
+
 
   const filteredData = useMemo(() => {
     let result = [...data];
@@ -110,6 +119,22 @@ export function DataTable<T extends Record<string, any>>({
     });
   };
 
+  const executeExport = async () => {
+    if (!exportType) return;
+    setIsExporting(true);
+    try {
+        const activeCols = columns.filter(c => selectedColumns.includes(c.key));
+        if (exportType === 'pdf' && onExportPDF) await onExportPDF(filteredData, activeCols);
+        if (exportType === 'excel' && onExportExcel) await onExportExcel(filteredData, activeCols);
+    } catch(e) {
+        console.error("Export Failed", e);
+    } finally {
+        setIsExporting(false);
+        setShowExportModal(false);
+        setExportType(null);
+    }
+  };
+
   return (
     <div className="space-y-4">
       {(searchable || onExportPDF || onExportExcel) && (
@@ -135,21 +160,23 @@ export function DataTable<T extends Record<string, any>>({
               <div className="flex gap-2">
                 {onExportPDF && (
                   <button 
-                    onClick={() => onExportPDF(filteredData)}
-                    className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 hover:bg-slate-50 transition-colors dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800"
+                    onClick={() => { setExportType('pdf'); setShowExportModal(true); }}
+                    className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 hover:bg-slate-50 transition-colors dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800 disabled:opacity-50"
                     title="Export to PDF"
+                    disabled={isExporting}
                   >
-                    <FileText size={16} className="text-red-500" />
+                    {isExporting && exportType === 'pdf' ? <Loader2 size={16} className="animate-spin text-red-500"/> : <FileText size={16} className="text-red-500" />}
                     <span className="hidden sm:inline">PDF</span>
                   </button>
                 )}
                 {onExportExcel && (
                   <button 
-                    onClick={() => onExportExcel(filteredData)}
-                    className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 hover:bg-slate-50 transition-colors dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800"
+                    onClick={() => { setExportType('excel'); setShowExportModal(true); }}
+                    className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 hover:bg-slate-50 transition-colors dark:bg-slate-900 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800 disabled:opacity-50"
                     title="Export to Excel"
+                    disabled={isExporting}
                   >
-                    <Download size={16} className="text-emerald-500" />
+                    {isExporting && exportType === 'excel' ? <Loader2 size={16} className="animate-spin text-emerald-500"/> : <Download size={16} className="text-emerald-500" />}
                     <span className="hidden sm:inline">Excel</span>
                   </button>
                 )}
@@ -287,6 +314,68 @@ export function DataTable<T extends Record<string, any>>({
             </div>
         </div>
       )}
+
+      <AnimatePresence>
+        {showExportModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden dark:bg-slate-900 border border-slate-200 dark:border-slate-800"
+            >
+              <div className="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-800">
+                <h3 className="font-bold text-slate-800 dark:text-slate-200">
+                  Select Columns to Export
+                </h3>
+                <button
+                  onClick={() => setShowExportModal(false)}
+                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="p-4 max-h-[60vh] overflow-y-auto space-y-2">
+                {columns.filter(c => c.key !== 'actions').map(col => (
+                  <label key={col.key} className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
+                    <div className={cn("w-5 h-5 rounded flex items-center justify-center border transition-colors", selectedColumns.includes(col.key) ? "bg-emerald-500 border-emerald-500 text-white" : "border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900")}>
+                      {selectedColumns.includes(col.key) && <Check size={14} />}
+                    </div>
+                    <input
+                      type="checkbox"
+                      className="hidden"
+                      checked={selectedColumns.includes(col.key)}
+                      onChange={(e) => {
+                        if (e.target.checked) setSelectedColumns(p => [...p, col.key]);
+                        else setSelectedColumns(p => p.filter(k => k !== col.key));
+                      }}
+                    />
+                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                      {typeof col.header === 'string' ? col.header : col.key}
+                    </span>
+                  </label>
+                ))}
+              </div>
+              <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-2 bg-slate-50 dark:bg-slate-900/50">
+                <button
+                  onClick={() => setShowExportModal(false)}
+                  className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={executeExport}
+                  disabled={isExporting || selectedColumns.length === 0}
+                  className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium shadow-sm hover:bg-emerald-700 transition-all disabled:opacity-50"
+                >
+                  {isExporting ? <Loader2 size={16} className="animate-spin" /> : (exportType === 'pdf' ? <FileText size={16} /> : <Download size={16} />)}
+                  Export {exportType === 'pdf' ? 'PDF' : 'Excel'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -164,8 +164,8 @@ export const StoreLedgerView: React.FC = () => {
                   <h2 className="text-2xl font-bold tracking-tight dark:text-white">Store Ledger</h2>
                   <p className="text-sm text-slate-500 dark:text-slate-400">Track daily store value, opening balances, and consumption.</p>
                 </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-[300px]">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                  <div className="w-full sm:w-[300px]">
                       <Select
                           options={[
                               { value: 'all', label: 'All Items (Value in Rs)' },
@@ -228,49 +228,51 @@ export const StoreLedgerView: React.FC = () => {
                           isSearchable
                       />
                   </div>
-                  <select 
-                      className="px-4 py-2 h-[42px] bg-white border border-slate-200 rounded-lg text-sm font-bold text-slate-700 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all shadow-sm cursor-pointer dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200"
-                      value={selectedMonth}
-                      onChange={(e) => setSelectedMonth(e.target.value)}
-                  >
-                      {getMonthsOptions().map(opt => (
-                          <option key={opt} value={opt}>{format(parseISO(opt + '-01'), 'MMMM yyyy')}</option>
-                      ))}
-                  </select>
-                  <button 
-                      className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium shadow-sm hover:bg-slate-50 transition-all dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700"
-                      onClick={() => {
-                          const headers = ['Date', 'Opening Balance', 'Purchased / Added', 'Used / Issued', 'Closing Balance'];
-                          const rows = ledgerData.ledgerDays.map((d:any) => [
-                              d.date, 
-                              d.openingBalance.toFixed(2), 
-                              d.purchased !== 0 ? d.purchased.toFixed(2) : '-', 
-                              d.used !== 0 ? d.used.toFixed(2) : '-', 
-                              d.closingBalance.toFixed(2)
-                          ]);
-                          exportTableToPDF(headers, rows, `Store Ledger - ${selectedMonth}`, 'store_ledger');
-                      }}
-                  >
-                    <FileText size={14} className="text-red-500" />
-                    <span className="hidden sm:inline">PDF</span>
-                  </button>
-                  <button 
-                      className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium shadow-sm hover:bg-slate-50 transition-all dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700"
-                      onClick={() => {
-                          const headers = ['Date', 'Opening Balance', 'Purchased / Added', 'Used / Issued', 'Closing Balance'];
-                          const rows = ledgerData.ledgerDays.map((d:any) => [
-                              d.date, 
-                              d.openingBalance, 
-                              d.purchased, 
-                              d.used, 
-                              d.closingBalance
-                          ]);
-                          exportTableToExcel(headers, rows, `Ledger`, 'store_ledger');
-                      }}
-                  >
-                    <Download size={14} className="text-emerald-500" />
-                    <span className="hidden sm:inline">Excel</span>
-                  </button>
+                  <div className="flex gap-2">
+                      <select 
+                          className="flex-1 sm:flex-none px-4 py-2 h-[42px] bg-white border border-slate-200 rounded-lg text-sm font-bold text-slate-700 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all shadow-sm cursor-pointer dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200"
+                          value={selectedMonth}
+                          onChange={(e) => setSelectedMonth(e.target.value)}
+                      >
+                          {getMonthsOptions().map(opt => (
+                              <option key={opt} value={opt}>{format(parseISO(opt + '-01'), 'MMMM yyyy')}</option>
+                          ))}
+                      </select>
+                      <button 
+                          className="flex justify-center items-center gap-2 px-3 py-2 h-[42px] bg-white border border-slate-200 rounded-lg text-sm font-medium shadow-sm hover:bg-slate-50 transition-all dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700"
+                          onClick={() => {
+                              const headers = ['Date', 'Opening Balance', 'Purchased / Added', 'Used / Issued', 'Closing Balance'];
+                              const rows = ledgerData.ledgerDays.map((d:any) => [
+                                  d.date, 
+                                  d.openingBalance.toFixed(2), 
+                                  d.purchased !== 0 ? d.purchased.toFixed(2) : '-', 
+                                  d.used !== 0 ? d.used.toFixed(2) : '-', 
+                                  d.closingBalance.toFixed(2)
+                              ]);
+                              exportTableToPDF(headers, rows, `Store Ledger - ${selectedMonth}`, 'store_ledger');
+                          }}
+                      >
+                        <FileText size={14} className="text-red-500" />
+                        <span className="hidden sm:inline">PDF</span>
+                      </button>
+                      <button 
+                          className="flex justify-center items-center gap-2 px-3 py-2 h-[42px] bg-white border border-slate-200 rounded-lg text-sm font-medium shadow-sm hover:bg-slate-50 transition-all dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-700"
+                          onClick={() => {
+                              const headers = ['Date', 'Opening Balance', 'Purchased / Added', 'Used / Issued', 'Closing Balance'];
+                              const rows = ledgerData.ledgerDays.map((d:any) => [
+                                  d.date, 
+                                  d.openingBalance, 
+                                  d.purchased, 
+                                  d.used, 
+                                  d.closingBalance
+                              ]);
+                              exportTableToExcel(headers, rows, `Ledger`, 'store_ledger');
+                          }}
+                      >
+                        <Download size={14} className="text-emerald-500" />
+                        <span className="hidden sm:inline">Excel</span>
+                      </button>
+                  </div>
                 </div>
             </div>
 

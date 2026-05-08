@@ -1009,8 +1009,8 @@ export const IssuesView: React.FC = () => {
                                             </div>
                                             <div className="space-y-3 pb-24">
                                                 {form.lines.map((line, idx) => (
-                                                    <div key={idx} className="grid grid-cols-12 gap-3 items-start animate-in slide-in-from-left-2 duration-200">
-                                                        <div className="col-span-6 space-y-1">
+                                                    <div key={idx} className="flex flex-col sm:grid sm:grid-cols-12 gap-3 items-start animate-in slide-in-from-left-2 duration-200 bg-slate-50/50 sm:bg-transparent p-3 sm:p-0 rounded-xl sm:rounded-none border border-slate-100 sm:border-0 dark:bg-slate-800/30 sm:dark:bg-transparent dark:border-slate-800">
+                                                        <div className="w-full sm:col-span-6 space-y-1">
                                                             <Select
                                                                 options={itemOptions}
                                                                 value={itemOptions.find(o => o.value === line.itemId) || null}
@@ -1028,29 +1028,31 @@ export const IssuesView: React.FC = () => {
                                                                 </div>
                                                             )}
                                                         </div>
-                                                        <div className="col-span-3">
-                                                            <input type="number" 
-                                                                className={cn(
-                                                                    "w-full px-3 py-2 bg-slate-50 border rounded-lg text-sm focus:ring-2 focus:outline-none transition-all dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200",
-                                                                    line.qty && stockLevels[line.itemId] !== undefined && Number(line.qty) > stockLevels[line.itemId]
-                                                                        ? "border-red-500 focus:ring-red-500/20 dark:border-red-900"
-                                                                        : "border-slate-200 focus:ring-emerald-500/20 dark:border-slate-700"
-                                                                )}
-                                                                placeholder="Qty"
-                                                                value={line.qty} onChange={e => updateLine(idx, 'qty', e.target.value)}
-                                                            />
-                                                        </div>
-                                                        <div className="col-span-2 pt-2 text-right">
-                                                            {line.itemId && line.qty ? (
-                                                                <div className="text-xs font-bold text-slate-600 dark:text-slate-400">
-                                                                    Rs {(calculateFIFOTotal(line.itemId, line.qty) || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits:2})}
-                                                                </div>
-                                                            ) : null}
-                                                        </div>
-                                                        <div className="col-span-1 text-center">
-                                                            <button onClick={() => removeLine(idx)} className="p-2 text-slate-300 hover:text-red-500 mt-0.5 dark:text-slate-600 dark:hover:text-red-400">
-                                                                <Plus className="rotate-45" size={18} />
-                                                            </button>
+                                                        <div className="flex gap-3 w-full sm:col-span-6 items-center">
+                                                            <div className="flex-1 sm:w-auto">
+                                                                <input type="number" 
+                                                                    className={cn(
+                                                                        "w-full px-3 py-2 bg-slate-50 border rounded-lg text-sm focus:ring-2 focus:outline-none transition-all dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200",
+                                                                        line.qty && stockLevels[line.itemId] !== undefined && Number(line.qty) > stockLevels[line.itemId]
+                                                                            ? "border-red-500 focus:ring-red-500/20 dark:border-red-900"
+                                                                            : "border-slate-200 focus:ring-emerald-500/20 dark:border-slate-700"
+                                                                    )}
+                                                                    placeholder="Qty"
+                                                                    value={line.qty} onChange={e => updateLine(idx, 'qty', e.target.value)}
+                                                                />
+                                                            </div>
+                                                            <div className="flex-1 sm:w-20 text-right">
+                                                                {line.itemId && line.qty ? (
+                                                                    <div className="text-xs font-bold text-slate-600 dark:text-slate-400">
+                                                                        Rs {(calculateFIFOTotal(line.itemId, line.qty) || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits:2})}
+                                                                    </div>
+                                                                ) : null}
+                                                            </div>
+                                                            <div className="text-center">
+                                                                <button onClick={() => removeLine(idx)} className="p-2 text-slate-300 hover:text-red-500 dark:text-slate-600 dark:hover:text-red-400">
+                                                                    <Plus className="rotate-45" size={18} />
+                                                                </button>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 ))}

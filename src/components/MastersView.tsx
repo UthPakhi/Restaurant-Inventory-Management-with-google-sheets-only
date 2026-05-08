@@ -776,7 +776,7 @@ export const MastersView: React.FC = () => {
                         </div>
                     ) : (
                         <table className="w-full text-left border-collapse">
-                            <thead className="bg-slate-50 text-[10px] uppercase tracking-wider text-slate-500 font-bold border-b border-slate-200">
+                            <thead className="bg-slate-50 text-[10px] uppercase tracking-wider text-slate-500 font-bold border-b border-slate-200 dark:bg-slate-900 dark:border-slate-800 dark:text-slate-400">
                                 <tr>
                                     {tab === 'items' && <>
                                         <th className="px-6 py-3">Item Detail</th>

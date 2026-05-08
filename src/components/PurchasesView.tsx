@@ -534,8 +534,11 @@ export const PurchasesView: React.FC = () => {
                                             
                                             <div className="space-y-3 pb-24">
                                                 {form.lines.map((line, idx) => (
-                                                    <div key={idx} className="grid grid-cols-12 gap-3 items-start animate-in slide-in-from-right-2 duration-200 bg-slate-50/50 p-3 rounded-xl border border-slate-100 dark:bg-slate-800/30 dark:border-slate-800">
-                                                        <div className="col-span-5 space-y-1">
+                                                    <div key={idx} className="relative flex flex-col sm:grid sm:grid-cols-12 gap-3 items-start animate-in slide-in-from-right-2 duration-200 bg-slate-50/50 p-3 pt-6 sm:p-3 sm:pt-3 rounded-xl border border-slate-100 dark:bg-slate-800/30 dark:border-slate-800">
+                                                        <button onClick={() => removeLine(idx)} className="absolute right-1 top-1 sm:hidden p-2 text-slate-400 hover:text-red-500 transition-colors">
+                                                            <Plus className="rotate-45" size={18} />
+                                                        </button>
+                                                        <div className="w-full sm:col-span-5 space-y-1">
                                                             <label className="text-[8px] uppercase font-bold text-slate-400 ml-1 dark:text-slate-500">Item</label>
                                                             <Select
                                                                 options={itemOptions}
@@ -552,37 +555,48 @@ export const PurchasesView: React.FC = () => {
                                                                 </p>
                                                             )}
                                                         </div>
-                                                        <div className="col-span-2 space-y-1">
-                                                            <label className="text-[8px] uppercase font-bold text-slate-400 ml-1 dark:text-slate-500">Quantity</label>
-                                                            <input type="number" 
-                                                                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all dark:bg-slate-900 dark:border-slate-700 dark:text-slate-200"
-                                                                placeholder="0.0"
-                                                                value={line.qty} onChange={e => updateLine(idx, 'qty', e.target.value)}
-                                                            />
+                                                        <div className="grid grid-cols-2 sm:flex sm:gap-2 w-full sm:col-span-7 items-end gap-2">
+                                                            <div className="space-y-1">
+                                                                <label className="text-[8px] uppercase font-bold text-slate-400 ml-1 dark:text-slate-500">Quantity</label>
+                                                                <input type="number" 
+                                                                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all dark:bg-slate-900 dark:border-slate-700 dark:text-slate-200"
+                                                                    placeholder="0.0"
+                                                                    value={line.qty} onChange={e => updateLine(idx, 'qty', e.target.value)}
+                                                                />
+                                                            </div>
+                                                            <div className="space-y-1">
+                                                                <label className="text-[8px] uppercase font-bold text-slate-400 ml-1 dark:text-slate-500">Rate (Rs.)</label>
+                                                                <input type="number" 
+                                                                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all dark:bg-slate-900 dark:border-slate-700 dark:text-slate-200"
+                                                                    placeholder="0"
+                                                                    value={line.rate} onChange={e => updateLine(idx, 'rate', e.target.value)}
+                                                                />
+                                                            </div>
+                                                            <div className="col-span-2 sm:col-span-1 sm:flex-1 space-y-1">
+                                                                <label className="text-[8px] uppercase font-bold text-slate-400 ml-1 text-emerald-600 dark:text-emerald-500">Total</label>
+                                                                <div className="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-lg text-sm font-bold text-slate-700 min-h-[38px] flex items-center overflow-hidden dark:bg-slate-950 dark:border-slate-800 dark:text-slate-300">
+                                                                    <span className="truncate">{line.qty && line.rate ? (Number(line.qty) * Number(line.rate)).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0.00'}</span>
+                                                                </div>
+                                                            </div>
+                                                            <div className="hidden sm:block flex-none pb-1">
+                                                                <button onClick={() => removeLine(idx)} className="p-2 text-slate-300 hover:text-red-500 transition-colors">
+                                                                    <Plus className="rotate-45" size={20} />
+                                                                </button>
+                                                            </div>
                                                         </div>
-                                                        <div className="col-span-2 space-y-1">
-                                                            <label className="text-[8px] uppercase font-bold text-slate-400 ml-1 dark:text-slate-500">Rate (Rs.)</label>
-                                                            <input type="number" 
-                                                                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all dark:bg-slate-900 dark:border-slate-700 dark:text-slate-200"
-                                                                placeholder="0"
-                                                                value={line.rate} onChange={e => updateLine(idx, 'rate', e.target.value)}
-                                                            />
+                                                        <div className="col-span-2 sm:hidden">
                                                             {line.itemId && line.rate && (
-                                                                <div className="ml-1 mt-1">
+                                                                <div className="ml-1 text-xs">
                                                                     {getRateIndicator(line.itemId, line.rate)}
                                                                 </div>
                                                             )}
                                                         </div>
-                                                        <div className="col-span-2 space-y-1">
-                                                            <label className="text-[8px] uppercase font-bold text-slate-400 ml-1 text-emerald-600 dark:text-emerald-500">Total (Rs.)</label>
-                                                            <div className="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-lg text-sm font-bold text-slate-700 min-h-[38px] flex items-center dark:bg-slate-950 dark:border-slate-800 dark:text-slate-300">
-                                                                {line.qty && line.rate ? (Number(line.qty) * Number(line.rate)).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0.00'}
-                                                            </div>
-                                                        </div>
-                                                        <div className="col-span-1 flex justify-center pt-4">
-                                                            <button onClick={() => removeLine(idx)} className="p-2 text-slate-300 hover:text-red-500 transition-colors">
-                                                                <Plus className="rotate-45" size={20} />
-                                                            </button>
+                                                        <div className="hidden sm:block sm:col-span-12 mt-[-10px]">
+                                                            {line.itemId && line.rate && (
+                                                                <div className="ml-[42%] text-xs">
+                                                                    {getRateIndicator(line.itemId, line.rate)}
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 ))}

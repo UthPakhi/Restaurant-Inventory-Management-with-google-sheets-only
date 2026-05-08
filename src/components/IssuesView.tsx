@@ -1009,7 +1009,10 @@ export const IssuesView: React.FC = () => {
                                             </div>
                                             <div className="space-y-3 pb-24">
                                                 {form.lines.map((line, idx) => (
-                                                    <div key={idx} className="flex flex-col sm:grid sm:grid-cols-12 gap-3 items-start animate-in slide-in-from-left-2 duration-200 bg-slate-50/50 sm:bg-transparent p-3 sm:p-0 rounded-xl sm:rounded-none border border-slate-100 sm:border-0 dark:bg-slate-800/30 sm:dark:bg-transparent dark:border-slate-800">
+                                                    <div key={idx} className="relative flex flex-col sm:grid sm:grid-cols-12 gap-3 items-start animate-in slide-in-from-left-2 duration-200 bg-slate-50/50 sm:bg-transparent p-3 pt-6 sm:p-0 rounded-xl sm:rounded-none border border-slate-100 sm:border-0 dark:bg-slate-800/30 sm:dark:bg-transparent dark:border-slate-800">
+                                                        <button onClick={() => removeLine(idx)} className="absolute right-1 top-1 sm:hidden p-2 text-slate-400 hover:text-red-500 transition-colors">
+                                                            <Plus className="rotate-45" size={18} />
+                                                        </button>
                                                         <div className="w-full sm:col-span-6 space-y-1">
                                                             <Select
                                                                 options={itemOptions}
@@ -1048,7 +1051,7 @@ export const IssuesView: React.FC = () => {
                                                                     </div>
                                                                 ) : null}
                                                             </div>
-                                                            <div className="text-center">
+                                                            <div className="hidden sm:block text-center mt-[-2px]">
                                                                 <button onClick={() => removeLine(idx)} className="p-2 text-slate-300 hover:text-red-500 dark:text-slate-600 dark:hover:text-red-400">
                                                                     <Plus className="rotate-45" size={18} />
                                                                 </button>

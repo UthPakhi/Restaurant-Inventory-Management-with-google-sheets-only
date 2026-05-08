@@ -8,6 +8,7 @@ import { Loader2, Calendar, FileText, Download, Package } from 'lucide-react';
 import { cn, parseFinancialNumber } from '../lib/utils';
 import { useAppLookup } from '../context/AppContext';
 import { exportTableToPDF, exportTableToExcel } from '../lib/exportUtils';
+import Select from 'react-select';
 
 export const StoreLedgerView: React.FC = () => {
     const [batches, setBatches] = useState<Batch[]>([]);
@@ -164,18 +165,71 @@ export const StoreLedgerView: React.FC = () => {
                   <p className="text-sm text-slate-500 dark:text-slate-400">Track daily store value, opening balances, and consumption.</p>
                 </div>
                 <div className="flex items-center gap-3">
+                  <div className="w-[300px]">
+                      <Select
+                          options={[
+                              { value: 'all', label: 'All Items (Value in Rs)' },
+                              ...allItems.sort((a,b) => a.name.localeCompare(b.name)).map(i => ({ value: i.id, label: i.name }))
+                          ]}
+                          value={selectedItem === 'all' 
+                              ? { value: 'all', label: 'All Items (Value in Rs)' } 
+                              : { value: selectedItem, label: allItems.find(i => i.id === selectedItem)?.name || '' }
+                          }
+                          onChange={(selected: any) => setSelectedItem(selected?.value || 'all')}
+                          styles={{
+                              control: (base: any) => ({
+                                  ...base,
+                                  border: '1px solid var(--select-border)',
+                                  borderRadius: '0.5rem',
+                                  padding: '0.1rem',
+                                  boxShadow: 'none',
+                                  fontSize: '0.875rem',
+                                  backgroundColor: 'var(--select-bg)',
+                                  color: 'var(--select-text)',
+                                  '&:hover': {
+                                      borderColor: 'var(--select-border-hover)'
+                                  }
+                              }),
+                              singleValue: (base: any) => ({
+                                ...base,
+                                color: 'var(--select-text)'
+                              }),
+                              input: (base: any) => ({
+                                ...base,
+                                color: 'var(--select-text)'
+                              }),
+                              placeholder: (base: any) => ({
+                                ...base,
+                                color: 'var(--select-placeholder)'
+                              }),
+                              valueContainer: (base: any) => ({
+                                  ...base,
+                                  padding: '2px 8px',
+                              }),
+                              menu: (base: any) => ({
+                                  ...base,
+                                  zIndex: 100,
+                                  fontSize: '0.875rem',
+                                  backgroundColor: 'var(--select-bg)',
+                                  border: '1px solid var(--select-border)',
+                              }),
+                              option: (base: any, state: any) => ({
+                                  ...base,
+                                  backgroundColor: state.isFocused 
+                                    ? 'var(--select-option-hover)' 
+                                    : 'var(--select-bg)',
+                                  color: 'var(--select-text)',
+                                  cursor: 'pointer'
+                              }),
+                              menuPortal: (base: any) => ({ ...base, zIndex: 9999 }),
+                          }}
+                          placeholder="Select Item"
+                          menuPortalTarget={document.body}
+                          isSearchable
+                      />
+                  </div>
                   <select 
-                      className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-bold text-slate-700 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all shadow-sm cursor-pointer dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200"
-                      value={selectedItem}
-                      onChange={(e) => setSelectedItem(e.target.value)}
-                  >
-                      <option value="all">All Items (Value in Rs)</option>
-                      {allItems.sort((a,b) => a.name.localeCompare(b.name)).map(item => (
-                          <option key={item.id} value={item.id}>{item.name}</option>
-                      ))}
-                  </select>
-                  <select 
-                      className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-bold text-slate-700 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all shadow-sm cursor-pointer dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200"
+                      className="px-4 py-2 h-[42px] bg-white border border-slate-200 rounded-lg text-sm font-bold text-slate-700 focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all shadow-sm cursor-pointer dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200"
                       value={selectedMonth}
                       onChange={(e) => setSelectedMonth(e.target.value)}
                   >

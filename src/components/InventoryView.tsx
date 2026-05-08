@@ -222,30 +222,40 @@ export function InventoryView() {
              loading={loading}
              searchKeys={['name', 'type']}
              emptyMessage="No items found matching your criteria."
-             onExportPDF={(filteredData) => {
-                 const headers = ['Item', 'Department', 'Unit', 'Price', 'Stock', 'Value', 'Status'];
-                 const rows = filteredData.map(item => [
-                     item.name,
-                     item.type,
-                     item.unit,
-                     item.price.toFixed(2),
-                     item.stock.toFixed(2),
-                     item.value.toFixed(2),
-                     item.stock <= item.minParLevel ? 'Low Stock' : 'Healthy'
-                 ]);
+             onExportPDF={(filteredData, activeColumns) => {
+                 const headers = activeColumns.map(c => typeof c.header === 'string' ? c.header : c.key);
+                 const rows = filteredData.map(item => 
+                     activeColumns.map(c => {
+                         switch (c.key) {
+                             case 'name': return item.name;
+                             case 'type': return item.type;
+                             case 'unit': return item.unit;
+                             case 'price': return item.price.toFixed(2);
+                             case 'stock': return item.stock.toFixed(2);
+                             case 'value': return item.value.toFixed(2);
+                             case 'status': return item.stock <= item.minParLevel ? 'Low Stock' : 'Healthy';
+                             default: return '';
+                         }
+                     })
+                 );
                  exportTableToPDF(headers, rows, 'Inventory Report', 'inventory_report');
              }}
-             onExportExcel={(filteredData) => {
-                 const headers = ['Item', 'Department', 'Unit', 'Price', 'Stock', 'Value', 'Status'];
-                 const rows = filteredData.map(item => [
-                     item.name,
-                     item.type,
-                     item.unit,
-                     item.price,
-                     item.stock,
-                     item.value,
-                     item.stock <= item.minParLevel ? 'Low Stock' : 'Healthy'
-                 ]);
+             onExportExcel={(filteredData, activeColumns) => {
+                 const headers = activeColumns.map(c => typeof c.header === 'string' ? c.header : c.key);
+                 const rows = filteredData.map(item => 
+                     activeColumns.map(c => {
+                         switch (c.key) {
+                             case 'name': return item.name;
+                             case 'type': return item.type;
+                             case 'unit': return item.unit;
+                             case 'price': return item.price;
+                             case 'stock': return item.stock;
+                             case 'value': return item.value;
+                             case 'status': return item.stock <= item.minParLevel ? 'Low Stock' : 'Healthy';
+                             default: return '';
+                         }
+                     })
+                 );
                  exportTableToExcel(headers, rows, 'Inventory', 'inventory_report');
              }}
          />

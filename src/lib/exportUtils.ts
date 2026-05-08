@@ -8,6 +8,9 @@ export interface ExportMetadata {
   timestamp?: string;
 }
 
+const COMPANY_NAME = "My Inventory Company";
+const APP_TAGLINE = "Smart Store & Inventory Management system";
+
 export const exportTableToPDF = async (headers: string[], rows: any[][], title: string, filename: string, metadata?: ExportMetadata) => {
   return new Promise<void>((resolve) => {
     setTimeout(() => {
@@ -16,23 +19,39 @@ export const exportTableToPDF = async (headers: string[], rows: any[][], title: 
       const pageWidth = doc.internal.pageSize.width || doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.height || doc.internal.pageSize.getHeight();
       
-      // Header
-      doc.setFontSize(20);
-      doc.setTextColor(15, 23, 42);
-      doc.text(title, 14, 22);
+      // Branding Header
+      doc.setFillColor(16, 185, 129); // emerald-500
+      doc.rect(14, 12, 4, 14, 'F');
       
-      let startY = 32;
+      doc.setFontSize(16);
+      doc.setTextColor(15, 23, 42); // slate-900
+      doc.setFont(undefined, 'bold');
+      doc.text(COMPANY_NAME, 22, 18);
+      
+      doc.setFontSize(9);
+      doc.setTextColor(100, 116, 139); // slate-500
+      doc.setFont(undefined, 'normal');
+      doc.text(APP_TAGLINE, 22, 24);
+
+      // Title
+      doc.setFontSize(14);
+      doc.setTextColor(15, 23, 42);
+      doc.setFont(undefined, 'bold');
+      doc.text(title, 14, 38);
+      
+      let startY = 46;
       
       if (metadata?.timestamp || metadata?.filters) {
-        doc.setFontSize(10);
+        doc.setFontSize(8);
         doc.setTextColor(100, 116, 139);
+        doc.setFont(undefined, 'normal');
         if (metadata.timestamp) {
-            doc.text(`Generated exactly at: ${metadata.timestamp}`, 14, startY);
-            startY += 6;
+            doc.text(`Generated on: ${metadata.timestamp}`, 14, startY);
+            startY += 5;
         }
         if (metadata.filters) {
             doc.text(`Filters: ${metadata.filters}`, 14, startY);
-            startY += 6;
+            startY += 5;
         }
         startY += 2;
       }
@@ -46,10 +65,17 @@ export const exportTableToPDF = async (headers: string[], rows: any[][], title: 
         headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontStyle: 'bold' },
         alternateRowStyles: { fillColor: [248, 250, 252] },
         didDrawPage: function (data) {
-          // Footer with page number
-          const str = 'Page ' + doc.internal.getCurrentPageInfo().pageNumber + ' of ' + doc.internal.getNumberOfPages();
+          // Footer
           doc.setFontSize(8);
           doc.setTextColor(150);
+          
+          doc.text(
+            `${COMPANY_NAME} - Automated Report`,
+            14,
+            pageHeight - 10
+          );
+          
+          const str = 'Page ' + doc.internal.getCurrentPageInfo().pageNumber + ' of ' + doc.internal.getNumberOfPages();
           doc.text(
             str,
             pageWidth - data.settings.margin.right,
@@ -71,10 +97,16 @@ export const exportTableToExcel = async (headers: string[], rows: any[][], sheet
       const wb = XLSX.utils.book_new();
       
       const exportData: any[][] = [];
-      if (metadata?.title) exportData.push([metadata.title]);
+      exportData.push([COMPANY_NAME]);
+      exportData.push([APP_TAGLINE]);
+      exportData.push([]);
+      
+      if (title) exportData.push([title]); // Use sheetName as fallback title if metadata.title not present
+      if (metadata?.title) exportData[3] = [metadata.title]; 
+      
       if (metadata?.timestamp) exportData.push([`Generated: ${metadata.timestamp}`]);
       if (metadata?.filters) exportData.push([`Filters: ${metadata.filters}`]);
-      if (exportData.length > 0) exportData.push([]); // empty row
+      if (exportData.length > 4) exportData.push([]); // empty row
       
       exportData.push(headers);
       rows.forEach(r => exportData.push(r));

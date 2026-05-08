@@ -10,11 +10,35 @@
 }
 
 @layer base {
+  :root {
+    color-scheme: light dark;
+    --select-bg: #ffffff;
+    --select-border: #e2e8f0;
+    --select-border-hover: #cbd5e1;
+    --select-text: #0f172a;
+    --select-option-hover: #f1f5f9;
+    --select-placeholder: #64748b;
+  }
+
+  .dark {
+    --select-bg: #0f172a;
+    --select-border: #334155;
+    --select-border-hover: #475569;
+    --select-text: #e2e8f0;
+    --select-option-hover: #1e293b;
+    --select-placeholder: #94a3b8;
+  }
+
   body {
     @apply bg-slate-50 text-slate-900 font-sans;
   }
   .dark body {
     @apply bg-slate-950 text-slate-100;
+  }
+
+  .dark select option {
+    background-color: #1e293b; /* slate-800 */
+    color: #f8fafc; /* slate-50 */
   }
 }
 

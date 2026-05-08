@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Loader2, Package, User, Calendar, Receipt, Download, FileText, X, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Plus, Loader2, Package, User, Calendar, Receipt, Download, FileText, X, AlertTriangle, CheckCircle2, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { sheetsService } from '../services/sheetsService';
 import { mapRowToItem, mapRowToSupplier, mapRowToPurchase, mapRowToBatch } from '../services/dataMappers';
 import { Item, Supplier, Purchase, Batch } from '../types';
@@ -11,6 +11,55 @@ import { DataTable, Column } from './DataTable';
 import { fuzzyMatch } from '../lib/stringUtils';
 import { exportTableToPDF, exportTableToExcel } from '../lib/exportUtils';
 import { toast } from 'sonner';
+import Select from 'react-select';
+
+const selectStyles = {
+    control: (base: any) => ({
+        ...base,
+        border: '1px solid var(--select-border)',
+        borderRadius: '0.5rem',
+        padding: '0.1rem',
+        boxShadow: 'none',
+        fontSize: '0.875rem',
+        backgroundColor: 'var(--select-bg)',
+        color: 'var(--select-text)',
+        '&:hover': {
+            borderColor: 'var(--select-border-hover)'
+        }
+    }),
+    singleValue: (base: any) => ({
+      ...base,
+      color: 'var(--select-text)'
+    }),
+    input: (base: any) => ({
+      ...base,
+      color: 'var(--select-text)'
+    }),
+    placeholder: (base: any) => ({
+      ...base,
+      color: 'var(--select-placeholder)'
+    }),
+    valueContainer: (base: any) => ({
+        ...base,
+        padding: '2px 8px',
+    }),
+    menu: (base: any) => ({
+        ...base,
+        zIndex: 100,
+        fontSize: '0.875rem',
+        backgroundColor: 'var(--select-bg)',
+        border: '1px solid var(--select-border)',
+    }),
+    option: (base: any, state: any) => ({
+        ...base,
+        backgroundColor: state.isFocused 
+          ? 'var(--select-option-hover)' 
+          : 'var(--select-bg)',
+        color: 'var(--select-text)',
+        cursor: 'pointer'
+    }),
+    menuPortal: (base: any) => ({ ...base, zIndex: 9999 }),
+};
 export const PurchasesView: React.FC = () => {
     const [purchases, setPurchases] = useState<Purchase[]>([]);
     const { items, suppliers, activeItems, activeSuppliers, loadingStaticData } = useAppLookup();
@@ -94,6 +143,22 @@ export const PurchasesView: React.FC = () => {
         // Fallback to master buy price (Initial Stock price)
         const masterItem = items.find(i => i.id === itemId);
         return masterItem ? masterItem.buyPrice : null;
+    };
+
+    const getRateIndicator = (itemId: string, currentRateStr: string | number) => {
+        if (!itemId || !currentRateStr) return null;
+        const currentRate = Number(currentRateStr);
+        const lastPriceStr = getLastPrice(itemId);
+        if (lastPriceStr === null || lastPriceStr === undefined) return null;
+        
+        const lastPrice = Number(lastPriceStr);
+        if (currentRate > lastPrice) {
+            return <span className="text-[10px] text-red-500 font-bold flex items-center gap-0.5"><TrendingUp size={12} /> Rate increased (was {lastPrice})</span>;
+        } else if (currentRate < lastPrice) {
+            return <span className="text-[10px] text-emerald-500 font-bold flex items-center gap-0.5"><TrendingDown size={12} /> Rate decreased (was {lastPrice})</span>;
+        } else {
+            return <span className="text-[10px] text-slate-400 font-bold flex items-center gap-0.5"><Minus size={12} /> Same as last</span>;
+        }
     };
 
     const addLine = () => {
@@ -320,6 +385,9 @@ export const PurchasesView: React.FC = () => {
         { key: 'total', header: 'Total (Rs)', align: 'right', cell: row => <span className="font-mono font-bold text-emerald-700 dark:text-emerald-400">{Number(row.total).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>, sortable: true }
     ];
 
+    const supplierOptions = activeSuppliers.map(s => ({ value: s.id, label: s.name }));
+    const itemOptions = activeItems.map(i => ({ value: i.id, label: i.name }));
+
     return (
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -349,14 +417,40 @@ export const PurchasesView: React.FC = () => {
                                getSupplierName(row.supplierId).toLowerCase().includes(q) ||
                                String(row.invoice).toLowerCase().includes(q);
                     }}
-                    onExportPDF={(filteredData) => {
-                        const headers = ['Date', 'Invoice', 'Supplier', 'Item', 'Qty', 'Rate', 'Total'];
-                        const rows = filteredData.map(p => [p.date, p.invoice, getSupplierName(p.supplierId), getItemName(p.itemId), p.qty, Number(p.rate).toFixed(2), Number(p.total).toFixed(2)]);
+                    onExportPDF={(filteredData, activeColumns) => {
+                        const headers = activeColumns.map(c => typeof c.header === 'string' ? c.header : c.key);
+                        const rows = filteredData.map(p => 
+                            activeColumns.map(c => {
+                                switch (c.key) {
+                                    case 'date': return p.date;
+                                    case 'invoice': return p.invoice;
+                                    case 'supplierId': return getSupplierName(p.supplierId);
+                                    case 'itemId': return getItemName(p.itemId);
+                                    case 'qty': return p.qty;
+                                    case 'rate': return Number(p.rate).toFixed(2);
+                                    case 'total': return Number(p.total).toFixed(2);
+                                    default: return '';
+                                }
+                            })
+                        );
                         exportTableToPDF(headers, rows, 'Purchases Ledger', 'purchases');
                     }}
-                    onExportExcel={(filteredData) => {
-                        const headers = ['Date', 'Invoice', 'Supplier', 'Item', 'Qty', 'Rate', 'Total'];
-                        const rows = filteredData.map(p => [p.date, p.invoice, getSupplierName(p.supplierId), getItemName(p.itemId), p.qty, Number(p.rate), Number(p.total)]);
+                    onExportExcel={(filteredData, activeColumns) => {
+                        const headers = activeColumns.map(c => typeof c.header === 'string' ? c.header : c.key);
+                        const rows = filteredData.map(p => 
+                            activeColumns.map(c => {
+                                switch (c.key) {
+                                    case 'date': return p.date;
+                                    case 'invoice': return p.invoice;
+                                    case 'supplierId': return getSupplierName(p.supplierId);
+                                    case 'itemId': return getItemName(p.itemId);
+                                    case 'qty': return Number(p.qty);
+                                    case 'rate': return Number(p.rate);
+                                    case 'total': return Number(p.total);
+                                    default: return '';
+                                }
+                            })
+                        );
                         exportTableToExcel(headers, rows, 'Purchases', 'purchases');
                     }}
                 />
@@ -407,18 +501,17 @@ export const PurchasesView: React.FC = () => {
                                                 />
                                                 </div>
                                             </div>
-                                            <div className="space-y-1.5">
+                                            <div className="space-y-1.5 z-50">
                                                 <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider dark:text-slate-500">Supplier</label>
-                                                <div className="relative">
-                                                <User size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                                                <select className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none appearance-none bg-no-repeat transition-all dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200"
-                                                    style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%23a1a1aa\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\' /%3E%3C/svg%3E")', backgroundPosition: 'right 0.75rem center', backgroundSize: '1rem' }}
-                                                    value={form.supplierId} onChange={e => setForm({...form, supplierId: e.target.value})}
-                                                >
-                                                    <option value="">-- Choose Supplier --</option>
-                                                    {activeSuppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                                                </select>
-                                                </div>
+                                                <Select
+                                                    options={supplierOptions}
+                                                    value={supplierOptions.find(o => o.value === form.supplierId) || null}
+                                                    onChange={(selected: any) => setForm({...form, supplierId: selected?.value || ''})}
+                                                    styles={selectStyles}
+                                                    placeholder="-- Choose Supplier --"
+                                                    isClearable
+                                                    menuPortalTarget={document.body}
+                                                />
                                             </div>
                                             <div className="space-y-1.5">
                                                 <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider dark:text-slate-500">Invoice / GRN #</label>
@@ -439,17 +532,25 @@ export const PurchasesView: React.FC = () => {
                                                 </button>
                                             </div>
                                             
-                                            <div className="space-y-3">
+                                            <div className="space-y-3 pb-24">
                                                 {form.lines.map((line, idx) => (
-                                                    <div key={idx} className="grid grid-cols-12 gap-3 items-center animate-in slide-in-from-right-2 duration-200 bg-slate-50/50 p-3 rounded-xl border border-slate-100 dark:bg-slate-800/30 dark:border-slate-800">
+                                                    <div key={idx} className="grid grid-cols-12 gap-3 items-start animate-in slide-in-from-right-2 duration-200 bg-slate-50/50 p-3 rounded-xl border border-slate-100 dark:bg-slate-800/30 dark:border-slate-800">
                                                         <div className="col-span-5 space-y-1">
                                                             <label className="text-[8px] uppercase font-bold text-slate-400 ml-1 dark:text-slate-500">Item</label>
-                                                            <select className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all dark:bg-slate-900 dark:border-slate-700 dark:text-slate-200"
-                                                                value={line.itemId} onChange={e => updateLine(idx, 'itemId', e.target.value)}
-                                                            >
-                                                                <option value="">-- Select Item --</option>
-                                                                {activeItems.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
-                                                            </select>
+                                                            <Select
+                                                                options={itemOptions}
+                                                                value={itemOptions.find(o => o.value === line.itemId) || null}
+                                                                onChange={(selected: any) => updateLine(idx, 'itemId', selected?.value || '')}
+                                                                styles={selectStyles}
+                                                                placeholder="-- Select Item --"
+                                                                isClearable
+                                                                menuPortalTarget={document.body}
+                                                            />
+                                                            {line.itemId && (
+                                                                <p className="text-[10px] text-slate-500 font-medium ml-1 mt-1 dark:text-slate-400">
+                                                                    Stock limit available: <span className="font-bold text-slate-700 dark:text-slate-300">{(stockLevels[line.itemId] || 0).toFixed(2)}</span>
+                                                                </p>
+                                                            )}
                                                         </div>
                                                         <div className="col-span-2 space-y-1">
                                                             <label className="text-[8px] uppercase font-bold text-slate-400 ml-1 dark:text-slate-500">Quantity</label>
@@ -458,11 +559,6 @@ export const PurchasesView: React.FC = () => {
                                                                 placeholder="0.0"
                                                                 value={line.qty} onChange={e => updateLine(idx, 'qty', e.target.value)}
                                                             />
-                                                            {line.itemId && (
-                                                                <p className="text-[8px] text-slate-400 italic ml-1 dark:text-slate-500">
-                                                                    Current Stock: {(stockLevels[line.itemId] || 0).toFixed(2)}
-                                                                </p>
-                                                            )}
                                                         </div>
                                                         <div className="col-span-2 space-y-1">
                                                             <label className="text-[8px] uppercase font-bold text-slate-400 ml-1 dark:text-slate-500">Rate (Rs.)</label>
@@ -471,11 +567,9 @@ export const PurchasesView: React.FC = () => {
                                                                 placeholder="0"
                                                                 value={line.rate} onChange={e => updateLine(idx, 'rate', e.target.value)}
                                                             />
-                                                            {line.itemId && getLastPrice(line.itemId) && (
-                                                                <div className="flex flex-col ml-1">
-                                                                    <p className="text-[8px] text-slate-400 italic dark:text-slate-500">
-                                                                        Last: Rs. {Number(getLastPrice(line.itemId)).toLocaleString()}
-                                                                    </p>
+                                                            {line.itemId && line.rate && (
+                                                                <div className="ml-1 mt-1">
+                                                                    {getRateIndicator(line.itemId, line.rate)}
                                                                 </div>
                                                             )}
                                                         </div>
@@ -554,16 +648,23 @@ export const PurchasesView: React.FC = () => {
                                                                      />
                                                                  </td>
                                                                  <td className="px-4 py-3 text-right text-slate-700 font-mono whitespace-nowrap dark:text-slate-300">
-                                                                     <input 
-                                                                         type="number" 
-                                                                         className={cn("w-24 px-2 py-1 text-right focus:outline-none focus:ring-1 focus:ring-inset font-mono dark:bg-slate-800", isZeroQty ? "text-red-600 focus:ring-red-500 bg-red-50/30 dark:bg-red-950/40" : "focus:ring-emerald-500 dark:text-slate-200")}
-                                                                         value={line.rate} 
-                                                                         onChange={e => {
-                                                                             const newPreview = [...bulkPreview];
-                                                                             newPreview[idx].rate = e.target.value;
-                                                                             setBulkPreview(newPreview);
-                                                                         }}
-                                                                     />
+                                                                     <div className="flex flex-col items-end">
+                                                                         <input 
+                                                                             type="number" 
+                                                                             className={cn("w-24 px-2 py-1 text-right focus:outline-none focus:ring-1 focus:ring-inset font-mono dark:bg-slate-800", isZeroQty ? "text-red-600 focus:ring-red-500 bg-red-50/30 dark:bg-red-950/40" : "focus:ring-emerald-500 dark:text-slate-200")}
+                                                                             value={line.rate} 
+                                                                             onChange={e => {
+                                                                                 const newPreview = [...bulkPreview];
+                                                                                 newPreview[idx].rate = e.target.value;
+                                                                                 setBulkPreview(newPreview);
+                                                                             }}
+                                                                         />
+                                                                         {!missingItem && line.rate ? (
+                                                                             <div className="mt-1 flex justify-end">
+                                                                                 {getRateIndicator(line.itemId, line.rate)}
+                                                                             </div>
+                                                                         ) : null}
+                                                                     </div>
                                                                  </td>
                                                                  <td className="px-4 py-3 text-right font-bold text-slate-900 font-mono whitespace-nowrap dark:text-white">
                                                                      {(parseFloat(line.qty) * parseFloat(line.rate) || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits:2})}
@@ -592,7 +693,12 @@ export const PurchasesView: React.FC = () => {
                                              </table>
                                          </div>
                                      </div>
-                                     <div className="p-6 bg-slate-50 border-t border-slate-200 flex justify-between items-center flex-wrap gap-4 rounded-b-xl dark:bg-slate-950/30 dark:border-slate-800">
+                                     <div className="p-6 bg-slate-50 border-t border-slate-200 flex justify-between items-center flex-wrap gap-4 rounded-b-lg dark:bg-slate-950/30 dark:border-slate-800">
+                                         <div className="text-sm font-bold text-slate-500 uppercase tracking-tight dark:text-slate-400">
+                                             Grand Total: <span className="text-emerald-600 font-mono tracking-tighter ml-2 dark:text-emerald-400">
+                                                 Rs. {bulkPreview.reduce((sum, l) => sum + ((parseFloat(l.qty) * parseFloat(l.rate)) || 0), 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                                             </span>
+                                         </div>
                                          <div className="flex gap-3">
                                              <button onClick={() => setBulkPreview(null)} className="px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-200 rounded-lg transition-colors dark:text-slate-400 dark:hover:bg-slate-800">
                                                  Cancel

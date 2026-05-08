@@ -11,6 +11,56 @@ import { DataTable, Column } from './DataTable';
 import { normalize, fuzzyMatch } from '../lib/stringUtils';
 import { exportTableToPDF, exportTableToExcel } from '../lib/exportUtils';
 import { toast } from 'sonner';
+import Select from 'react-select';
+
+const selectStyles = {
+    control: (base: any) => ({
+        ...base,
+        border: '1px solid var(--select-border)',
+        borderRadius: '0.5rem',
+        padding: '0.1rem',
+        boxShadow: 'none',
+        fontSize: '0.875rem',
+        backgroundColor: 'var(--select-bg)',
+        color: 'var(--select-text)',
+        '&:hover': {
+            borderColor: 'var(--select-border-hover)'
+        }
+    }),
+    singleValue: (base: any) => ({
+      ...base,
+      color: 'var(--select-text)'
+    }),
+    input: (base: any) => ({
+      ...base,
+      color: 'var(--select-text)'
+    }),
+    placeholder: (base: any) => ({
+      ...base,
+      color: 'var(--select-placeholder)'
+    }),
+    valueContainer: (base: any) => ({
+        ...base,
+        padding: '2px 8px',
+    }),
+    menu: (base: any) => ({
+        ...base,
+        zIndex: 100,
+        fontSize: '0.875rem',
+        backgroundColor: 'var(--select-bg)',
+        border: '1px solid var(--select-border)',
+    }),
+    option: (base: any, state: any) => ({
+        ...base,
+        backgroundColor: state.isFocused 
+          ? 'var(--select-option-hover)' 
+          : 'var(--select-bg)',
+        color: 'var(--select-text)',
+        cursor: 'pointer'
+    }),
+    menuPortal: (base: any) => ({ ...base, zIndex: 9999 }),
+};
+
 export const IssuesView: React.FC = () => {
     const [issues, setIssues] = useState<Issue[]>([]);
     const { items, departments: depts, activeItems, activeDepartments, loadingStaticData } = useAppLookup();
@@ -596,6 +646,9 @@ export const IssuesView: React.FC = () => {
     // Format pivotData.dates into array of objects to satisfy DataTable's requirement extending Record<string,any>
     const mappedPivotDates = pivotData.dates.map(date => ({ date, id: date }));
 
+    const deptOptions = activeDepartments.map(d => ({ value: d.id, label: d.name }));
+    const itemOptions = filteredItems.map(i => ({ value: i.id, label: i.name }));
+
     const pivotTotals = React.useMemo(() => {
         const totals: Record<string, number> = {};
         let grandTotal = 0;
@@ -699,28 +752,38 @@ export const IssuesView: React.FC = () => {
                                    getItemName(row.itemId).toLowerCase().includes(q) ||
                                    getDeptName(row.deptId).toLowerCase().includes(q);
                         }}
-                        onExportPDF={(filteredData) => {
-                            const headers = ['Date', 'Department', 'Item', 'Qty Issued', 'Unit Rate (Rs)', 'Total Amount (Rs)'];
-                            const rows = filteredData.map(i => [
-                                i.date, 
-                                getDeptName(i.deptId), 
-                                getItemName(i.itemId), 
-                                i.qty, 
-                                i.rate ? Number(i.rate).toFixed(2) : '0.00',
-                                i.total ? Number(i.total).toFixed(2) : '0.00'
-                            ]);
+                        onExportPDF={(filteredData, activeColumns) => {
+                            const headers = activeColumns.map(c => typeof c.header === 'string' ? c.header : c.key);
+                            const rows = filteredData.map(i => 
+                                activeColumns.map(c => {
+                                    switch (c.key) {
+                                        case 'date': return i.date;
+                                        case 'deptId': return getDeptName(i.deptId);
+                                        case 'itemId': return getItemName(i.itemId);
+                                        case 'qty': return i.qty;
+                                        case 'rate': return i.rate ? Number(i.rate).toFixed(2) : '0.00';
+                                        case 'total': return i.total ? Number(i.total).toFixed(2) : '0.00';
+                                        default: return '';
+                                    }
+                                })
+                            );
                             exportTableToPDF(headers, rows, 'Consumption Log', 'consumption_log');
                         }}
-                        onExportExcel={(filteredData) => {
-                            const headers = ['Date', 'Department', 'Item', 'Qty Issued', 'Unit Rate (Rs)', 'Total Amount (Rs)'];
-                            const rows = filteredData.map(i => [
-                                i.date, 
-                                getDeptName(i.deptId), 
-                                getItemName(i.itemId), 
-                                i.qty, 
-                                i.rate ? Number(i.rate) : 0,
-                                i.total ? Number(i.total) : 0
-                            ]);
+                        onExportExcel={(filteredData, activeColumns) => {
+                            const headers = activeColumns.map(c => typeof c.header === 'string' ? c.header : c.key);
+                            const rows = filteredData.map(i => 
+                                activeColumns.map(c => {
+                                    switch (c.key) {
+                                        case 'date': return i.date;
+                                        case 'deptId': return getDeptName(i.deptId);
+                                        case 'itemId': return getItemName(i.itemId);
+                                        case 'qty': return i.qty;
+                                        case 'rate': return i.rate ? Number(i.rate) : 0;
+                                        case 'total': return i.total ? Number(i.total) : 0;
+                                        default: return '';
+                                    }
+                                })
+                            );
                             exportTableToExcel(headers, rows, 'Consumption', 'consumption_log');
                         }}
                         summaryRow={listSummaryRow}
@@ -739,28 +802,50 @@ export const IssuesView: React.FC = () => {
                             loading={loading}
                             emptyMessage="No consumption records found in this period."
                             customSearch={(row, q) => row.itemName.toLowerCase().includes(q)}
-                            onExportPDF={(filteredData) => {
-                                const headers = ['Item', 'Total Qty', 'Avg Rate (Rs)', 'Total Amount (Rs)', '%'];
-                                const rows = filteredData.map(i => [
-                                    i.itemName,
-                                    i.qty.toFixed(2),
-                                    i.avgRate.toFixed(2),
-                                    i.totalAmount.toFixed(2),
-                                    i.percentage.toFixed(2) + '%'
-                                ]);
-                                rows.push(['GRAND TOTAL', '', '', itemSummaryData.grandTotal.toFixed(2), '100.00%']);
+                            onExportPDF={(filteredData, activeColumns) => {
+                                const headers = activeColumns.map(c => typeof c.header === 'string' ? c.header : c.key);
+                                const rows = filteredData.map(i => 
+                                    activeColumns.map(c => {
+                                        switch (c.key) {
+                                            case 'itemName': return i.itemName;
+                                            case 'qty': return i.qty.toFixed(2);
+                                            case 'avgRate': return i.avgRate.toFixed(2);
+                                            case 'totalAmount': return i.totalAmount.toFixed(2);
+                                            case 'percentage': return i.percentage.toFixed(2) + '%';
+                                            default: return '';
+                                        }
+                                    })
+                                );
+                                const totalsRow = activeColumns.map(c => {
+                                    if (c.key === 'itemName') return 'GRAND TOTAL';
+                                    if (c.key === 'totalAmount') return itemSummaryData.grandTotal.toFixed(2);
+                                    if (c.key === 'percentage') return '100.00%';
+                                    return '';
+                                });
+                                rows.push(totalsRow);
                                 exportTableToPDF(headers, rows, 'Item Wise Consumption', 'item_wise_consumption');
                             }}
-                            onExportExcel={(filteredData) => {
-                                const headers = ['Item', 'Total Qty', 'Avg Rate (Rs)', 'Total Amount (Rs)', '%'];
-                                const rows = filteredData.map(i => [
-                                    i.itemName,
-                                    i.qty,
-                                    i.avgRate,
-                                    i.totalAmount,
-                                    i.percentage.toFixed(2) + '%'
-                                ]);
-                                rows.push(['GRAND TOTAL', '', '', itemSummaryData.grandTotal, '100.00%']);
+                            onExportExcel={(filteredData, activeColumns) => {
+                                const headers = activeColumns.map(c => typeof c.header === 'string' ? c.header : c.key);
+                                const rows = filteredData.map(i => 
+                                    activeColumns.map(c => {
+                                        switch (c.key) {
+                                            case 'itemName': return i.itemName;
+                                            case 'qty': return i.qty;
+                                            case 'avgRate': return i.avgRate;
+                                            case 'totalAmount': return i.totalAmount;
+                                            case 'percentage': return i.percentage.toFixed(2) + '%';
+                                            default: return '';
+                                        }
+                                    })
+                                );
+                                const totalsRow = activeColumns.map(c => {
+                                    if (c.key === 'itemName') return 'GRAND TOTAL';
+                                    if (c.key === 'totalAmount') return itemSummaryData.grandTotal;
+                                    if (c.key === 'percentage') return '100.00%';
+                                    return '';
+                                });
+                                rows.push(totalsRow);
                                 exportTableToExcel(headers, rows, 'Item Wise', 'item_wise_consumption');
                             }}
                         />
@@ -771,31 +856,29 @@ export const IssuesView: React.FC = () => {
                         columns={pivotColumns}
                         loading={loading}
                         emptyMessage="No consumption logs found."
-                        onExportPDF={(filteredData) => {
-                            const headers = ['Date', 'Day', ...pivotData.cols, 'TOTAL'];
+                        onExportPDF={(filteredData, activeColumns) => {
+                            const headers = activeColumns.map(c => typeof c.header === 'string' ? c.header : c.key);
                             const rows = filteredData.map(row => {
-                                const rowCells = [row.date, format(new Date(row.date), 'EEE')];
-                                pivotData.cols.forEach(col => {
-                                    const val = pivotData.data[row.date][col] || 0;
-                                    rowCells.push(val > 0 ? val.toFixed(2) : '-');
+                                return activeColumns.map(c => {
+                                    if (c.key === 'date') return row.date;
+                                    if (c.key === 'day') return format(new Date(row.date as string), 'EEE');
+                                    if (c.key === 'total') return pivotData.cols.reduce((sum, col) => sum + (pivotData.data[row.date as string][col] || 0), 0).toFixed(2);
+                                    const val = pivotData.data[row.date as string][c.key] || 0;
+                                    return val > 0 ? val.toFixed(2) : '-';
                                 });
-                                const rowTotal = pivotData.cols.reduce((sum, col) => sum + (pivotData.data[row.date][col] || 0), 0);
-                                rowCells.push(rowTotal.toFixed(2));
-                                return rowCells;
                             });
                             exportTableToPDF(headers, rows, 'Consumption Pivot', 'consumption_pivot');
                         }}
-                        onExportExcel={(filteredData) => {
-                            const headers = ['Date', 'Day', ...pivotData.cols, 'TOTAL'];
+                        onExportExcel={(filteredData, activeColumns) => {
+                            const headers = activeColumns.map(c => typeof c.header === 'string' ? c.header : c.key);
                             const rows = filteredData.map(row => {
-                                const rowCells = [row.date, format(new Date(row.date), 'EEE')];
-                                pivotData.cols.forEach(col => {
-                                    const val = pivotData.data[row.date][col] || 0;
-                                    rowCells.push(val > 0 ? val : 0);
+                                return activeColumns.map(c => {
+                                    if (c.key === 'date') return row.date;
+                                    if (c.key === 'day') return format(new Date(row.date as string), 'EEE');
+                                    if (c.key === 'total') return pivotData.cols.reduce((sum, col) => sum + (pivotData.data[row.date as string][col] || 0), 0);
+                                    const val = pivotData.data[row.date as string][c.key] || 0;
+                                    return val > 0 ? val : 0;
                                 });
-                                const rowTotal = pivotData.cols.reduce((sum, col) => sum + (pivotData.data[row.date][col] || 0), 0);
-                                rowCells.push(rowTotal);
-                                return rowCells;
                             });
                             exportTableToExcel(headers, rows, 'Consumption Pivot', 'consumption_pivot');
                         }}
@@ -903,18 +986,17 @@ export const IssuesView: React.FC = () => {
                                                   />
                                                 </div>
                                             </div>
-                                            <div className="space-y-1.5">
+                                            <div className="space-y-1.5 z-50">
                                                 <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider dark:text-slate-500">Department / Section</label>
-                                                <div className="relative">
-                                                  <Utensils size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                                                  <select className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none appearance-none bg-no-repeat transition-all dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200"
-                                                      style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%23a1a1aa\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\' /%3E%3C/svg%3E")', backgroundPosition: 'right 0.75rem center', backgroundSize: '1rem' }}
-                                                      value={form.deptId} onChange={e => setForm({...form, deptId: e.target.value})}
-                                                  >
-                                                      <option value="">-- Select Section --</option>
-                                                      {activeDepartments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                                                  </select>
-                                                </div>
+                                                <Select
+                                                      options={deptOptions}
+                                                      value={deptOptions.find(o => o.value === form.deptId) || null}
+                                                      onChange={(selected: any) => setForm({...form, deptId: selected?.value || ''})}
+                                                      styles={selectStyles}
+                                                      placeholder="-- Select Section --"
+                                                      isClearable
+                                                      menuPortalTarget={document.body}
+                                                  />
                                             </div>
                                         </div>
 
@@ -925,20 +1007,23 @@ export const IssuesView: React.FC = () => {
                                                     <Plus size={12} /> Add Item
                                                 </button>
                                             </div>
-                                            <div className="space-y-3">
+                                            <div className="space-y-3 pb-24">
                                                 {form.lines.map((line, idx) => (
                                                     <div key={idx} className="grid grid-cols-12 gap-3 items-start animate-in slide-in-from-left-2 duration-200">
                                                         <div className="col-span-6 space-y-1">
-                                                            <select className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200"
-                                                                value={line.itemId} onChange={e => updateLine(idx, 'itemId', e.target.value)}
-                                                            >
-                                                                <option value="">-- Choose Item --</option>
-                                                                {filteredItems.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
-                                                            </select>
+                                                            <Select
+                                                                options={itemOptions}
+                                                                value={itemOptions.find(o => o.value === line.itemId) || null}
+                                                                onChange={(selected: any) => updateLine(idx, 'itemId', selected?.value || '')}
+                                                                styles={selectStyles}
+                                                                placeholder="-- Choose Item --"
+                                                                isClearable
+                                                                menuPortalTarget={document.body}
+                                                            />
                                                             {line.itemId && (
-                                                                <div className="flex justify-between px-1">
-                                                                    <span className="text-[8px] font-bold text-slate-400 italic dark:text-slate-500">
-                                                                        Stock: {(stockLevels[line.itemId] || 0).toFixed(2)}
+                                                                <div className="flex justify-between px-1 mt-1">
+                                                                    <span className="text-[10px] font-bold text-slate-500 italic dark:text-slate-400">
+                                                                        Stock: <span className="text-slate-700 dark:text-slate-300">{(stockLevels[line.itemId] || 0).toFixed(2)}</span>
                                                                     </span>
                                                                 </div>
                                                             )}

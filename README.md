@@ -18,8 +18,8 @@ A professional, high-performance inventory and stock management system designed 
 
 1. **Clone & Install**
    ```bash
-   git clone https://github.com/your-username/inventory-pro.git
-   cd inventory-pro
+   git clone https://github.com/UthPakhi/Restaurant-Inventory-Management-with-google-sheets-only.git
+   cd Restaurant-Inventory-Management-with-google-sheets-only
    npm install
    ```
 

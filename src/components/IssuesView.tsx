@@ -1025,9 +1025,21 @@ export const IssuesView: React.FC = () => {
                                                             />
                                                             {line.itemId && (
                                                                 <div className="flex justify-between px-1 mt-1">
-                                                                    <span className="text-[10px] font-bold text-slate-500 italic dark:text-slate-400">
-                                                                        Stock: <span className="text-slate-700 dark:text-slate-300">{(stockLevels[line.itemId] || 0).toFixed(2)}</span>
-                                                                    </span>
+                                                                    <div className="flex gap-4">
+                                                                        <span className="text-[10px] font-bold text-slate-500 italic dark:text-slate-400">
+                                                                            Stock: <span className="text-slate-700 dark:text-slate-300">{(stockLevels[line.itemId] || 0).toFixed(2)}</span>
+                                                                        </span>
+                                                                        {line.qty && (
+                                                                            <span className="text-[10px] font-bold text-slate-500 italic dark:text-slate-400">
+                                                                                Rem: <span className={cn(
+                                                                                    "dark:text-slate-300",
+                                                                                    stockLevels[line.itemId] !== undefined && Number(line.qty) > stockLevels[line.itemId] ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"
+                                                                                )}>
+                                                                                    {((stockLevels[line.itemId] || 0) - Number(line.qty)).toFixed(2)}
+                                                                                </span>
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
                                                                 </div>
                                                             )}
                                                         </div>
@@ -1125,6 +1137,7 @@ export const IssuesView: React.FC = () => {
                                             <th className="px-4 py-3">Item</th>
                                             <th className="px-4 py-3 text-right">Stock</th>
                                             <th className="px-4 py-3 w-32 border-x whitespace-nowrap bg-white text-center dark:bg-slate-900 dark:border-slate-800">Issue Qty</th>
+                                            <th className="px-4 py-3 text-right">Rem. Stock</th>
                                             <th className="px-4 py-3 text-right">Est. Total (Rs)</th>
                                             <th className="px-4 py-3 w-10 rounded-tr-lg"></th>
                                         </tr>
@@ -1156,6 +1169,9 @@ export const IssuesView: React.FC = () => {
                                                                     setBulkPreview(newPreview);
                                                                 }}
                                                             />
+                                                        </td>
+                                                        <td className={cn("px-4 py-3 text-right font-medium", hasError ? "text-red-500" : "text-slate-500 dark:text-slate-400")}>
+                                                            {(line.stock - (itemTotals[line.itemId] || 0)).toFixed(2)}
                                                         </td>
                                                         <td className="px-4 py-3 text-right font-bold text-slate-700 dark:text-slate-300">
                                                             {line.qty ? (calculateFIFOTotal(line.itemId, line.qty) || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits:2}) : '-'}

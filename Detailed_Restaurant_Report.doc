@@ -1,0 +1,127 @@
+<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+<head>
+<meta charset="utf-8">
+<title>Restaurant Inventory Management System Report</title>
+<style>
+  body { font-family: 'Calibri', 'Segoe UI', sans-serif; padding: 20px; }
+  h1 { font-size: 24pt; color: #1E3A8A; text-align: center; margin-bottom: 24px; }
+  h2 { font-size: 18pt; color: #1E40AF; border-bottom: 2px solid #93C5FD; padding-bottom: 6px; margin-top: 32px; }
+  h3 { font-size: 14pt; color: #1D4ED8; margin-top: 20px; }
+  p { font-size: 11pt; line-height: 1.6; color: #1F2937; margin-bottom: 12px; }
+  ul { margin-top: 8px; margin-bottom: 16px; }
+  li { font-size: 11pt; line-height: 1.6; color: #1F2937; margin-bottom: 8px; }
+  strong { color: #111827; }
+</style>
+</head>
+<body>
+
+<h1>Restaurant Inventory Management System Report</h1>
+
+<h2>1. Problem Statement</h2>
+<p>The restaurant industry operates on razor-thin margins. A critical factor determining profitability is inventory management. Traditional, manual methods of inventory tracking—such as paper ledgers or Excel spreadsheets—are fundamentally inadequate for the fast-paced nature of commercial kitchens, leading to several systemic vulnerabilities:</p>
+<ul>
+  <li><strong>Waste Due to Spoilage:</strong> Without real-time tracking of First-In-First-Out (FIFO) mechanics and expiration dates, perishable items often sit in the back of the walk-in fridge, eventually spoiling. This constitutes a direct hit to the bottom line.</li>
+  <li><strong>Theft and Pilferage:</strong> "Bleeding" inventory is a massive issue. Without strict reconciliation between what was purchased, what is in the store-room, and what was issued, staff can easily misappropriate high-value items (e.g., expensive meats, saffron, alcohol) without detection.</li>
+  <li><strong>Human Error and Inconsistencies:</strong> Manual data entry is highly susceptible to mathematical errors, forgotten entries, and poor handwriting. Over time, physical stock drifts significantly from theoretical stock.</li>
+  <li><strong>Stock-outs & Overstocking:</strong> Inaccurate data leads to poor purchasing decisions. Stocking out of key ingredients halts production of popular menu items, damaging customer satisfaction. Overstocking ties up valuable cash flow.</li>
+</ul>
+<p>This system is engineered to solve these operational bottlenecks by providing a high-visibility, automated ledger system that ensures every item is tracked from the loading dock to the frying pan.</p>
+
+<h2>2. Module Descriptions</h2>
+<p>The software architecture is segmented into cohesive modules, ensuring separation of concerns and clear workflows for restaurant staff.</p>
+
+<h3>A. Masters (Configuration Module)</h3>
+<p>This is the central configuration hub that defines the operational parameters of the business.</p>
+<ul>
+  <li><strong>Items:</strong> Defines individual raw ingredients (e.g., Basmati Rice, Olive Oil). Each item tracks metadata such as unit of measurement (kg, L, pieces), categorization (Dairy, Produce, Dry Goods), and reorder thresholds.</li>
+  <li><strong>Sections:</strong> Replicates the physical layout of the restaurant (e.g., Main Kitchen, Pastry Station, Bar). This allows management to track <em>where</em> inventory is being consumed.</li>
+  <li><strong>Suppliers:</strong> A database of vendors, allowing the restaurant to track pricing history and contact information for reordering.</li>
+</ul>
+
+<h3>B. Purchases (Inbound Inventory)</h3>
+<p>The intake module represents the loading dock. Whenever stock arrives, it is entered here.</p>
+<ul>
+  <li>Staff log the Supplier, Item, Quantity, and Rate (cost per unit).</li>
+  <li>The system automatically calculates total invoice amounts.</li>
+  <li>Crucially, this module instantly increments the available stock in the central warehouse, updating real-time valuations.</li>
+</ul>
+
+<h3>C. Issues (Outbound / Consumption)</h3>
+<p>The "Issues" module acts as the outflow control. It bridges the gap between raw ingredient supply and kitchen consumption.</p>
+<ul>
+  <li><strong>Linked to Production:</strong> When the 'Main Kitchen' needs 5kg of onions for the prep shift, an 'Issue' is generated.</li>
+  <li><strong>Preventing Over-Drafting:</strong> The system includes real-time safeguards preventing staff from issuing more stock than physically exists in the system, preventing impossible negative transactions.</li>
+  <li><strong>Future POS Linkage (Auto-Deduction):</strong> This module is designed to integrate with Sales/Billing via a Bill of Materials (BOM) or Recipe system for completely automated deduction.</li>
+</ul>
+
+<h3>D. Store Ledger (Audit & History)</h3>
+<p>This is the immutable timeline of the system.</p>
+<ul>
+  <li>Acts as a financial ledger for physical items.</li>
+  <li>It provides a day-by-day or transaction-by-transaction breakdown: <code>Opening Balance + Purchases - Issues = Closing Balance</code>.</li>
+  <li>It ensures 100% traceability for auditing. If 10kg of meat is missing, the ledger shows exactly when it arrived and who dispatched it.</li>
+</ul>
+
+<h3>E. Summary & Reports (Business Intelligence)</h3>
+<p>The executive dashboard for owners and managers.</p>
+<ul>
+  <li>Visualizes total inventory capital currently sitting on the shelves.</li>
+  <li>Provides immediate alerts for items dropping below the defined "Par Level."</li>
+</ul>
+
+<h2>3. System Design & ER Diagrams</h2>
+<p>The system leverages a relational model to ensure data normalization. While a physical diagram is not contained here, the relationships operate under the following rules:</p>
+
+<h3>Mapping "Ingredients" to "Menu Items"</h3>
+<p>To fully bridge Inventory with Sales, the system uses a <strong>BOM (Bill of Materials) / Standardized Recipe</strong> structure.</p>
+<ul>
+  <li><strong>Entity: Menu Item</strong> (e.g., <em>Chicken Alfredo Pasta</em>)</li>
+  <li><strong>Entity: Recipe Line</strong> (e.g., <em>120g Chicken, 150g Pasta, 50ml Cream</em>)</li>
+  <li><strong>Workflow:</strong> When the POS registers a sale of <em>1 Chicken Alfredo Pasta</em>, the system queries the Recipe Line table. It then automatically queries the <code>Issues</code> module to deduct 120g of Chicken, 150g of Pasta, and 50ml of Cream from the real-time stock.</li>
+</ul>
+
+<h3>Core Relational ER Concepts</h3>
+<ul>
+  <li><code>Supplier</code> (1) --- (N) <code>Purchase_Transaction</code></li>
+  <li><code>Item</code> (1) --- (N) <code>Purchase_Line</code></li>
+  <li><code>Item</code> (1) --- (N) <code>Issue_Line</code></li>
+  <li><code>Section</code> (1) --- (N) <code>Issue_Transaction</code></li>
+  <li><code>Menu_Item</code> (1) --- (N) <code>Recipe_Ingredient</code> --- (1) <code>Item</code></li>
+</ul>
+
+<h2>4. Key Features Documentation</h2>
+
+<h3>A. Real-Time Stock Tracking</h3>
+<p>Stock balances are not static; they are dynamically computed. For any ingredient (e.g., Liters of Olive Oil), the formula <code>Total Purchased - Total Issued</code> is applied instantly. Dashboard cards reflect these live values, removing the need for end-of-day tallying.</p>
+
+<h3>B. Threshold Alerts (Low Stock Automated Notifications)</h3>
+<p>Each item in the Master database holds a <code>parLevel</code> property. During runtime, the system continuously compares the live stock against this par level. If <code>Live Stock &lt;= Par Level</code>, the item is flagged under the "Restock Alerts" section. This acts as an automated procurement assistant.</p>
+
+<h3>C. Waste Management & Variance Tracking</h3>
+<p>Variance is the silent killer in restaurants. It is tracked as <code>Variance = Expected System Stock - Actual Physical Count</code>.</p>
+<ul>
+  <li>When managers perform weekly physical audits, any negative variance highlights unaccounted waste (chef dropping a tray and not reporting it) or theft.</li>
+  <li>By enforcing strict Issue Logging (Stock leaving the store must be tied to a section), management can pinpoint <em>where</em> the variance occurred.</li>
+</ul>
+
+<h2>5. Technology Stack</h2>
+<p>The application is built using a modern, reactive tech stack optimized for speed and reliability:</p>
+<ul>
+  <li><strong>Frontend Framework:</strong> React.js (v18+) providing a component-driven, declarative UI.</li>
+  <li><strong>Build Tooling:</strong> Vite for lightning-fast HMR and optimized production bundles.</li>
+  <li><strong>Language:</strong> TypeScript ensures robust type-safety, preventing common bugs related to mismatched data types.</li>
+  <li><strong>Styling:</strong> Tailwind CSS allows for a highly customized, responsive, and maintainable design system.</li>
+  <li><strong>UI Components & Iconography:</strong> <code>lucide-react</code> provides crisp, consistent vector iconography.</li>
+  <li><strong>Database/Backend integration:</strong> Architected with in-memory persistence and modular service layers that securely port over to remote SQL/NoSQL stores like MySQL or Firebase for robust enterprise data management.</li>
+</ul>
+
+<h2>6. Testing & User Interface Proofs</h2>
+<p>The application's interface is designed for high-stress environments, featuring large touch targets, color-coded warnings, and robust data validation preventing negative stock or faulty issues.</p>
+<ul>
+  <li><strong>Inventory Dashboard:</strong> Displays high-level analytics, Total Portfolio Value, and critical low-stock items.</li>
+  <li><strong>Purchase & Issue Entries:</strong> Features dynamic row addition, select-dropdowns for Items/Sections, and real-time total calculations.</li>
+  <li><strong>Ledger Views:</strong> Read-only historical tables providing an exact audit trail of all actions.</li>
+</ul>
+
+</body>
+</html>

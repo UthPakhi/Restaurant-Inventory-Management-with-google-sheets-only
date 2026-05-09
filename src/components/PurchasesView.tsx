@@ -564,7 +564,7 @@ export const PurchasesView: React.FC = () => {
                                                                     placeholder="0.0"
                                                                     value={line.qty} onChange={e => {
                                                                         const val = e.target.value;
-                                                                        if (Number(val) < 0) return;
+                                                                        if (val.includes('-') || Number(val) < 0) return;
                                                                         updateLine(idx, 'qty', val)
                                                                     }}
                                                                 />
@@ -577,7 +577,7 @@ export const PurchasesView: React.FC = () => {
                                                                     placeholder="0"
                                                                     value={line.rate} onChange={e => {
                                                                         const val = e.target.value;
-                                                                        if (Number(val) < 0) return;
+                                                                        if (val.includes('-') || Number(val) < 0) return;
                                                                         updateLine(idx, 'rate', val)
                                                                     }}
                                                                 />
@@ -667,7 +667,7 @@ export const PurchasesView: React.FC = () => {
                                                                          value={line.qty} 
                                                                          onChange={e => {
                                                                              const val = e.target.value;
-                                                                             if (val !== '' && Number(val) < 0) return;
+                                                                             if (val.includes('-') || (val !== '' && Number(val) < 0)) return;
                                                                              const newPreview = [...bulkPreview];
                                                                              newPreview[idx].qty = val;
                                                                              setBulkPreview(newPreview);
@@ -683,7 +683,7 @@ export const PurchasesView: React.FC = () => {
                                                                              value={line.rate} 
                                                                              onChange={e => {
                                                                                  const val = e.target.value;
-                                                                                 if (val !== '' && Number(val) < 0) return;
+                                                                                 if (val.includes('-') || (val !== '' && Number(val) < 0)) return;
                                                                                  const newPreview = [...bulkPreview];
                                                                                  newPreview[idx].rate = val;
                                                                                  setBulkPreview(newPreview);

@@ -1056,7 +1056,7 @@ export const IssuesView: React.FC = () => {
                                                                     placeholder="Qty"
                                                                     value={line.qty} onChange={e => {
                                                                         const val = e.target.value;
-                                                                        if (Number(val) < 0) return;
+                                                                        if (val.includes('-') || Number(val) < 0) return;
                                                                         updateLine(idx, 'qty', val)
                                                                     }}
                                                                 />
@@ -1171,7 +1171,7 @@ export const IssuesView: React.FC = () => {
                                                                 value={line.qty} 
                                                                 onChange={e => {
                                                                     const val = e.target.value;
-                                                                    if (val !== '' && Number(val) < 0) return;
+                                                                    if (val.includes('-') || (val !== '' && Number(val) < 0)) return;
                                                                     const newPreview = [...bulkPreview];
                                                                     newPreview[idx].qty = val;
                                                                     setBulkPreview(newPreview);

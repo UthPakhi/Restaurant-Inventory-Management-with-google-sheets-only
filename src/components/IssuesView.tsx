@@ -1171,10 +1171,9 @@ export const IssuesView: React.FC = () => {
                                                                 value={line.qty} 
                                                                 onChange={e => {
                                                                     const val = e.target.value;
-                                                                    const numVal = parseFloat(val) || 0;
-                                                                    if (numVal < 0) return;
+                                                                    if (val !== '' && Number(val) < 0) return;
                                                                     const newPreview = [...bulkPreview];
-                                                                    newPreview[idx].qty = val === '' ? '' : numVal;
+                                                                    newPreview[idx].qty = val;
                                                                     setBulkPreview(newPreview);
                                                                 }}
                                                             />

@@ -238,7 +238,7 @@ export const SummaryView: React.FC = () => {
         doc.save(`Recommended_PO_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
     };
 
-    const handleExportPDF = () => {
+    const handleExportPDF = async () => {
         const doc = new jsPDF();
         
         doc.setFontSize(20);
@@ -250,22 +250,56 @@ export const SummaryView: React.FC = () => {
             startY: 40,
             head: [['Metric', 'Amount (Rs.)']],
             body: [
-                ['Current Inventory Value', getInventoryValue().toLocaleString()],
-                ['Store Consumption', getFoodCostStats().storeIssues.toLocaleString()],
-                ['Fresh Purchases', getFoodCostStats().freshPurchase.toLocaleString()],
-                ['Total Food Cost', getFoodCostStats().totalCost.toLocaleString()],
+                ['Current Inventory Value', getInventoryValue().toLocaleString(undefined, { maximumFractionDigits: 2 })],
+                ['Store Consumption', getFoodCostStats().storeIssues.toLocaleString(undefined, { maximumFractionDigits: 2 })],
+                ['Fresh Purchases', getFoodCostStats().freshPurchase.toLocaleString(undefined, { maximumFractionDigits: 2 })],
+                ['Total Food Cost', getFoodCostStats().totalCost.toLocaleString(undefined, { maximumFractionDigits: 2 })],
             ],
             theme: 'striped',
             headStyles: { fillColor: [5, 150, 105] },
+        });
+
+        // Add Category Wise Data Table
+        const catData = getCategoryDistribution();
+        doc.text("Category Wise Consumption", 14, (doc as any).lastAutoTable.finalY + 15);
+        autoTable(doc, {
+            startY: (doc as any).lastAutoTable.finalY + 20,
+            head: [['Category Name', 'Value (Rs.)']],
+            body: catData.map(d => [d.name, d.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })]),
+            theme: 'striped',
+            headStyles: { fillColor: [99, 102, 241] },
         });
 
         doc.text("Top Items Consumed", 14, (doc as any).lastAutoTable.finalY + 15);
         autoTable(doc, {
             startY: (doc as any).lastAutoTable.finalY + 20,
             head: [['Item Name', 'Value (Rs.)']],
-            body: getDeptConsumptionData().map(d => [d.name, d.value.toLocaleString()]),
+            body: getDeptConsumptionData().map(d => [d.name, d.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })]),
             theme: 'striped',
         });
+        
+        // Let's capture the pie chart if it exists
+        try {
+            const html2canvas = (await import('html2canvas')).default;
+            const chartElement = document.getElementById('category-pie-chart');
+            if (chartElement) {
+                const canvas = await html2canvas(chartElement, { scale: 2, useCORS: true, logging: false });
+                const imgData = canvas.toDataURL('image/png');
+                
+                // Add a new page for charts
+                doc.addPage();
+                doc.setFontSize(16);
+                doc.text("Category Distribution Chart", 14, 22);
+                
+                const pdfWidth = doc.internal.pageSize.getWidth() - 28;
+                const imgProps = doc.getImageProperties(imgData);
+                const imgHeight = (imgProps.height * pdfWidth) / imgProps.width;
+                
+                doc.addImage(imgData, 'PNG', 14, 30, pdfWidth, imgHeight);
+            }
+        } catch (err) {
+            console.error("Could not capture chart image", err);
+        }
         
         doc.save(`resto_report_${selectedMonth}.pdf`);
     };
@@ -293,6 +327,11 @@ export const SummaryView: React.FC = () => {
         const sectionExp = [['Section', 'Value (Rs.)'], ...getSectionComparison().map(d => [d.name, d.value])];
         const wsSection = XLSX.utils.aoa_to_sheet(sectionExp);
         XLSX.utils.book_append_sheet(wb, wsSection, 'Section Distribution');
+
+        // Category Mix Sheet
+        const categoryExp = [['Category', 'Value (Rs.)'], ...getCategoryDistribution().map(d => [d.name, d.value])];
+        const wsCategory = XLSX.utils.aoa_to_sheet(categoryExp);
+        XLSX.utils.book_append_sheet(wb, wsCategory, 'Category Distribution');
 
         XLSX.writeFile(wb, `resto_report_${selectedMonth}.xlsx`);
     };
@@ -597,7 +636,7 @@ export const SummaryView: React.FC = () => {
                 </div>
 
                 {/* Category Distribution (Pie Chart) */}
-                <div className="col-span-12 lg:col-span-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[400px] dark:bg-slate-900 dark:border-slate-800">
+                <div id="category-pie-chart" className="col-span-12 lg:col-span-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col h-[400px] dark:bg-slate-900 dark:border-slate-800">
                     <div className="flex items-center gap-2 mb-6">
                         <PieChart size={18} className="text-indigo-500" />
                         <h3 className="font-bold text-slate-900 tracking-tight dark:text-white">Category Distribution</h3>

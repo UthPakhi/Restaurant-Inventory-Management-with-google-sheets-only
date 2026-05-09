@@ -70,7 +70,7 @@ export const IssuesView: React.FC = () => {
     const [bulkText, setBulkText] = useState('');
     const [bulkPreview, setBulkPreview] = useState<any[] | null>(null);
     const [bulkSummary, setBulkSummary] = useState<any | null>(null);
-    const [viewMode, setViewMode] = useState<'list' | 'pivot' | 'itemSummary'>('list');
+    const [viewMode, setViewMode] = useState<'list' | 'pivot' | 'itemSummary' | 'categorySummary'>('list');
     const [filters, setFilters] = useState({ dateFrom: '', dateTo: '', dept: '', itemSearch: '' });
 
     const [form, setForm] = useState({
@@ -643,6 +643,57 @@ export const IssuesView: React.FC = () => {
         }
     ];
 
+    const categorySummaryData = React.useMemo(() => {
+        const catMap: Record<string, { totalAmount: number, categoryName: string }> = {};
+        
+        displayedIssues.forEach(issue => {
+            const amount = Number(issue.total) || 0;
+            const itemId = issue.itemId;
+            const item = items.find(i => i.id === itemId);
+            const categoryName = item?.category || 'Uncategorized';
+
+            if (!catMap[categoryName]) {
+                catMap[categoryName] = { totalAmount: 0, categoryName };
+            }
+            catMap[categoryName].totalAmount += amount;
+        });
+
+        const rows = Object.values(catMap).map(data => {
+            const percentage = itemSummaryData.grandTotal > 0 ? (data.totalAmount / itemSummaryData.grandTotal) * 100 : 0;
+            return {
+                ...data,
+                id: data.categoryName,
+                percentage
+            };
+        }).filter(r => r.totalAmount !== 0).sort((a,b) => b.totalAmount - a.totalAmount);
+
+        return rows;
+    }, [displayedIssues, items, itemSummaryData.grandTotal]);
+
+    const categorySummaryColumns: Column<any>[] = [
+        {
+            key: 'categoryName',
+            header: 'Category',
+            cell: (row) => <span className="font-bold text-slate-900 dark:text-white">{row.categoryName}</span>,
+            sortable: true
+        },
+        {
+            key: 'totalAmount',
+            header: 'Total Amount (Rs)',
+            align: 'right',
+            cell: (row) => <span className="font-bold text-slate-700 font-mono dark:text-slate-300">{row.totalAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits:2})}</span>,
+            sortable: true
+        },
+        {
+            key: 'percentage',
+            header: '%',
+            align: 'right',
+            cell: (row) => <span className="text-blue-600 font-mono dark:text-blue-400">{row.percentage.toFixed(2)}%</span>,
+            sortable: true,
+            sortFn: (a,b) => a.percentage - b.percentage
+        }
+    ];
+
     // Format pivotData.dates into array of objects to satisfy DataTable's requirement extending Record<string,any>
     const mappedPivotDates = pivotData.dates.map(date => ({ date, id: date }));
 
@@ -705,6 +756,7 @@ export const IssuesView: React.FC = () => {
                   <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 dark:bg-slate-900 dark:border-slate-800 overflow-x-auto">
                       <button onClick={() => setViewMode('list')} className={cn("whitespace-nowrap px-4 py-1.5 text-xs font-bold rounded-lg transition-all", viewMode === 'list' ? "bg-white text-emerald-600 shadow-sm dark:bg-slate-800 dark:text-emerald-400" : "text-slate-500 dark:text-slate-400")}>List View</button>
                       <button onClick={() => setViewMode('itemSummary')} className={cn("whitespace-nowrap px-4 py-1.5 text-xs font-bold rounded-lg transition-all", viewMode === 'itemSummary' ? "bg-white text-emerald-600 shadow-sm dark:bg-slate-800 dark:text-emerald-400" : "text-slate-500 dark:text-slate-400")}>Item Wise</button>
+                      <button onClick={() => setViewMode('categorySummary')} className={cn("whitespace-nowrap px-4 py-1.5 text-xs font-bold rounded-lg transition-all", viewMode === 'categorySummary' ? "bg-white text-emerald-600 shadow-sm dark:bg-slate-800 dark:text-emerald-400" : "text-slate-500 dark:text-slate-400")}>Category Wise</button>
                       <button onClick={() => setViewMode('pivot')} className={cn("whitespace-nowrap px-4 py-1.5 text-xs font-bold rounded-lg transition-all", viewMode === 'pivot' ? "bg-white text-emerald-600 shadow-sm dark:bg-slate-800 dark:text-emerald-400" : "text-slate-500 dark:text-slate-400")}>Pivot View</button>
                   </div>
                   <button 
@@ -847,6 +899,50 @@ export const IssuesView: React.FC = () => {
                                 });
                                 rows.push(totalsRow);
                                 exportTableToExcel(headers, rows, 'Item Wise', 'item_wise_consumption');
+                            }}
+                        />
+                    </>
+                ) : viewMode === 'categorySummary' ? (
+                    <>
+                        <div className="mb-4 flex items-center justify-between p-4 bg-indigo-50 rounded-lg border border-indigo-100 dark:bg-indigo-950/20 dark:border-indigo-900/50">
+                            <span className="text-sm font-bold text-indigo-800 dark:text-indigo-400">Category Total</span>
+                            <span className="text-xl font-black text-indigo-700 dark:text-indigo-400 tracking-tight">
+                                Rs {itemSummaryData.grandTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                            </span>
+                        </div>
+                        <DataTable 
+                            data={categorySummaryData}
+                            columns={categorySummaryColumns}
+                            loading={loading}
+                            emptyMessage="No category records found in this period."
+                            customSearch={(row, q) => row.categoryName.toLowerCase().includes(q)}
+                            onExportPDF={(filteredData, activeColumns) => {
+                                const headers = activeColumns.map(c => typeof c.header === 'string' ? c.header : c.key);
+                                const rows = filteredData.map(i => 
+                                    activeColumns.map(c => {
+                                        switch (c.key) {
+                                            case 'categoryName': return i.categoryName;
+                                            case 'totalAmount': return i.totalAmount.toFixed(2);
+                                            case 'percentage': return i.percentage.toFixed(2) + '%';
+                                            default: return '';
+                                        }
+                                    })
+                                );
+                                exportTableToPDF(headers, rows, 'Category Wise Consumption', 'category_wise_consumption');
+                            }}
+                            onExportExcel={(filteredData, activeColumns) => {
+                                const headers = activeColumns.map(c => typeof c.header === 'string' ? c.header : c.key);
+                                const rows = filteredData.map(i => 
+                                    activeColumns.map(c => {
+                                        switch (c.key) {
+                                            case 'categoryName': return i.categoryName;
+                                            case 'totalAmount': return i.totalAmount;
+                                            case 'percentage': return i.percentage.toFixed(2) + '%';
+                                            default: return '';
+                                        }
+                                    })
+                                );
+                                exportTableToExcel(headers, rows, 'Category Wise', 'category_wise_consumption');
                             }}
                         />
                     </>

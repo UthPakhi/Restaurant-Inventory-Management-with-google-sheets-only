@@ -1046,6 +1046,7 @@ export const IssuesView: React.FC = () => {
                                                         <div className="flex gap-3 w-full sm:col-span-6 items-center">
                                                             <div className="flex-1 sm:w-auto">
                                                                 <input type="number" 
+                                                                    min="0"
                                                                     className={cn(
                                                                         "w-full px-3 py-2 bg-slate-50 border rounded-lg text-sm focus:ring-2 focus:outline-none transition-all dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200",
                                                                         line.qty && stockLevels[line.itemId] !== undefined && Number(line.qty) > stockLevels[line.itemId]
@@ -1053,7 +1054,11 @@ export const IssuesView: React.FC = () => {
                                                                             : "border-slate-200 focus:ring-emerald-500/20 dark:border-slate-700"
                                                                     )}
                                                                     placeholder="Qty"
-                                                                    value={line.qty} onChange={e => updateLine(idx, 'qty', e.target.value)}
+                                                                    value={line.qty} onChange={e => {
+                                                                        const val = e.target.value;
+                                                                        if (Number(val) < 0) return;
+                                                                        updateLine(idx, 'qty', val)
+                                                                    }}
                                                                 />
                                                             </div>
                                                             <div className="flex-1 sm:w-20 text-right">
@@ -1161,11 +1166,15 @@ export const IssuesView: React.FC = () => {
                                                         <td className="p-0 border-x relative dark:border-slate-800">
                                                             <input 
                                                                 type="number" 
+                                                                min="0"
                                                                 className={cn("w-full h-full px-4 py-3 text-center focus:outline-none focus:ring-2 focus:ring-inset font-bold dark:bg-slate-800", hasError ? "text-red-600 focus:ring-red-500 bg-red-50/30 dark:bg-red-950/40" : "focus:ring-emerald-500 dark:text-slate-200")}
                                                                 value={line.qty} 
                                                                 onChange={e => {
+                                                                    const val = e.target.value;
+                                                                    const numVal = parseFloat(val) || 0;
+                                                                    if (numVal < 0) return;
                                                                     const newPreview = [...bulkPreview];
-                                                                    newPreview[idx].qty = parseFloat(e.target.value) || 0;
+                                                                    newPreview[idx].qty = val === '' ? '' : numVal;
                                                                     setBulkPreview(newPreview);
                                                                 }}
                                                             />

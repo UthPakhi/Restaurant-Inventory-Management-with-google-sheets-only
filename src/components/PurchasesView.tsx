@@ -559,17 +559,27 @@ export const PurchasesView: React.FC = () => {
                                                             <div className="space-y-1">
                                                                 <label className="text-[8px] uppercase font-bold text-slate-400 ml-1 dark:text-slate-500">Quantity</label>
                                                                 <input type="number" 
+                                                                    min="0"
                                                                     className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all dark:bg-slate-900 dark:border-slate-700 dark:text-slate-200"
                                                                     placeholder="0.0"
-                                                                    value={line.qty} onChange={e => updateLine(idx, 'qty', e.target.value)}
+                                                                    value={line.qty} onChange={e => {
+                                                                        const val = e.target.value;
+                                                                        if (Number(val) < 0) return;
+                                                                        updateLine(idx, 'qty', val)
+                                                                    }}
                                                                 />
                                                             </div>
                                                             <div className="space-y-1">
                                                                 <label className="text-[8px] uppercase font-bold text-slate-400 ml-1 dark:text-slate-500">Rate (Rs.)</label>
                                                                 <input type="number" 
+                                                                    min="0"
                                                                     className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:outline-none transition-all dark:bg-slate-900 dark:border-slate-700 dark:text-slate-200"
                                                                     placeholder="0"
-                                                                    value={line.rate} onChange={e => updateLine(idx, 'rate', e.target.value)}
+                                                                    value={line.rate} onChange={e => {
+                                                                        const val = e.target.value;
+                                                                        if (Number(val) < 0) return;
+                                                                        updateLine(idx, 'rate', val)
+                                                                    }}
                                                                 />
                                                             </div>
                                                             <div className="col-span-2 sm:col-span-1 sm:flex-1 space-y-1">
@@ -652,11 +662,14 @@ export const PurchasesView: React.FC = () => {
                                                                  <td className="px-4 py-3 text-right text-slate-700 font-mono dark:text-slate-300">
                                                                      <input 
                                                                          type="number" 
+                                                                         min="0"
                                                                          className={cn("w-20 px-2 py-1 text-right focus:outline-none focus:ring-1 focus:ring-inset font-mono dark:bg-slate-800", isZeroQty ? "text-red-600 focus:ring-red-500 bg-red-50/30 dark:bg-red-950/40" : "focus:ring-emerald-500 dark:text-slate-200")}
                                                                          value={line.qty} 
                                                                          onChange={e => {
+                                                                             const val = e.target.value;
+                                                                             if (val !== '' && Number(val) < 0) return;
                                                                              const newPreview = [...bulkPreview];
-                                                                             newPreview[idx].qty = e.target.value;
+                                                                             newPreview[idx].qty = val;
                                                                              setBulkPreview(newPreview);
                                                                          }}
                                                                      />
@@ -665,11 +678,14 @@ export const PurchasesView: React.FC = () => {
                                                                      <div className="flex flex-col items-end">
                                                                          <input 
                                                                              type="number" 
+                                                                             min="0"
                                                                              className={cn("w-24 px-2 py-1 text-right focus:outline-none focus:ring-1 focus:ring-inset font-mono dark:bg-slate-800", isZeroQty ? "text-red-600 focus:ring-red-500 bg-red-50/30 dark:bg-red-950/40" : "focus:ring-emerald-500 dark:text-slate-200")}
                                                                              value={line.rate} 
                                                                              onChange={e => {
+                                                                                 const val = e.target.value;
+                                                                                 if (val !== '' && Number(val) < 0) return;
                                                                                  const newPreview = [...bulkPreview];
-                                                                                 newPreview[idx].rate = e.target.value;
+                                                                                 newPreview[idx].rate = val;
                                                                                  setBulkPreview(newPreview);
                                                                              }}
                                                                          />

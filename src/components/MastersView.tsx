@@ -717,8 +717,8 @@ export const MastersView: React.FC = () => {
 
             {tab !== 'settings' && (
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col dark:bg-slate-900 dark:border-slate-800">
-                <div className="p-4 border-b border-slate-100 flex items-center justify-between gap-4 bg-slate-50/50 dark:bg-slate-950/20 dark:border-slate-800">
-                    <div className="relative flex-1 max-w-sm">
+                <div className="p-4 border-b border-slate-100 flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4 bg-slate-50/50 dark:bg-slate-950/20 dark:border-slate-800">
+                    <div className="relative w-full xl:max-w-sm flex-shrink-0">
                         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                         <input 
                             type="text" 
@@ -728,10 +728,10 @@ export const MastersView: React.FC = () => {
                             className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:bg-slate-800 dark:border-slate-700 dark:text-white dark:placeholder:text-slate-600" 
                         />
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto overflow-x-auto pb-1 xl:pb-0 hide-scrollbar">
                         <button 
                             onClick={() => setShowInactive(!showInactive)}
-                            className={cn("px-4 py-2 border rounded-lg text-sm font-medium transition-all flex items-center gap-2", 
+                            className={cn("whitespace-nowrap px-4 py-2 border rounded-lg text-sm font-medium transition-all flex items-center gap-2", 
                                 showInactive ? "bg-slate-800 text-white border-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:border-slate-100" : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-400 dark:border-slate-700 dark:hover:bg-slate-800")}
                         >
                             {showInactive ? "Hide Inactive" : "Show Inactive"}
@@ -741,20 +741,20 @@ export const MastersView: React.FC = () => {
                                 <button 
                                     onClick={handleRepairSheets}
                                     title="If seed data or inventory fails, use this to create missing sheets/columns"
-                                    className="px-4 py-2 border border-slate-200 bg-white text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-50 transition-all flex items-center gap-2 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
+                                    className="whitespace-nowrap px-4 py-2 border border-slate-200 bg-white text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-50 transition-all flex items-center gap-2 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
                                 >
                                     <ShieldCheck size={14} className="text-blue-500" />
                                     Repair Structure
                                 </button>
                                 <button 
                                     onClick={() => setShowSeedModal(true)}
-                                    className="px-4 py-2 border border-slate-200 bg-white text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-50 transition-all dark:bg-slate-900 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
+                                    className="whitespace-nowrap px-4 py-2 border border-slate-200 bg-white text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-50 transition-all dark:bg-slate-900 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
                                 >
                                     Seed Demo Data
                                 </button>
                                 <button 
                                     onClick={() => setIsBulkImport(true)}
-                                    className="px-4 py-2 border border-slate-200 bg-white text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-50 transition-all dark:bg-slate-900 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
+                                    className="whitespace-nowrap px-4 py-2 border border-slate-200 bg-white text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-50 transition-all dark:bg-slate-900 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
                                 >
                                     Bulk Import
                                 </button>
@@ -762,7 +762,7 @@ export const MastersView: React.FC = () => {
                         )}
                         <button 
                             onClick={() => setIsAdding(true)}
-                            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium shadow-md hover:bg-emerald-700 transition-all font-bold"
+                            className="whitespace-nowrap flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium shadow-md hover:bg-emerald-700 transition-all font-bold"
                         >
                             <Plus size={16} /> Add New {tab === 'items' ? 'Item' : tab === 'depts' ? 'Section' : 'Supplier'}
                         </button>

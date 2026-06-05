@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { sheetsService, GoogleTokens } from '../services/sheetsService';
 import { motion } from 'motion/react';
 import { LayoutDashboard, Cloud, Shield, Zap, Loader2, Database, Lock } from 'lucide-react'; 
+import { safeStorage } from '../lib/utils';
 
 interface SetupWizardProps {
   onComplete: (data: { tokens: GoogleTokens; spreadsheetId: string }) => void;
@@ -28,7 +29,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
           if (isJoinExisting && existingSpreadsheetId) {
               sheetsService.setSpreadsheetId(existingSpreadsheetId);
               try {
-                await sheetsService.read("Masters_Items!A1:A1");
+                await sheetsService.getMetadata();
               } catch (e: any) {
                 throw new Error("Unable to access spreadsheet. Ensure you have the correct URL and the owner has shared it with your Google Account.");
               }
@@ -36,6 +37,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
               onComplete({ tokens, spreadsheetId: existingSpreadsheetId });
           } else if (!isJoinExisting) {
               const result = await sheetsService.createSpreadsheet("Restaurant Management Sheet");
+              sheetsService.setSpreadsheetId(result.spreadsheetId);
               await sheetsService.initializeSheetStructure();
               onComplete({ tokens, spreadsheetId: result.spreadsheetId });
           }
@@ -48,16 +50,16 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
     };
 
     // Check mount
-    const savedResult = localStorage.getItem('resto_oauth_result');
+    const savedResult = safeStorage.getItem('resto_oauth_result');
     if (savedResult) {
-      localStorage.removeItem('resto_oauth_result');
+      safeStorage.removeItem('resto_oauth_result');
       handleOauthResult(savedResult);
     }
     
     // Check storage event (for cross-window/fallback)
     const handleStorageEvent = (e: StorageEvent) => {
         if (e.key === 'resto_oauth_result' && e.newValue) {
-            localStorage.removeItem('resto_oauth_result');
+            safeStorage.removeItem('resto_oauth_result');
             handleOauthResult(e.newValue);
         }
     };
@@ -80,6 +82,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
             sheetsService.setTokens(tokens);
             
             const result = await sheetsService.createSpreadsheet("Restaurant Management Sheet");
+            sheetsService.setSpreadsheetId(result.spreadsheetId);
             await sheetsService.initializeSheetStructure();
             
             onComplete({ tokens, spreadsheetId: result.spreadsheetId });
@@ -127,7 +130,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
             sheetsService.setSpreadsheetId(existingSpreadsheetId);
             
             try {
-               await sheetsService.read("Masters_Items!A1:A1");
+               await sheetsService.getMetadata();
             } catch (e: any) {
                throw new Error("Unable to access spreadsheet. Ensure you have the correct URL and the owner has shared it with your Google Account.");
             }

@@ -5,7 +5,7 @@ import { sheetsService } from '../services/sheetsService';
 import { mapRowToItem, mapRowToDepartment, mapRowToSupplier, mapItemToRow } from '../services/dataMappers';
 import { Item, Department, Supplier } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
-import { cn } from '../lib/utils';
+import { cn, safeStorage } from '../lib/utils';
 import { useAppLookup } from '../context/AppContext';
 
 import { toast } from 'sonner';
@@ -469,9 +469,9 @@ export const MastersView: React.FC = () => {
                 }
             }
             
-            const spreadsheetId = localStorage.getItem('resto_manage_data') ? JSON.parse(localStorage.getItem('resto_manage_data')!).spreadsheetId : null;
+            const spreadsheetId = safeStorage.getItem('resto_manage_data') ? JSON.parse(safeStorage.getItem('resto_manage_data')!).spreadsheetId : null;
             if (spreadsheetId) {
-                localStorage.setItem(`resto_branding_${spreadsheetId}`, JSON.stringify({
+                safeStorage.setItem(`resto_branding_${spreadsheetId}`, JSON.stringify({
                   restaurantName,
                   logoUrl
                 }));

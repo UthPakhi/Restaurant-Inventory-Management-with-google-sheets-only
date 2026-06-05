@@ -11,7 +11,7 @@ export interface ExportMetadata {
 const COMPANY_NAME = "My Inventory Company";
 const APP_TAGLINE = "Smart Store & Inventory Management system";
 
-export const exportTableToPDF = async (headers: string[], rows: any[][], title: string, filename: string, metadata?: ExportMetadata) => {
+export const exportTableToPDF = async (headers: string[], rows: any[][], title: string, filename: string, metadata?: ExportMetadata, footer?: string[]) => {
   return new Promise<void>((resolve) => {
     setTimeout(() => {
       const doc = new jsPDF('landscape'); // use landscape for better fit typically
@@ -60,10 +60,20 @@ export const exportTableToPDF = async (headers: string[], rows: any[][], title: 
         startY,
         head: [headers],
         body: rows,
+        foot: footer ? [footer] : undefined,
         theme: 'grid',
         styles: { fontSize: 8, cellPadding: 3 },
         headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontStyle: 'bold' },
+        footStyles: { fillColor: [16, 185, 129], textColor: [255, 255, 255], fontStyle: 'bold' },
         alternateRowStyles: { fillColor: [248, 250, 252] },
+        didParseCell: function (data) {
+          const headerName = typeof headers[data.column.index] === 'string' ? headers[data.column.index].toUpperCase() : '';
+          if ((headerName.includes('TOTAL AMOUNT') || headerName === 'TOTAL') && data.section === 'body') {
+            data.cell.styles.fontStyle = 'bold';
+            data.cell.styles.textColor = [15, 23, 42]; // darker for totals
+            data.cell.styles.fillColor = [236, 253, 245]; // light emerald background
+          }
+        },
         didDrawPage: function (data) {
           // Footer
           doc.setFontSize(8);
@@ -91,7 +101,7 @@ export const exportTableToPDF = async (headers: string[], rows: any[][], title: 
   });
 };
 
-export const exportTableToExcel = async (headers: string[], rows: any[][], sheetName: string, filename: string, metadata?: ExportMetadata) => {
+export const exportTableToExcel = async (headers: string[], rows: any[][], sheetName: string, filename: string, metadata?: ExportMetadata, footer?: string[]) => {
   return new Promise<void>((resolve) => {
     setTimeout(() => {
       const wb = XLSX.utils.book_new();
@@ -101,8 +111,11 @@ export const exportTableToExcel = async (headers: string[], rows: any[][], sheet
       exportData.push([APP_TAGLINE]);
       exportData.push([]);
       
-      if (title) exportData.push([title]); // Use sheetName as fallback title if metadata.title not present
-      if (metadata?.title) exportData[3] = [metadata.title]; 
+      if (metadata?.title) {
+        exportData.push([metadata.title]); 
+      } else {
+        exportData.push([sheetName]); // Use sheetName as fallback title if metadata.title not present
+      }
       
       if (metadata?.timestamp) exportData.push([`Generated: ${metadata.timestamp}`]);
       if (metadata?.filters) exportData.push([`Filters: ${metadata.filters}`]);
@@ -110,6 +123,7 @@ export const exportTableToExcel = async (headers: string[], rows: any[][], sheet
       
       exportData.push(headers);
       rows.forEach(r => exportData.push(r));
+      if (footer) exportData.push(footer);
       
       const ws = XLSX.utils.aoa_to_sheet(exportData);
       

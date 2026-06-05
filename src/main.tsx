@@ -6,7 +6,11 @@ import './index.css';
 import { registerSW } from 'virtual:pwa-register';
 
 if (typeof window !== 'undefined') {
-  registerSW({ immediate: true });
+  try {
+    registerSW({ immediate: true });
+  } catch (err) {
+    console.warn('PWA service worker registration failed', err);
+  }
 }
 
 createRoot(document.getElementById('root')!).render(

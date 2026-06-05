@@ -819,7 +819,12 @@ export const IssuesView: React.FC = () => {
                                     }
                                 })
                             );
-                            exportTableToPDF(headers, rows, 'Consumption Log', 'consumption_log');
+                            const footer = activeColumns.map(c => {
+                                if (c.key === 'total') return listGrandTotal.toFixed(2);
+                                if (c.key === 'rate') return 'GRAND TOTAL:';
+                                return '';
+                            });
+                            exportTableToPDF(headers, rows, 'Consumption Log', 'consumption_log', undefined, footer);
                         }}
                         onExportExcel={(filteredData, activeColumns) => {
                             const headers = activeColumns.map(c => typeof c.header === 'string' ? c.header : c.key);
@@ -836,7 +841,12 @@ export const IssuesView: React.FC = () => {
                                     }
                                 })
                             );
-                            exportTableToExcel(headers, rows, 'Consumption', 'consumption_log');
+                            const footer = activeColumns.map(c => {
+                                if (c.key === 'total') return listGrandTotal.toString();
+                                if (c.key === 'rate') return 'GRAND TOTAL:';
+                                return '';
+                            });
+                            exportTableToExcel(headers, rows, 'Consumption', 'consumption_log', undefined, footer);
                         }}
                         summaryRow={listSummaryRow}
                     />
@@ -868,14 +878,13 @@ export const IssuesView: React.FC = () => {
                                         }
                                     })
                                 );
-                                const totalsRow = activeColumns.map(c => {
+                                const footer = activeColumns.map(c => {
                                     if (c.key === 'itemName') return 'GRAND TOTAL';
                                     if (c.key === 'totalAmount') return itemSummaryData.grandTotal.toFixed(2);
                                     if (c.key === 'percentage') return '100.00%';
                                     return '';
                                 });
-                                rows.push(totalsRow);
-                                exportTableToPDF(headers, rows, 'Item Wise Consumption', 'item_wise_consumption');
+                                exportTableToPDF(headers, rows, 'Item Wise Consumption', 'item_wise_consumption', undefined, footer);
                             }}
                             onExportExcel={(filteredData, activeColumns) => {
                                 const headers = activeColumns.map(c => typeof c.header === 'string' ? c.header : c.key);
@@ -891,14 +900,13 @@ export const IssuesView: React.FC = () => {
                                         }
                                     })
                                 );
-                                const totalsRow = activeColumns.map(c => {
+                                const footer = activeColumns.map(c => {
                                     if (c.key === 'itemName') return 'GRAND TOTAL';
-                                    if (c.key === 'totalAmount') return itemSummaryData.grandTotal;
+                                    if (c.key === 'totalAmount') return itemSummaryData.grandTotal.toString();
                                     if (c.key === 'percentage') return '100.00%';
                                     return '';
                                 });
-                                rows.push(totalsRow);
-                                exportTableToExcel(headers, rows, 'Item Wise', 'item_wise_consumption');
+                                exportTableToExcel(headers, rows, 'Item Wise', 'item_wise_consumption', undefined, footer);
                             }}
                         />
                     </>
@@ -928,7 +936,13 @@ export const IssuesView: React.FC = () => {
                                         }
                                     })
                                 );
-                                exportTableToPDF(headers, rows, 'Category Wise Consumption', 'category_wise_consumption');
+                                const footer = activeColumns.map(c => {
+                                    if (c.key === 'categoryName') return 'GRAND TOTAL';
+                                    if (c.key === 'totalAmount') return itemSummaryData.grandTotal.toFixed(2);
+                                    if (c.key === 'percentage') return '100.00%';
+                                    return '';
+                                });
+                                exportTableToPDF(headers, rows, 'Category Wise Consumption', 'category_wise_consumption', undefined, footer);
                             }}
                             onExportExcel={(filteredData, activeColumns) => {
                                 const headers = activeColumns.map(c => typeof c.header === 'string' ? c.header : c.key);
@@ -942,7 +956,13 @@ export const IssuesView: React.FC = () => {
                                         }
                                     })
                                 );
-                                exportTableToExcel(headers, rows, 'Category Wise', 'category_wise_consumption');
+                                const footer = activeColumns.map(c => {
+                                    if (c.key === 'categoryName') return 'GRAND TOTAL';
+                                    if (c.key === 'totalAmount') return itemSummaryData.grandTotal.toString();
+                                    if (c.key === 'percentage') return '100.00%';
+                                    return '';
+                                });
+                                exportTableToExcel(headers, rows, 'Category Wise', 'category_wise_consumption', undefined, footer);
                             }}
                         />
                     </>
@@ -963,7 +983,16 @@ export const IssuesView: React.FC = () => {
                                     return val > 0 ? val.toFixed(2) : '-';
                                 });
                             });
-                            exportTableToPDF(headers, rows, 'Consumption Pivot', 'consumption_pivot');
+                            const footer = activeColumns.map(c => {
+                                if (c.key === 'date') return 'GRAND TOTAL';
+                                if (c.key === 'total') return pivotTotals.grandTotal.toFixed(2);
+                                if (pivotTotals.totals[c.key as string] !== undefined) {
+                                    const val = pivotTotals.totals[c.key as string];
+                                    return val > 0 ? val.toFixed(2) : '-';
+                                }
+                                return '';
+                            });
+                            exportTableToPDF(headers, rows, 'Consumption Pivot', 'consumption_pivot', undefined, footer);
                         }}
                         onExportExcel={(filteredData, activeColumns) => {
                             const headers = activeColumns.map(c => typeof c.header === 'string' ? c.header : c.key);
@@ -976,7 +1005,16 @@ export const IssuesView: React.FC = () => {
                                     return val > 0 ? val : 0;
                                 });
                             });
-                            exportTableToExcel(headers, rows, 'Consumption Pivot', 'consumption_pivot');
+                            const footer = activeColumns.map(c => {
+                                if (c.key === 'date') return 'GRAND TOTAL';
+                                if (c.key === 'total') return pivotTotals.grandTotal.toString();
+                                if (pivotTotals.totals[c.key as string] !== undefined) {
+                                    const val = pivotTotals.totals[c.key as string];
+                                    return val > 0 ? val.toString() : '0';
+                                }
+                                return '';
+                            });
+                            exportTableToExcel(headers, rows, 'Consumption Pivot', 'consumption_pivot', undefined, footer);
                         }}
                         summaryRow={pivotSummaryRow}
                     />

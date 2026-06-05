@@ -132,7 +132,7 @@ async function startServer() {
                 state: ${JSON.stringify(authState)}
               };
               try {
-                localStorage.setItem('resto_oauth_result', JSON.stringify(authResult));
+                try { localStorage.setItem('resto_oauth_result', JSON.stringify(authResult)); } catch(e) {}
                 
                 if (window.opener && !window.opener.closed) {
                   window.opener.postMessage(authResult, '*');
@@ -146,7 +146,7 @@ async function startServer() {
                   }
                 }, 1500);
               } catch (e) {
-                  localStorage.setItem('resto_oauth_result', JSON.stringify(authResult));
+                  try { localStorage.setItem('resto_oauth_result', JSON.stringify(authResult)); } catch(err) {}
                   window.close();
                   setTimeout(() => {
                     window.location.href = '/';

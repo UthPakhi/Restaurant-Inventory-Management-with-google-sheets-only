@@ -14,7 +14,7 @@ import {
   Activity
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { cn } from './lib/utils';
+import { cn, safeStorage } from './lib/utils';
 import { format } from 'date-fns';
 
 import { SetupWizard } from './components/SetupWizard';
@@ -41,7 +41,7 @@ export default function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 1024);
   const [user, setUser] = useState<{ email: string; name: string; picture?: string } | null>(null);
   const [isDarkMode, setIsDarkMode] = useState(() => {
-    const saved = localStorage.getItem('resto_theme');
+    const saved = safeStorage.getItem('resto_theme');
     return saved === 'dark';
   });
 
@@ -50,12 +50,12 @@ export default function App() {
     const metaDark = document.getElementById('theme-color-dark');
     if (isDarkMode) {
       document.documentElement.classList.add('dark');
-      localStorage.setItem('resto_theme', 'dark');
+      safeStorage.setItem('resto_theme', 'dark');
       if (metaLight) metaLight.setAttribute('content', '#0f172a');
       if (metaDark) metaDark.setAttribute('content', '#0f172a');
     } else {
       document.documentElement.classList.remove('dark');
-      localStorage.setItem('resto_theme', 'light');
+      safeStorage.setItem('resto_theme', 'light');
       if (metaLight) metaLight.setAttribute('content', '#ffffff');
       if (metaDark) metaDark.setAttribute('content', '#ffffff');
     }
@@ -85,7 +85,7 @@ export default function App() {
 
   // Initialize from LocalStorage
   const loadBrandingData = async (spreadsheetId: string) => {
-    const bSaved = localStorage.getItem(`resto_branding_${spreadsheetId}`);
+    const bSaved = safeStorage.getItem(`resto_branding_${spreadsheetId}`);
     if (bSaved) {
       try {
         const bParsed = JSON.parse(bSaved);
@@ -107,7 +107,7 @@ export default function App() {
                   if (r[0] === 'LogoUrl' && r[1]) lUrl = r[1];
               });
               setBranding({ name: rName, logoUrl: lUrl });
-              localStorage.setItem(`resto_branding_${spreadsheetId}`, JSON.stringify({
+              safeStorage.setItem(`resto_branding_${spreadsheetId}`, JSON.stringify({
                   restaurantName: rName,
                   logoUrl: lUrl
               }));
@@ -137,14 +137,14 @@ export default function App() {
   };
 
   useEffect(() => {
-    const saved = localStorage.getItem('resto_manage_data');
+    const saved = safeStorage.getItem('resto_manage_data');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
         setAppData(parsed);
 
         const reloadLocalBranding = () => {
-            const bSaved = localStorage.getItem(`resto_branding_${parsed.spreadsheetId}`);
+            const bSaved = safeStorage.getItem(`resto_branding_${parsed.spreadsheetId}`);
             if (bSaved) {
               try {
                 const bParsed = JSON.parse(bSaved);
@@ -178,7 +178,7 @@ export default function App() {
 
   const handleSetupComplete = (data: { tokens: GoogleTokens; spreadsheetId: string }) => {
     setAppData(data);
-    localStorage.setItem('resto_manage_data', JSON.stringify(data));
+    safeStorage.setItem('resto_manage_data', JSON.stringify(data));
     setIsInitialized(true);
     if (data.spreadsheetId === 'demo-mode') {
       setUser({ email: 'demo@example.com', name: 'Demo User', picture: '' });
@@ -296,7 +296,7 @@ export default function App() {
                   <p className="text-[10px] text-slate-500 truncate lowercase">{user?.email}</p>
                 </div>
                 <button 
-                    onClick={() => { localStorage.removeItem('resto_manage_data'); window.location.reload(); }}
+                    onClick={() => { safeStorage.removeItem('resto_manage_data'); window.location.reload(); }}
                     className="text-slate-500 hover:text-red-400 transition-colors shrink-0"
                 >
                   <LogOut size={14} />

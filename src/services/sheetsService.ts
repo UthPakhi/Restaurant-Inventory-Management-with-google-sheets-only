@@ -2,6 +2,7 @@
  * Service to interact with Google Sheets via the backend proxy.
  */
 import { calculateFIFO, Batch } from '../lib/fifoEngine';
+import { safeStorage } from '../lib/utils';
 
 export interface GoogleTokens {
   access_token?: string;
@@ -40,7 +41,7 @@ export class SheetsService {
   }
 
   private loadDemoData() {
-    const saved = localStorage.getItem('resto_manage_demo_data');
+    const saved = safeStorage.getItem('resto_manage_demo_data');
     if (saved) {
       this.demoData = JSON.parse(saved);
     } else {
@@ -65,7 +66,7 @@ export class SheetsService {
   }
 
   private saveDemoData() {
-    localStorage.setItem('resto_manage_demo_data', JSON.stringify(this.demoData));
+    safeStorage.setItem('resto_manage_demo_data', JSON.stringify(this.demoData));
   }
 
   setTokens(tokens: GoogleTokens) {
@@ -142,16 +143,20 @@ export class SheetsService {
           }),
         });
         const data = await res.json();
-        if (data.error && !data.error.includes("already exists")) {
-            console.warn(`Failed to create sheets:`, data.error);
+        if (!res.ok || data.error) {
+            if (data.error && data.error.includes("already exists")) {
+                 console.warn(`Failed to create sheets:`, data.error);
+            } else {
+                 throw new Error(data.error || "Batch update failed");
+            }
         }
       }
 
       await this.setupHeaders(missingTitles);
       return { success: true };
-    } catch (e) {
+    } catch (e: any) {
       console.error(`Network error initializing sheets:`, e);
-      return { success: false, error: e };
+      throw new Error(`Failed to initialize spreadsheet: ${e.message}`);
     }
   }
 
@@ -178,11 +183,7 @@ export class SheetsService {
           .map(h => ({ range: h.range, values: h.values }));
 
       if (dataToUpdate.length > 0) {
-          try {
-              await this.valuesBatchUpdate(dataToUpdate);
-          } catch (e) {
-              console.error(`Failed to setup headers with batch update`, e);
-          }
+          await this.valuesBatchUpdate(dataToUpdate);
       }
   }
 

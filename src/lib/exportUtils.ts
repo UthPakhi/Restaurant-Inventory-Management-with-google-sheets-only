@@ -85,7 +85,8 @@ export const exportTableToPDF = async (headers: string[], rows: any[][], title: 
             pageHeight - 10
           );
           
-          const str = 'Page ' + doc.internal.getCurrentPageInfo().pageNumber + ' of ' + doc.internal.getNumberOfPages();
+          const docInternal = doc.internal as any;
+          const str = 'Page ' + docInternal.getCurrentPageInfo().pageNumber + ' of ' + docInternal.getNumberOfPages();
           doc.text(
             str,
             pageWidth - data.settings.margin.right,

@@ -31,7 +31,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
               try {
                 await sheetsService.getMetadata();
               } catch (e: any) {
-                throw new Error("Unable to access spreadsheet. Ensure you have the correct URL and the owner has shared it with your Google Account.");
+                throw new Error(`Unable to access spreadsheet. Ensure you have the correct URL and the owner has shared it with your Google Account. (Details: ${e.message})`);
               }
               await sheetsService.initializeSheetStructure();
               onComplete({ tokens, spreadsheetId: existingSpreadsheetId });
@@ -132,7 +132,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
             try {
                await sheetsService.getMetadata();
             } catch (e: any) {
-               throw new Error("Unable to access spreadsheet. Ensure you have the correct URL and the owner has shared it with your Google Account.");
+               throw new Error(`Unable to access spreadsheet. Ensure you have the correct URL and the owner has shared it with your Google Account. (Details: ${e.message})`);
             }
 
             await sheetsService.initializeSheetStructure();

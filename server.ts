@@ -4,6 +4,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { google } from "googleapis";
 import dotenv from "dotenv";
+import { GoogleGenAI, Type } from "@google/genai";
 
 dotenv.config();
 
@@ -89,7 +90,7 @@ async function startServer() {
     const url = oauth2Client.generateAuthUrl({
       access_type: "offline",
       scope: scopes,
-      prompt: "consent",
+      prompt: "select_account consent",
       redirect_uri: redirectUri,
       state: JSON.stringify({ r: redirectUri, ...customState }),
     });
@@ -466,6 +467,171 @@ async function startServer() {
       res.json(userInfo.data);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GEMINI SMART REORDER PREDICTIONS
+  app.post("/api/gemini/reorder-predictions", async (req, res) => {
+    const { items } = req.body;
+    if (!items) {
+      return res.status(400).json({ error: "Missing items data" });
+    }
+
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      return res.status(400).json({ error: "GEMINI_API_KEY environment variable is not configured. Please add it in Settings > Secrets." });
+    }
+
+    try {
+      const ai = new GoogleGenAI({
+        apiKey,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
+          }
+        }
+      });
+
+      const itemsSummary = items.map((itm: any) => ({
+        id: itm.id,
+        name: itm.name,
+        unit: itm.unit,
+        currentStock: itm.stock,
+        minParLevel: itm.minParLevel,
+        defaultReorderQty: itm.reorderQty,
+        qty7Days: itm.qty7Days || 0,
+        qty14Days: itm.qty14Days || 0,
+        qty30Days: itm.qty30Days || 0,
+        averageDailyConsumption: itm.averageDailyConsumption || 0,
+        lastIssueDate: itm.lastIssueDate || "None"
+      }));
+
+      const prompt = `
+You are an expert restaurant inventory optimization AI.
+Analyze the following compiled stock trends and pre-calculated average daily consumption rate for each restaurant item to predict future reorder needs and prevent stockouts:
+
+JSON Items and Consumption Data:
+${JSON.stringify(itemsSummary, null, 2)}
+
+Calculate / Predict:
+1. Days remaining of stock: currentStock / averageDailyConsumption (If averageDailyConsumption is 0, set daysRemaining to 999).
+2. If daysRemaining is less than 7 days OR currentStock is below minParLevel, recommend a suggestedReorderQty to restore healthy stocks and cover next week's anticipated consumption. If the stock is healthy, suggestedReorderQty should be 0.
+3. Weigh the raw velocity trends: Is consumption spiking recently (7-day rate higher than 30-day rate) or declining?
+4. Set a level of confidence (High, Medium, Low) and provide a concise 1-sentence reasoning (e.g., "7-day spike indicates rising demand, recommendation covers next 10 days of service.").
+
+Return the predictions array wrapped in a single JSON object. Do not include any markdown format blocks.
+`;
+
+      const modelsToTry = ["gemini-2.5-flash", "gemini-3.5-flash", "gemini-3.1-flash-lite"];
+      let finalData: any = null;
+      let lastError: any = null;
+
+      for (const modelName of modelsToTry) {
+        let attempts = 2;
+        while (attempts > 0) {
+          try {
+            console.log(`[Gemini API] Attempting prediction with model ${modelName} (${attempts} attempts remaining for this model)`);
+            const response = await ai.models.generateContent({
+              model: modelName,
+              contents: prompt,
+              config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                  type: Type.OBJECT,
+                  properties: {
+                    predictions: {
+                      type: Type.ARRAY,
+                      items: {
+                        type: Type.OBJECT,
+                        properties: {
+                          itemId: { type: Type.STRING },
+                          averageDailyConsumption: { type: Type.NUMBER },
+                          daysRemaining: { type: Type.NUMBER },
+                          suggestedReorderQty: { type: Type.NUMBER },
+                          confidence: { type: Type.STRING },
+                          reasoning: { type: Type.STRING }
+                        },
+                        required: ["itemId", "averageDailyConsumption", "daysRemaining", "suggestedReorderQty", "confidence", "reasoning"]
+                      }
+                    }
+                  },
+                  required: ["predictions"]
+                }
+              }
+            });
+
+            const responseText = response.text || "{}";
+            finalData = JSON.parse(responseText);
+            break; // Success! Break inner loop
+          } catch (err: any) {
+            lastError = err;
+            console.warn(`[Gemini API] Attempt with ${modelName} failed. error:`, err.message || err);
+            attempts--;
+            if (attempts > 0) {
+              // Wait 1 second before retrying
+              await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+          }
+        }
+        if (finalData) {
+          break; // Success! Break outer model loop
+        }
+      }
+
+      if (finalData) {
+        res.json(finalData);
+      } else {
+        console.warn("[Gemini API] All model attempts failed. Falling back to robust offline deterministic predictions.");
+        const predictions = itemsSummary.map((itm: any) => {
+          const avgDaily = itm.averageDailyConsumption || 0;
+          const daysRemaining = avgDaily > 0 ? Number((itm.currentStock / avgDaily).toFixed(1)) : 999;
+          
+          let suggestedReorderQty = 0;
+          let confidence = "Medium";
+          let reasoning = "";
+
+          const isBelowPar = itm.currentStock < itm.minParLevel;
+          const isAtRiskOfDepletion = daysRemaining < 7;
+
+          if (isBelowPar || isAtRiskOfDepletion) {
+            confidence = avgDaily > 0 ? "High" : "Low";
+            const deficit = Math.max(0, itm.minParLevel - itm.currentStock);
+            const cover7Days = Math.ceil(avgDaily * 7);
+            const rawRecommendation = Math.max(itm.defaultReorderQty || 0, deficit + cover7Days);
+            suggestedReorderQty = rawRecommendation || 5;
+
+            if (isBelowPar && isAtRiskOfDepletion && avgDaily > 0) {
+              reasoning = `Under min par level of ${itm.minParLevel} ${itm.unit} and depleting within ${daysRemaining} days due to service consumption. Restocking suggested.`;
+            } else if (isBelowPar) {
+              reasoning = `Current stock (${itm.currentStock} ${itm.unit}) is below par level (${itm.minParLevel} ${itm.unit}). Restocking suggested to secure par level.`;
+            } else {
+              reasoning = `Anticipated stock depletion in ${daysRemaining} days based on daily velocity. Suggest proactive replenishment.`;
+            }
+          } else {
+            confidence = avgDaily > 0 ? "High" : "Medium";
+            suggestedReorderQty = 0;
+            if (avgDaily > 0) {
+              reasoning = `Stock levels are healthy with approx ${daysRemaining} days left at current velocity. No immediate reordering required.`;
+            } else {
+              reasoning = `Stock of ${itm.currentStock} ${itm.unit} is secure and shows no active depletion trends. No action required.`;
+            }
+          }
+
+          return {
+            itemId: String(itm.id),
+            averageDailyConsumption: Number(avgDaily.toFixed(3)),
+            daysRemaining,
+            suggestedReorderQty: Number(suggestedReorderQty.toFixed(1)),
+            confidence,
+            reasoning
+          };
+        });
+
+        res.json({ predictions });
+      }
+    } catch (error: any) {
+      console.error("Gemini Reorder Prediction Failed:", error);
+      res.status(500).json({ error: error.message || "Prediction failed to compile. Please try again." });
     }
   });
 

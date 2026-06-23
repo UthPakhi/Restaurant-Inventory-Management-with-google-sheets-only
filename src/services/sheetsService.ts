@@ -110,7 +110,12 @@ export class SheetsService {
       body: JSON.stringify({ tokens: this.tokens, spreadsheetId: this.spreadsheetId }),
     });
     if (!res.ok) {
-        throw new Error("Failed to get spreadsheet metadata");
+        let msg = "Failed to get spreadsheet metadata";
+        try {
+            const data = await res.json();
+            if (data.error) msg += `: ${data.error}`;
+        } catch (e) {}
+        throw new Error(msg);
     }
     return await res.json();
   }

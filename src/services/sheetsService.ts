@@ -113,7 +113,9 @@ export class SheetsService {
         let msg = "Failed to get spreadsheet metadata";
         try {
             const data = await res.json();
-            if (data.error) msg += `: ${data.error}`;
+            if (data.error) {
+              msg += `: ${typeof data.error === 'object' ? JSON.stringify(data.error) : data.error}`;
+            }
         } catch (e) {}
         throw new Error(msg);
     }

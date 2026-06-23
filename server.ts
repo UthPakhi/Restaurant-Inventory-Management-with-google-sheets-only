@@ -288,7 +288,8 @@ async function startServer() {
           }));
           res.json(sheetsData);
       } catch (error: any) {
-          res.status(500).json({ error: error.message });
+          console.error("[Spreadsheet Metadata Error]", error.message || error);
+          res.status(500).json({ error: error.message || error.toString() });
       }
   });
 

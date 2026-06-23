@@ -58,7 +58,7 @@ async function startServer() {
     if (referer) {
       try {
         const url = new URL(referer);
-        if (url.hostname.endsWith(".run.app") || url.hostname.endsWith("vercel.app")) {
+        if (url.hostname.endsWith(".run.app") || url.hostname.endsWith("vercel.app") || url.hostname === "inventory.tharcuisine.com") {
           return `${url.origin}/api/auth/callback`;
         }
       } catch (e) {

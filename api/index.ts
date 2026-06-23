@@ -21,7 +21,7 @@ const getRedirectUri = (req: express.Request) => {
   if (referer) {
     try {
       const url = new URL(referer);
-      if (url.hostname.endsWith(".run.app") || url.hostname.endsWith("vercel.app")) {
+      if (url.hostname.endsWith(".run.app") || url.hostname.endsWith("vercel.app") || url.hostname === "inventory.tharcuisine.com") {
         return `${url.origin}/api/auth/callback`;
       }
     } catch (e) {
@@ -55,25 +55,6 @@ const acquireLock = async (id: string): Promise<() => void> => {
 app.get("/api/health", (req, res) => {
     res.json({ status: "ok" });
   });
-
-  // Helper to get base URL
-  const getRedirectUri = (req: express.Request) => {
-    const referer = req.headers.referer;
-    if (referer) {
-      try {
-        const url = new URL(referer);
-        if (url.hostname.endsWith(".run.app") || url.hostname.endsWith("vercel.app")) {
-          return `${url.origin}/api/auth/callback`;
-        }
-      } catch (e) {
-        // ignore
-      }
-    }
-
-    const protocol = req.headers["x-forwarded-proto"] || "https";
-    const host = req.headers["x-forwarded-host"] || req.headers["host"];
-    return `${protocol}://${host}/api/auth/callback`;
-  };
 
   // 1. Get Google Auth URL
   app.get("/api/auth/google/url", (req, res) => {
